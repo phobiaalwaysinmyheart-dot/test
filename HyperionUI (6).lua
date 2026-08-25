@@ -9330,18 +9330,16 @@ function Hyperion:CreateWindow(config)
     end
 
     -- ================================================================
-    -- THEMES GALLERY TAB  (one call per script: Window:AddThemesTab())
+    -- THEMES GALLERY  (build into a section: Window:AddThemesGallery(sec))
     -- ================================================================
-    function WindowObj:AddThemesTab()
-        local tab = self:AddTab({ Name = "Themes", Icon = Hyperion.Lucide.Palette })
-        local sec = tab:AddSection({ Name = "Gallery", Side = "Left", Group = "Themes" })
-        local cv  = sec:AddCanvas({ Height = 40, Transparency = 1, Stroke = false })
-        cv.AutomaticSize   = Enum.AutomaticSize.Y
-        cv.Size            = UDim2.new(1, 0, 0, 0)
+    function WindowObj:AddThemesGallery(sec)
+        local cv = sec:AddCanvas({ Height = 40, Transparency = 1, Stroke = false })
+        cv.AutomaticSize    = Enum.AutomaticSize.Y
+        cv.Size             = UDim2.new(1, 0, 0, 0)
         cv.ClipsDescendants = false
         Util.Create("UIListLayout", {
             FillDirection = Enum.FillDirection.Vertical, SortOrder = Enum.SortOrder.LayoutOrder,
-            Padding = UDim.new(0, 14), Parent = cv,
+            Padding = UDim.new(0, 9), Parent = cv,
         })
 
         local CATEGORIES = {
@@ -9357,8 +9355,8 @@ function Hyperion:CreateWindow(config)
             for n, c in pairs(cards) do
                 local sel = (n == active)
                 c.stroke.Color        = sel and c.accent or Hyperion.Theme.BorderLight
-                c.stroke.Thickness    = sel and 2 or 1
-                c.stroke.Transparency = sel and 0 or 0.4
+                c.stroke.Thickness    = sel and 1.6 or 1
+                c.stroke.Transparency = sel and 0 or 0.5
                 c.check.TextTransparency = sel and 0 or 1
             end
         end
@@ -9372,11 +9370,11 @@ function Hyperion:CreateWindow(config)
             })
             Util.Create("UIListLayout", {
                 FillDirection = Enum.FillDirection.Vertical, SortOrder = Enum.SortOrder.LayoutOrder,
-                Padding = UDim.new(0, 8), Parent = block,
+                Padding = UDim.new(0, 5), Parent = block,
             })
             local ch = Util.Create("TextLabel", {
-                BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 14), Text = string.upper(cat[1]),
-                TextColor3 = Theme.TextMuted, FontFace = Theme.FontSemiBold, TextSize = 11,
+                BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 12), Text = string.upper(cat[1]),
+                TextColor3 = Theme.TextMuted, FontFace = Theme.FontSemiBold, TextSize = 10,
                 TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 0, Parent = block,
             })
             Themed(ch, { TextColor3 = function(t) return t.TextMuted end })
@@ -9385,7 +9383,7 @@ function Hyperion:CreateWindow(config)
                 AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 1, Parent = block,
             })
             Util.Create("UIGridLayout", {
-                CellSize = UDim2.new(0, 112, 0, 74), CellPadding = UDim2.new(0, 8, 0, 8),
+                CellSize = UDim2.new(0, 94, 0, 50), CellPadding = UDim2.new(0, 6, 0, 6),
                 SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Left,
                 Parent = grid,
             })
@@ -9393,50 +9391,45 @@ function Hyperion:CreateWindow(config)
             for _, name in ipairs(cat[2]) do
                 local preset = Hyperion.Themes[name]
                 if preset then
-                    local ac = preset.Accent or Color3.fromRGB(150, 110, 255)
+                    local ac  = preset.Accent or Color3.fromRGB(150, 110, 255)
+                    local acL = preset.AccentLight or ac
                     local card = Util.Create("TextButton", {
-                        BackgroundColor3 = preset.Surface or Theme.Surface, Text = "",
+                        BackgroundColor3 = preset.Background or Theme.Background, Text = "",
                         AutoButtonColor = false, BorderSizePixel = 0, Parent = grid,
                     })
-                    Util.AddCorner(card, Theme.CornerSmall)
-                    local st = Util.AddStroke(card, Theme.BorderLight, 1, 0.4)
+                    Util.AddCorner(card, UDim.new(0, 6))
+                    local st = Util.AddStroke(card, Theme.BorderLight, 1, 0.5)
+                    -- accent "titlebar" (mini-window look) with a soft gradient
                     local bar = Util.Create("Frame", {
-                        BackgroundColor3 = ac, Size = UDim2.new(1, -12, 0, 20),
+                        BackgroundColor3 = ac, Size = UDim2.new(1, -12, 0, 13),
                         Position = UDim2.new(0, 6, 0, 6), BorderSizePixel = 0, Parent = card,
                     })
-                    Util.AddCorner(bar, UDim.new(0, 4))
-                    local dotWrap = Util.Create("Frame", {
-                        BackgroundTransparency = 1, Size = UDim2.new(0, 40, 0, 10),
-                        Position = UDim2.new(0, 6, 0, 32), Parent = card,
+                    Util.AddCorner(bar, UDim.new(0, 3))
+                    Util.Create("UIGradient", { Color = ColorSequence.new(ac, acL), Rotation = 12, Parent = bar })
+                    -- content-line hint in the theme's surface color
+                    local chip = Util.Create("Frame", {
+                        BackgroundColor3 = preset.SurfaceLight or preset.Surface or Theme.Surface,
+                        Size = UDim2.new(0.55, 0, 0, 4), Position = UDim2.new(0, 6, 0, 23),
+                        BorderSizePixel = 0, Parent = card,
                     })
-                    Util.Create("UIListLayout", {
-                        FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 4),
-                        VerticalAlignment = Enum.VerticalAlignment.Center, Parent = dotWrap,
-                    })
-                    for _, col in ipairs({ preset.Background, preset.SurfaceLight, ac }) do
-                        local d = Util.Create("Frame", {
-                            BackgroundColor3 = col or ac, Size = UDim2.new(0, 10, 0, 10),
-                            BorderSizePixel = 0, Parent = dotWrap,
-                        })
-                        Util.AddCorner(d, UDim.new(1, 0))
-                    end
+                    Util.AddCorner(chip, UDim.new(0, 2))
                     Util.Create("TextLabel", {
-                        BackgroundTransparency = 1, Size = UDim2.new(1, -12, 0, 16),
-                        Position = UDim2.new(0, 6, 1, -22), Text = name,
-                        TextColor3 = preset.Text or Theme.Text, FontFace = Theme.FontMedium, TextSize = 12,
+                        BackgroundTransparency = 1, Size = UDim2.new(1, -24, 0, 13),
+                        Position = UDim2.new(0, 6, 1, -17), Text = name,
+                        TextColor3 = preset.Text or Theme.Text, FontFace = Theme.FontMedium, TextSize = 11,
                         TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Parent = card,
                     })
                     local check = Util.Create("TextLabel", {
-                        BackgroundTransparency = 1, Size = UDim2.new(0, 16, 0, 16),
-                        Position = UDim2.new(1, -20, 1, -22), Text = "✓", TextColor3 = ac,
-                        FontFace = Theme.FontBold, TextSize = 13, TextTransparency = 1, Parent = card,
+                        BackgroundTransparency = 1, Size = UDim2.new(0, 13, 0, 13),
+                        Position = UDim2.new(1, -15, 1, -17), Text = "✓", TextColor3 = ac,
+                        FontFace = Theme.FontBold, TextSize = 12, TextTransparency = 1, Parent = card,
                     })
                     cards[name] = { stroke = st, check = check, accent = ac }
                     card.MouseEnter:Connect(function()
-                        if Hyperion._currentThemeName ~= name then Util.TweenFast(st, { Transparency = 0.1, Color = ac }) end
+                        if Hyperion._currentThemeName ~= name then Util.TweenFast(st, { Transparency = 0.05, Color = ac }) end
                     end)
                     card.MouseLeave:Connect(function()
-                        if Hyperion._currentThemeName ~= name then Util.TweenFast(st, { Transparency = 0.4, Color = Hyperion.Theme.BorderLight }) end
+                        if Hyperion._currentThemeName ~= name then Util.TweenFast(st, { Transparency = 0.5, Color = Hyperion.Theme.BorderLight }) end
                     end)
                     card.MouseButton1Click:Connect(function()
                         Hyperion:SetTheme(name)
@@ -9449,7 +9442,7 @@ function Hyperion:CreateWindow(config)
 
         paint(Hyperion._currentThemeName or "Hyperion")
         pcall(function() Hyperion:OnThemeChanged(function() paint(Hyperion._currentThemeName) end) end)
-        return tab
+        return sec
     end
 
     return WindowObj
