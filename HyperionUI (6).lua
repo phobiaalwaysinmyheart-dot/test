@@ -7653,45 +7653,33 @@ function Hyperion:CreateWindow(config)
                 GroupBar.Visible = true
                 UpdateGroupPagesPosition()
 
+                -- Sub-tab pill: the active one is filled with the accent, the
+                -- rest are plain text on the bar. No per-button outline — the
+                -- fill alone marks the selection.
                 GroupButton = Util.Create("TextButton", {
                     Name = "GroupBtn_" .. tostring(groupName),
-                    BackgroundColor3 = Theme.SurfaceLight,
-                    BackgroundTransparency = 0.12,
+                    BackgroundColor3 = Theme.Accent,
+                    BackgroundTransparency = 1,
                     AutomaticSize = Enum.AutomaticSize.X,
                     Size = UDim2.new(0, 0, 0, 28),
                     Text = tostring(groupName),
-                    TextColor3 = Theme.Text,
-                    FontFace = Theme.FontBold,
+                    TextColor3 = Theme.TextDim,
+                    FontFace = Theme.FontMedium,
                     TextSize = 12,
-                    TextXAlignment = Enum.TextXAlignment.Left,
                     AutoButtonColor = false,
                     ZIndex = 4,
                     Parent = GroupBar
                 })
                 Util.AddCorner(GroupButton, Theme.CornerSmall)
-                Util.AddPadding(GroupButton, 0, 14, 0, 14)
-                local GroupButtonStroke = Util.AddStroke(GroupButton, Theme.BorderLight, 1, 0.28)
+                Util.AddPadding(GroupButton, 0, 16, 0, 16)
                 Themed(GroupButton, {
-                    BackgroundColor3 = function(t)
-                        if TabObj.ActiveGroup and TabObj.ActiveGroup.Button == GroupButton then
-                            return t.SurfaceHover
-                        end
-                        return t.SurfaceLight
-                    end,
+                    BackgroundColor3 = function(t) return t.Accent end,
                     TextColor3 = function(t)
                         if TabObj.ActiveGroup and TabObj.ActiveGroup.Button == GroupButton then
-                            return t.Text
+                            return Color3.new(1, 1, 1)
                         end
                         return t.TextDim
                     end,
-                })
-                Themed(GroupButtonStroke, {
-                    Color = function(t)
-                        if TabObj.ActiveGroup and TabObj.ActiveGroup.Button == GroupButton then
-                            return t.Accent
-                        end
-                        return t.BorderLight
-                    end
                 })
 
             end
@@ -7713,7 +7701,10 @@ function Hyperion:CreateWindow(config)
                 end
 
                 local gap = 12
-                local usable = math.max(220, width - 28)
+                -- Full content width so the columns' outer edges line up with the
+                -- sub-tab bar above them (this used to inset 28px, leaving
+                -- 2-column tabs visibly short of the bar).
+                local usable = math.max(220, width)
                 local leftCount = CountSections(LeftColumn)
                 local rightCount = CountSections(RightColumn)
 
@@ -7781,8 +7772,9 @@ function Hyperion:CreateWindow(config)
                 if grp.Button then
                     local isActive = (grp == groupData)
                     Util.TweenFast(grp.Button, {
-                        BackgroundColor3 = isActive and Theme.SurfaceHover or Theme.SurfaceLight,
-                        TextColor3 = isActive and Theme.Text or Theme.TextDim
+                        BackgroundColor3 = Hyperion.Theme.Accent,
+                        BackgroundTransparency = isActive and 0 or 1,
+                        TextColor3 = isActive and Color3.new(1, 1, 1) or Hyperion.Theme.TextDim
                     })
                     if grp.Button:FindFirstChild("Underline") then
                         grp.Button.Underline.Visible = false
