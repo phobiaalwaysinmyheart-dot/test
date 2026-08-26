@@ -7437,9 +7437,7 @@ function Hyperion:CreateWindow(config)
         tabCfg = tabCfg or {}
         local tabName  = tabCfg.Name or "Tab"
         local tabIcon  = tabCfg.Icon or nil
-        -- x100 so sub-tab buttons can slot in directly beneath their parent tab
-        -- in the sidebar layout order.
-        local tabOrder = (#WindowObj.Tabs + 1) * 100
+        local tabOrder = #WindowObj.Tabs + 1
 
         local TabObj = {}
         TabObj.Sections = {}
@@ -7600,10 +7598,12 @@ function Hyperion:CreateWindow(config)
         TabObj.GroupOrder = {}
         TabObj.ActiveGroup = nil
 
-        -- Sub-tabs now live in the sidebar, so the content always starts at the
-        -- top of the page (no bar to offset around).
         local function UpdateGroupPagesPosition()
-            GroupPages.Position = UDim2.new(0, 0, 0, 0)
+            if GroupBar.Visible then
+                GroupPages.Position = UDim2.new(0, 0, 0, 44)
+            else
+                GroupPages.Position = UDim2.new(0, 0, 0, 0)
+            end
         end
 
         local function CreateGroup(groupName)
@@ -7650,30 +7650,26 @@ function Hyperion:CreateWindow(config)
 
             local GroupButton = nil
             if groupName ~= "__default" then
+                GroupBar.Visible = true
                 UpdateGroupPagesPosition()
 
-                -- Sub-tabs render in the sidebar, indented under their parent
-                -- tab, rather than in a bar floating over the content.
-                TabObj.GroupButtons = TabObj.GroupButtons or {}
                 GroupButton = Util.Create("TextButton", {
                     Name = "GroupBtn_" .. tostring(groupName),
-                    BackgroundColor3 = Theme.SidebarActive,
-                    BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 0, 26),
+                    BackgroundColor3 = Theme.SurfaceLight,
+                    BackgroundTransparency = 0.12,
+                    AutomaticSize = Enum.AutomaticSize.X,
+                    Size = UDim2.new(0, 0, 0, 28),
                     Text = tostring(groupName),
-                    TextColor3 = Theme.TextDim,
-                    FontFace = Theme.FontMedium,
+                    TextColor3 = Theme.Text,
+                    FontFace = Theme.FontBold,
                     TextSize = 12,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     AutoButtonColor = false,
-                    Visible = (WindowObj.ActiveTab == TabObj),
-                    LayoutOrder = tabOrder + #TabObj.GroupButtons + 1,
                     ZIndex = 4,
-                    Parent = TabContainer
+                    Parent = GroupBar
                 })
-                TabObj.GroupButtons[#TabObj.GroupButtons + 1] = GroupButton
                 Util.AddCorner(GroupButton, Theme.CornerSmall)
-                Util.AddPadding(GroupButton, 0, 30, 0, 10)
+                Util.AddPadding(GroupButton, 0, 14, 0, 14)
                 local GroupButtonStroke = Util.AddStroke(GroupButton, Theme.BorderLight, 1, 0.28)
                 Themed(GroupButton, {
                     BackgroundColor3 = function(t)
@@ -7815,18 +7811,6 @@ function Hyperion:CreateWindow(config)
                 Util.TweenSmooth(tab.ActiveBar, {Size = UDim2.new(0, 3, 0, 0)})
                 if tab.IconLabel then
                     Util.TweenFast(tab.IconLabel, {ImageColor3 = Theme.TextDim})
-                end
-            end
-
-            -- Only the active tab's sub-tabs are listed in the sidebar.
-            for _, ch in ipairs(TabContainer:GetChildren()) do
-                if ch:IsA("TextButton") and string.sub(ch.Name, 1, 9) == "GroupBtn_" then
-                    ch.Visible = false
-                end
-            end
-            if TabObj.GroupButtons then
-                for _, gb in ipairs(TabObj.GroupButtons) do
-                    if gb and gb.Parent then gb.Visible = true end
                 end
             end
 
