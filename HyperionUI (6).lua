@@ -2360,6 +2360,128 @@ function Util._tipBuild(host)
     t.frame = f
 end
 
+----------------------------------------------------------------
+-- INLINE COLOUR SWATCH + SHARED PICKER POPUP
+-- One popup per ScreenGui that any swatch can summon, so colour
+-- controls can sit on the same row as the toggle they belong to
+-- instead of each taking a full row of their own.
+----------------------------------------------------------------
+Util._cp = { frame=nil, sv=nil, cur=nil, hue=nil, hueCur=nil, hex=nil,
+             h=0, s=0, v=1, set=nil, svDrag=false, hueDrag=false, openedAt=0 }
+
+function Util._cpBuild(host)
+    local c = Util._cp
+    if c.frame and c.frame.Parent then return end
+    local f = Util.Create("Frame", {
+        Name = "HyperionColorPopup", BackgroundColor3 = Hyperion.Theme.Surface,
+        Size = UDim2.fromOffset(186, 148), Visible = false, ZIndex = 950, Parent = host,
+    })
+    Util.AddCorner(f, Hyperion.Theme.CornerSmall)
+    Util.AddStroke(f, Hyperion.Theme.BorderLight, 1, 0.25)
+
+    c.sv = Util.Create("ImageLabel", {
+        BackgroundColor3 = Color3.fromHSV(0, 1, 1), Size = UDim2.fromOffset(140, 100),
+        Position = UDim2.fromOffset(8, 8), Image = "rbxassetid://4155801252",
+        ZIndex = 951, Parent = f,
+    })
+    Util.AddCorner(c.sv, UDim.new(0, 4))
+    c.cur = Util.Create("Frame", {
+        BackgroundColor3 = Color3.new(1,1,1), Size = UDim2.fromOffset(8, 8),
+        AnchorPoint = Vector2.new(0.5, 0.5), ZIndex = 952, Parent = c.sv,
+    })
+    Util.AddCorner(c.cur, UDim.new(1, 0))
+    Util.AddStroke(c.cur, Color3.new(0,0,0), 1, 0.4)
+
+    c.hue = Util.Create("Frame", {
+        BackgroundColor3 = Color3.new(1,1,1), Size = UDim2.fromOffset(18, 100),
+        Position = UDim2.fromOffset(158, 8), ZIndex = 951, Parent = f,
+    })
+    Util.AddCorner(c.hue, UDim.new(0, 4))
+    Util.Create("UIGradient", { Rotation = 90, Parent = c.hue,
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0,     Color3.fromRGB(255,0,0)),
+            ColorSequenceKeypoint.new(0.167, Color3.fromRGB(255,255,0)),
+            ColorSequenceKeypoint.new(0.333, Color3.fromRGB(0,255,0)),
+            ColorSequenceKeypoint.new(0.5,   Color3.fromRGB(0,255,255)),
+            ColorSequenceKeypoint.new(0.667, Color3.fromRGB(0,0,255)),
+            ColorSequenceKeypoint.new(0.833, Color3.fromRGB(255,0,255)),
+            ColorSequenceKeypoint.new(1,     Color3.fromRGB(255,0,0)),
+        }),
+    })
+    c.hueCur = Util.Create("Frame", {
+        BackgroundColor3 = Color3.new(1,1,1), Size = UDim2.new(1, 4, 0, 3),
+        AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0, 0),
+        ZIndex = 952, Parent = c.hue,
+    })
+    Util.AddCorner(c.hueCur, UDim.new(1, 0))
+
+    c.hex = Util.Create("TextLabel", {
+        BackgroundTransparency = 1, Size = UDim2.new(1, -16, 0, 22),
+        Position = UDim2.fromOffset(8, 116), Text = "#FFFFFF",
+        TextColor3 = Hyperion.Theme.Text, FontFace = Hyperion.Theme.Font,
+        TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 951, Parent = f,
+    })
+    c.frame = f
+
+    function c.commit()
+        local col = Color3.fromHSV(c.h, c.s, c.v)
+        c.sv.BackgroundColor3 = Color3.fromHSV(c.h, 1, 1)
+        c.cur.Position    = UDim2.new(c.s, 0, 1 - c.v, 0)
+        c.hueCur.Position = UDim2.new(0.5, 0, c.h, 0)
+        c.hex.Text = string.format("#%02X%02X%02X",
+            math.floor(col.R*255+0.5), math.floor(col.G*255+0.5), math.floor(col.B*255+0.5))
+        if c.set then c.set(col) end
+    end
+
+    c.sv.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then c.svDrag = true end end)
+    c.sv.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then c.svDrag = false end end)
+    c.hue.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then c.hueDrag = true end end)
+    c.hue.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then c.hueDrag = false end end)
+
+    table.insert(InputPool.ColorCallbacks, function(input)
+        if c.svDrag then
+            c.s = math.clamp((input.Position.X - c.sv.AbsolutePosition.X) / math.max(c.sv.AbsoluteSize.X, 1), 0, 1)
+            c.v = 1 - math.clamp((input.Position.Y - c.sv.AbsolutePosition.Y) / math.max(c.sv.AbsoluteSize.Y, 1), 0, 1)
+            c.commit()
+        elseif c.hueDrag then
+            c.h = math.clamp((input.Position.Y - c.hue.AbsolutePosition.Y) / math.max(c.hue.AbsoluteSize.Y, 1), 0, 1)
+            c.commit()
+        end
+    end)
+
+    -- click-away to dismiss (ignored briefly after opening so the swatch
+    -- click that opened it doesn't immediately close it again)
+    UserInputService.InputBegan:Connect(function(input)
+        if not f.Visible or c.svDrag or c.hueDrag then return end
+        if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+        if os.clock() - c.openedAt < 0.15 then return end
+        local p, fp, fs = input.Position, f.AbsolutePosition, f.AbsoluteSize
+        if p.X < fp.X or p.X > fp.X + fs.X or p.Y < fp.Y or p.Y > fp.Y + fs.Y then
+            f.Visible = false
+        end
+    end)
+end
+
+function Util.AttachColorSwatch(swatch, getColor, setColor)
+    swatch.MouseButton1Click:Connect(function()
+        local host = swatch:FindFirstAncestorWhichIsA("ScreenGui")
+        if not host then return end
+        Util._cpBuild(host)
+        local c = Util._cp
+        if not c.frame then return end
+        c.set = setColor
+        c.h, c.s, c.v = Color3.toHSV(getColor())
+        local ap, hp = swatch.AbsolutePosition, host.AbsolutePosition
+        local vp = (workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize) or Vector2.new(1920, 1080)
+        local x = math.clamp(ap.X - 150, 4, math.max(4, vp.X - 192))
+        local y = math.clamp(ap.Y + 26, 4, math.max(4, vp.Y - 154))
+        c.frame.Position = UDim2.fromOffset(x - hp.X, y - hp.Y)
+        c.openedAt = os.clock()
+        c.frame.Visible = true
+        c.commit()
+    end)
+end
+
 function Util.AttachTooltip(obj, text)
     if not obj or type(text) ~= "string" or text == "" then return end
     local hovering = false
@@ -7653,33 +7775,45 @@ function Hyperion:CreateWindow(config)
                 GroupBar.Visible = true
                 UpdateGroupPagesPosition()
 
-                -- Sub-tab pill: the active one is filled with the accent, the
-                -- rest are plain text on the bar. No per-button outline — the
-                -- fill alone marks the selection.
                 GroupButton = Util.Create("TextButton", {
                     Name = "GroupBtn_" .. tostring(groupName),
-                    BackgroundColor3 = Theme.Accent,
-                    BackgroundTransparency = 1,
+                    BackgroundColor3 = Theme.SurfaceLight,
+                    BackgroundTransparency = 0.12,
                     AutomaticSize = Enum.AutomaticSize.X,
                     Size = UDim2.new(0, 0, 0, 28),
                     Text = tostring(groupName),
-                    TextColor3 = Theme.TextDim,
-                    FontFace = Theme.FontMedium,
+                    TextColor3 = Theme.Text,
+                    FontFace = Theme.FontBold,
                     TextSize = 12,
+                    TextXAlignment = Enum.TextXAlignment.Left,
                     AutoButtonColor = false,
                     ZIndex = 4,
                     Parent = GroupBar
                 })
                 Util.AddCorner(GroupButton, Theme.CornerSmall)
-                Util.AddPadding(GroupButton, 0, 16, 0, 16)
+                Util.AddPadding(GroupButton, 0, 14, 0, 14)
+                local GroupButtonStroke = Util.AddStroke(GroupButton, Theme.BorderLight, 1, 0.28)
                 Themed(GroupButton, {
-                    BackgroundColor3 = function(t) return t.Accent end,
+                    BackgroundColor3 = function(t)
+                        if TabObj.ActiveGroup and TabObj.ActiveGroup.Button == GroupButton then
+                            return t.SurfaceHover
+                        end
+                        return t.SurfaceLight
+                    end,
                     TextColor3 = function(t)
                         if TabObj.ActiveGroup and TabObj.ActiveGroup.Button == GroupButton then
-                            return Color3.new(1, 1, 1)
+                            return t.Text
                         end
                         return t.TextDim
                     end,
+                })
+                Themed(GroupButtonStroke, {
+                    Color = function(t)
+                        if TabObj.ActiveGroup and TabObj.ActiveGroup.Button == GroupButton then
+                            return t.Accent
+                        end
+                        return t.BorderLight
+                    end
                 })
 
             end
@@ -7701,10 +7835,7 @@ function Hyperion:CreateWindow(config)
                 end
 
                 local gap = 12
-                -- Full content width so the columns' outer edges line up with the
-                -- sub-tab bar above them (this used to inset 28px, leaving
-                -- 2-column tabs visibly short of the bar).
-                local usable = math.max(220, width)
+                local usable = math.max(220, width - 28)
                 local leftCount = CountSections(LeftColumn)
                 local rightCount = CountSections(RightColumn)
 
@@ -7772,9 +7903,8 @@ function Hyperion:CreateWindow(config)
                 if grp.Button then
                     local isActive = (grp == groupData)
                     Util.TweenFast(grp.Button, {
-                        BackgroundColor3 = Hyperion.Theme.Accent,
-                        BackgroundTransparency = isActive and 0 or 1,
-                        TextColor3 = isActive and Color3.new(1, 1, 1) or Hyperion.Theme.TextDim
+                        BackgroundColor3 = isActive and Theme.SurfaceHover or Theme.SurfaceLight,
+                        TextColor3 = isActive and Theme.Text or Theme.TextDim
                     })
                     if grp.Button:FindFirstChild("Underline") then
                         grp.Button.Underline.Visible = false
@@ -8072,6 +8202,77 @@ function Hyperion:CreateWindow(config)
                     ZIndex = 5,
                     Parent = Frame
                 })
+
+                -- Inline accessories: a colour swatch and/or keybind chip ride on
+                -- the same row as the toggle they belong to, so one feature costs
+                -- one row instead of three. Both are optional; omit them and the
+                -- toggle renders exactly as before. ZIndex 6 keeps them above the
+                -- full-row hitbox so their own clicks land.
+                local accOffset = -48
+                if type(cfg.Color) == "table" then
+                    local ccfg = cfg.Color
+                    local ccol = ccfg.Default or Color3.fromRGB(255, 255, 255)
+                    if ccfg.Flag then Hyperion.Flags[ccfg.Flag] = ccol end
+                    local Sw = Util.Create("TextButton", {
+                        Name = "Swatch", BackgroundColor3 = ccol, Text = "",
+                        Size = UDim2.fromOffset(22, 22),
+                        Position = UDim2.new(1, accOffset, 0.5, 0),
+                        AnchorPoint = Vector2.new(1, 0.5),
+                        AutoButtonColor = false, ZIndex = 6, Parent = Frame,
+                    })
+                    Util.AddCorner(Sw, UDim.new(0, 4))
+                    local _swStroke = Util.AddStroke(Sw, Theme.BorderLight, 1, 0.3)
+                    Themed(_swStroke, { Color = function(t) return t.BorderLight end })
+                    local function applyCol(c2)
+                        Sw.BackgroundColor3 = c2
+                        if ccfg.Flag then Hyperion.Flags[ccfg.Flag] = c2 end
+                        if ccfg.Callback then task.spawn(ccfg.Callback, c2) end
+                    end
+                    Util.AttachColorSwatch(Sw, function() return Sw.BackgroundColor3 end, applyCol)
+                    if ccfg.Flag then
+                        Hyperion.FlagCallbacks[ccfg.Flag] = applyCol
+                        local cAPI = { Kind = "color" }
+                        function cAPI:Set(v2) applyCol(v2) end
+                        function cAPI:Get() return Sw.BackgroundColor3 end
+                        Hyperion.FlagAPIs[ccfg.Flag] = cAPI
+                    end
+                    accOffset = accOffset - 28
+                end
+                if type(cfg.Keybind) == "table" then
+                    local kcfg = cfg.Keybind
+                    local key = kcfg.Default
+                    if kcfg.Flag then Hyperion.Flags[kcfg.Flag] = key end
+                    local Chip = Util.Create("TextButton", {
+                        Name = "KeyChip", BackgroundColor3 = Theme.SurfaceActive,
+                        BackgroundTransparency = 0.25,
+                        Size = UDim2.fromOffset(42, 20),
+                        Position = UDim2.new(1, accOffset, 0.5, 0),
+                        AnchorPoint = Vector2.new(1, 0.5),
+                        Text = (typeof(key) == "EnumItem") and key.Name or "None",
+                        TextColor3 = Theme.TextDim, FontFace = Theme.FontMedium,
+                        TextSize = 10, AutoButtonColor = false, ZIndex = 6, Parent = Frame,
+                    })
+                    Util.AddCorner(Chip, UDim.new(0, 4))
+                    Themed(Chip, { BackgroundColor3 = function(t) return t.SurfaceActive end })
+                    local listening = false
+                    Chip.MouseButton1Click:Connect(function()
+                        listening = true
+                        Chip.Text = "..."
+                        Chip.TextColor3 = Hyperion.Theme.Accent
+                    end)
+                    UserInputService.InputBegan:Connect(function(input, gp)
+                        if not listening or gp then return end
+                        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+                        listening = false
+                        key = input.KeyCode
+                        Chip.Text = key.Name
+                        Chip.TextColor3 = Hyperion.Theme.TextDim
+                        if kcfg.Flag then Hyperion.Flags[kcfg.Flag] = key end
+                        if kcfg.Callback then task.spawn(kcfg.Callback, key) end
+                    end)
+                    accOffset = accOffset - 48
+                end
+                ToggleLabel.Size = UDim2.new(1, accOffset - 6, 1, 0)
 
                 local function UpdateVisual(state)
                     TrackGrad.Enabled = state
