@@ -1059,7 +1059,7 @@ Hyperion.Themes = {
             Color3.fromRGB(180, 220, 255),   -- soft blue
             Color3.fromRGB(220, 240, 255),   -- blueish white
         },
-        ParticleStyle = "snowflakes",
+        ParticleStyle = "christmaslights",
         TitleGradient = {
             ColorSequenceKeypoint.new(0,   Color3.fromRGB(140, 210, 255)),
             ColorSequenceKeypoint.new(0.5, Color3.fromRGB(230, 245, 255)),
@@ -1707,35 +1707,208 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
         })
     end
 
-    -- EMOJI: falling emoji glyphs with sway + rotation (Halloween / Strawberry)
-    local function _spawnEmoji(emojis, szMin, szMax)
-        if not isAlive() then return end
+    -- DRAWN SHAPES (replaces the old emoji glyphs): built from Frames so they
+    -- stay crisp at any size and match the rest of the particle set. They reuse
+    -- the "snowflake" physics type, which drifts a container and fades its
+    -- Frame children.
+    local function _shape(parent2, col, transp, sx, sy, px, py, rot, corner)
+        local f = Instance.new("Frame")
+        f.BackgroundColor3 = col
+        f.BackgroundTransparency = transp
+        f.BorderSizePixel = 0
+        f.AnchorPoint = Vector2.new(0.5, 0.5)
+        f.Size = UDim2.new(sx, 0, sy, 0)
+        f.Position = UDim2.new(px, 0, py, 0)
+        f.Rotation = rot or 0
+        f.ZIndex = 4
+        f.Parent = parent2
+        if corner then Instance.new("UICorner", f).CornerRadius = UDim.new(corner, 0) end
+        return f
+    end
+
+    local function _shapeContainer(sz)
         local W, H = getCanvasSize()
-        local sz = math.random(szMin, szMax)
-        local lbl = Instance.new("TextLabel")
-        lbl.BackgroundTransparency = 1
-        lbl.Text = emojis[math.random(1, #emojis)]
-        lbl.TextSize = sz
-        lbl.Font = Enum.Font.GothamBold
-        lbl.TextColor3 = Color3.new(1, 1, 1)
-        lbl.Size = UDim2.fromOffset(sz + 8, sz + 8)
-        lbl.AnchorPoint = Vector2.new(0.5, 0.5)
-        lbl.Position = UDim2.fromOffset(math.random(10, W - 10), -sz)
-        lbl.Rotation = math.random(-20, 20)
-        lbl.ZIndex = 4
-        lbl.Parent = mParent
-        table.insert(Hyperion._starFrames, lbl)
+        local c = Instance.new("Frame")
+        c.BackgroundTransparency = 1
+        c.ClipsDescendants = false
+        c.Size = UDim2.fromOffset(sz, sz)
+        c.AnchorPoint = Vector2.new(0.5, 0.5)
+        c.Position = UDim2.fromOffset(math.random(10, math.max(11, W - 10)), -sz)
+        c.Rotation = math.random(-14, 14)
+        c.ZIndex = 4
+        c.Parent = mParent
+        return c, W, H
+    end
+
+    local function _shapeDrift(c, sz, H, transp, lo, hi)
+        table.insert(Hyperion._starFrames, c)
         table.insert(activeParticles, {
-            type = "emoji", frame = lbl, alive = true,
-            x = math.random(10, W - 10), y = -sz,
-            speed = math.random(28, 60), swayAmp = math.random(15, 40),
-            swaySpeed = math.random(6, 16) / 10, rotSpeed = math.random(-40, 40),
+            type = "snowflake", frame = c, alive = true,
+            x = c.Position.X.Offset, y = -sz,
+            speed = math.random(lo, hi),
+            swayAmp = math.random(8, 22), swaySpeed = math.random(3, 9) / 10,
+            rotSpeed = math.random(-18, 18),
             phase = math.random(0, 628) / 100, time = 0,
-            maxY = H + sz + 20, fadeStart = H * 0.7,
+            alpha = transp,
+            maxY = H + sz + 20, fadeStart = H * 0.72,
         })
     end
-    local function spawnHalloween() _spawnEmoji({"🎃", "💀", "🍬", "👻"}, 16, 28) end
-    local function spawnStrawberry() _spawnEmoji({"🍓"}, 14, 24) end
+
+    -- HALLOWEEN: drawn pumpkin / ghost / bat
+    local function spawnHalloween()
+        if not isAlive() then return end
+        local sz = math.random(18, 30)
+        local c, _, H = _shapeContainer(sz)
+        local tr = math.random(4, 16) / 100
+        local pick = math.random(1, 3)
+        if pick == 1 then
+            local orange, dark = Color3.fromRGB(255, 140, 30), Color3.fromRGB(38, 16, 6)
+            _shape(c, Color3.fromRGB(90, 160, 60), tr, 0.14, 0.22, 0.5, 0.12, 0, 0.4)
+            _shape(c, orange, tr, 0.9, 0.76, 0.5, 0.58, 0, 0.5)
+            _shape(c, dark, tr, 0.16, 0.16, 0.34, 0.5, 45, 0.15)
+            _shape(c, dark, tr, 0.16, 0.16, 0.66, 0.5, 45, 0.15)
+            _shape(c, dark, tr, 0.44, 0.1, 0.5, 0.72, 0, 0.4)
+        elseif pick == 2 then
+            local pale, dark = Color3.fromRGB(238, 242, 255), Color3.fromRGB(30, 20, 40)
+            _shape(c, pale, tr, 0.72, 0.62, 0.5, 0.42, 0, 0.5)
+            _shape(c, pale, tr, 0.72, 0.44, 0.5, 0.66, 0, 0.18)
+            _shape(c, dark, tr, 0.13, 0.17, 0.38, 0.4, 0, 0.5)
+            _shape(c, dark, tr, 0.13, 0.17, 0.62, 0.4, 0, 0.5)
+        else
+            local body = Color3.fromRGB(48, 32, 64)
+            _shape(c, body, tr, 0.34, 0.4, 0.5, 0.5, 0, 0.5)
+            _shape(c, body, tr, 0.42, 0.2, 0.2, 0.46, -18, 0.35)
+            _shape(c, body, tr, 0.42, 0.2, 0.8, 0.46, 18, 0.35)
+            _shape(c, body, tr, 0.1, 0.15, 0.42, 0.28, -20, 0.3)
+            _shape(c, body, tr, 0.1, 0.15, 0.58, 0.28, 20, 0.3)
+        end
+        _shapeDrift(c, sz, H, tr, 24, 46)
+    end
+
+    -- STRAWBERRY: drawn berry with leaves + seeds
+    local function spawnStrawberry()
+        if not isAlive() then return end
+        local sz = math.random(16, 26)
+        local c, _, H = _shapeContainer(sz)
+        local tr = math.random(4, 14) / 100
+        local red   = Color3.fromRGB(240, 70, 95)
+        local redDk = Color3.fromRGB(203, 42, 74)
+        local leaf  = Color3.fromRGB(95, 175, 85)
+        local seed  = Color3.fromRGB(255, 228, 175)
+        _shape(c, red,   tr, 0.78, 0.66, 0.5, 0.5,  0, 0.5)
+        _shape(c, redDk, tr, 0.46, 0.42, 0.5, 0.72, 0, 0.5)
+        _shape(c, leaf,  tr, 0.5,  0.16, 0.5, 0.22, 0, 0.4)
+        _shape(c, leaf,  tr, 0.34, 0.14, 0.38, 0.26, -28, 0.4)
+        _shape(c, leaf,  tr, 0.34, 0.14, 0.62, 0.26,  28, 0.4)
+        _shape(c, leaf,  tr, 0.08, 0.16, 0.5, 0.13, 0, 0.3)
+        for _ = 1, 4 do
+            _shape(c, seed, tr + 0.08, 0.07, 0.07,
+                math.random(32, 68) / 100, math.random(42, 70) / 100, 0, 0.5)
+        end
+        _shapeDrift(c, sz, H, tr, 22, 40)
+    end
+
+    -- CHRISTMAS LIGHTS: strung wire with bulbs that glow and flicker.
+    -- Built once as a decoration (not spawned on the particle timer); snow
+    -- keeps falling underneath it.
+    local function buildChristmasLights()
+        if not isAlive() then return end
+        local W = getCanvasSize()
+        local COLORS = {
+            Color3.fromRGB(255, 70, 70),  Color3.fromRGB(90, 200, 255),
+            Color3.fromRGB(120, 230, 120), Color3.fromRGB(255, 200, 70),
+            Color3.fromRGB(190, 120, 255),
+        }
+        for s = 1, 2 do
+            local baseY = 4 + (s - 1) * 24
+            local sag   = 24 + (s - 1) * 6
+            local bulbs = math.max(6, math.floor(W / 64))
+            local segs  = bulbs * 4
+            local prevX, prevY
+            for i = 0, segs do
+                local t = i / segs
+                local x = t * W
+                local y = baseY + math.sin(t * math.pi) * sag
+                if prevX then
+                    local dx, dy = x - prevX, y - prevY
+                    local wire = Instance.new("Frame")
+                    wire.BackgroundColor3 = Color3.fromRGB(42, 46, 54)
+                    wire.BackgroundTransparency = 0.15
+                    wire.BorderSizePixel = 0
+                    wire.AnchorPoint = Vector2.new(0.5, 0.5)
+                    wire.Size = UDim2.fromOffset(math.sqrt(dx * dx + dy * dy) + 1, 2)
+                    wire.Position = UDim2.fromOffset((prevX + x) / 2, (prevY + y) / 2)
+                    wire.Rotation = math.deg(math.atan2(dy, dx))
+                    wire.ZIndex = 3
+                    wire.Parent = parent
+                    table.insert(Hyperion._starFrames, wire)
+                end
+                prevX, prevY = x, y
+            end
+            for b = 1, bulbs do
+                local t = (b - 0.5) / bulbs
+                local x = t * W
+                local y = baseY + math.sin(t * math.pi) * sag
+                local col = COLORS[((b + s) % #COLORS) + 1]
+
+                local cap = Instance.new("Frame")
+                cap.BackgroundColor3 = Color3.fromRGB(72, 78, 88)
+                cap.BorderSizePixel = 0
+                cap.AnchorPoint = Vector2.new(0.5, 0)
+                cap.Size = UDim2.fromOffset(4, 4)
+                cap.Position = UDim2.fromOffset(x, y)
+                cap.ZIndex = 4
+                cap.Parent = parent
+                Instance.new("UICorner", cap).CornerRadius = UDim.new(0, 1)
+                table.insert(Hyperion._starFrames, cap)
+
+                local glow = Instance.new("Frame")
+                glow.BackgroundColor3 = col
+                glow.BackgroundTransparency = 0.72
+                glow.BorderSizePixel = 0
+                glow.AnchorPoint = Vector2.new(0.5, 0)
+                glow.Size = UDim2.fromOffset(22, 22)
+                glow.Position = UDim2.fromOffset(x, y - 2)
+                glow.ZIndex = 3
+                glow.Parent = parent
+                Instance.new("UICorner", glow).CornerRadius = UDim.new(1, 0)
+                table.insert(Hyperion._starFrames, glow)
+
+                local bulb = Instance.new("Frame")
+                bulb.BackgroundColor3 = col
+                bulb.BackgroundTransparency = 0.05
+                bulb.BorderSizePixel = 0
+                bulb.AnchorPoint = Vector2.new(0.5, 0)
+                bulb.Size = UDim2.fromOffset(8, 11)
+                bulb.Position = UDim2.fromOffset(x, y + 3)
+                bulb.ZIndex = 5
+                bulb.Parent = parent
+                Instance.new("UICorner", bulb).CornerRadius = UDim.new(0.5, 0)
+                table.insert(Hyperion._starFrames, bulb)
+
+                -- each bulb breathes on its own offset schedule
+                task.spawn(function()
+                    task.wait(math.random(0, 240) / 100)
+                    while isAlive() and bulb.Parent do
+                        local d1  = math.random(60, 170) / 100
+                        local dim = math.random(35, 85) / 100
+                        ts:Create(glow, TweenInfo.new(d1, Enum.EasingStyle.Sine),
+                            { BackgroundTransparency = 0.55 + dim * 0.35 }):Play()
+                        ts:Create(bulb, TweenInfo.new(d1, Enum.EasingStyle.Sine),
+                            { BackgroundTransparency = dim * 0.45 }):Play()
+                        task.wait(d1)
+                        if not (isAlive() and bulb.Parent) then break end
+                        local d2 = math.random(50, 140) / 100
+                        ts:Create(glow, TweenInfo.new(d2, Enum.EasingStyle.Sine),
+                            { BackgroundTransparency = 0.6 }):Play()
+                        ts:Create(bulb, TweenInfo.new(d2, Enum.EasingStyle.Sine),
+                            { BackgroundTransparency = 0.05 }):Play()
+                        task.wait(d2)
+                    end
+                end)
+            end
+        end
+    end
 
     -- Spawn function map
     local spawnFn = {
@@ -1744,8 +1917,17 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
         gridlines = spawnGridline, hearts = spawnHeart, paws = spawnPaw,
         snowflakes = spawnSnowflake,
         halloween = spawnHalloween, strawberry = spawnStrawberry,
+        christmaslights = spawnSnowflake, -- snow falls under the light string
     }
     local spawnFunc = spawnFn[pStyle] or spawnStar
+
+    -- One-time decorations (drawn once, not on the spawn timer)
+    if pStyle == "christmaslights" then
+        task.defer(function()
+            task.wait(0.15) -- let the canvas resolve its AbsoluteSize first
+            if isAlive() then buildChristmasLights() end
+        end)
+    end
 
     -- Spawn intervals per style
     local intervalRange = {
@@ -1757,6 +1939,7 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
         snowflakes = {4, 9},
         halloween = {6, 13},
         strawberry = {4, 9},
+        christmaslights = {4, 9},
     }
     local iRange = intervalRange[pStyle] or {14, 28}
 
@@ -5874,7 +6057,7 @@ function Hyperion:CreateWindow(config)
         {key="GradB",        label="Grad 2", anim=true, default=Color3.fromRGB(30, 42, 96)},
         {key="StarColor",    label="Stars",  anim=true, default=Color3.fromRGB(180, 205, 255)},
     }
-    local THEME_STYLES = { "stars", "petals", "hearts", "snowflakes", "embers", "bubbles", "paws", "wisps", "orbs", "gridlines" }
+    local THEME_STYLES = { "stars", "petals", "hearts", "snowflakes", "embers", "bubbles", "paws", "wisps", "orbs", "gridlines", "halloween", "strawberry", "christmaslights" }
     local working = {}
     for _, f in ipairs(THEME_FIELDS) do working[f.key] = Theme[f.key] or f.default end
     working.Animated = Theme.Animated == true
@@ -6766,6 +6949,7 @@ function Hyperion:CreateWindow(config)
     -- DRAGGING (with viewport bounds clamping)
     -- ============================================================
     local Dragging, DragStart, StartPos = false, Vector3.new(), UDim2.new()
+    local _dragTarget = nil
 
     Header.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -6795,8 +6979,31 @@ function Hyperion:CreateWindow(config)
             newX = math.clamp(newX, -halfW + 60, viewportSize.X - halfW - 60)
             newY = math.clamp(newY, -halfH + 30, viewportSize.Y - halfH - 30)
 
-            MainFrame.Position = UDim2.new(StartPos.X.Scale, newX, StartPos.Y.Scale, newY)
+            -- Store the target; a RenderStepped loop eases the frame toward it
+            -- so the window trails the cursor smoothly instead of snapping.
+            _dragTarget = UDim2.new(StartPos.X.Scale, newX, StartPos.Y.Scale, newY)
         end
+    end)
+
+    -- Frame-rate independent smoothing toward the drag target.
+    Util.Connect(RunService.RenderStepped, function(dt)
+        if not _dragTarget then return end
+        local cur = MainFrame.Position
+        if not Dragging then
+            -- settle the last few pixels, then release
+            local dx = _dragTarget.X.Offset - cur.X.Offset
+            local dy = _dragTarget.Y.Offset - cur.Y.Offset
+            if math.abs(dx) < 0.5 and math.abs(dy) < 0.5 then
+                MainFrame.Position = _dragTarget
+                _dragTarget = nil
+                return
+            end
+        end
+        local a = 1 - math.exp(-16 * dt) -- ~16/sec convergence, dt-independent
+        MainFrame.Position = UDim2.new(
+            _dragTarget.X.Scale, cur.X.Offset + (_dragTarget.X.Offset - cur.X.Offset) * a,
+            _dragTarget.Y.Scale, cur.Y.Offset + (_dragTarget.Y.Offset - cur.Y.Offset) * a
+        )
     end)
 
     -- ============================================================
@@ -7827,7 +8034,7 @@ function Hyperion:CreateWindow(config)
                 local Track = Util.Create("Frame", {
                     Name = "Track",
                     BackgroundColor3 = value and Theme.Accent or Theme.ToggleOff,
-                    Size = UDim2.new(0, 38, 0, 20),
+                    Size = UDim2.new(0, 34, 0, 18),
                     Position = UDim2.new(1, 0, 0.5, 0),
                     AnchorPoint = Vector2.new(1, 0.5),
                     ZIndex = 3,
@@ -7835,6 +8042,15 @@ function Hyperion:CreateWindow(config)
                 })
                 Util.AddCorner(Track, UDim.new(1, 0))
                 Themed(Track, { BackgroundColor3 = function(t) return value and t.Accent or t.ToggleOff end })
+
+                -- Accent gradient across the track while active; disabled when
+                -- off so the flat ToggleOff colour shows through.
+                local TrackGrad = Util.Create("UIGradient", {
+                    Color = ColorSequence.new(Theme.AccentDark, Theme.AccentLight),
+                    Enabled = value,
+                    Parent = Track
+                })
+                Themed(TrackGrad, { Color = function(t) return ColorSequence.new(t.AccentDark, t.AccentLight) end })
 
                 -- Glow behind track when active
                 local TrackGlow = Util.Create("UIStroke", {
@@ -7848,7 +8064,7 @@ function Hyperion:CreateWindow(config)
                 local Knob = Util.Create("Frame", {
                     Name = "Knob",
                     BackgroundColor3 = Color3.new(1, 1, 1),
-                    Size = UDim2.new(0, 14, 0, 14),
+                    Size = UDim2.new(0, 12, 0, 12),
                     Position = value and UDim2.new(1, -3, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
                     AnchorPoint = value and Vector2.new(1, 0.5) or Vector2.new(0, 0.5),
                     ZIndex = 4,
@@ -7866,7 +8082,8 @@ function Hyperion:CreateWindow(config)
                 })
 
                 local function UpdateVisual(state)
-                    Util.TweenSmooth(Track, {BackgroundColor3 = state and Theme.Accent or Theme.ToggleOff})
+                    TrackGrad.Enabled = state
+                    Util.TweenSmooth(Track, {BackgroundColor3 = state and Hyperion.Theme.Accent or Hyperion.Theme.ToggleOff})
                     Util.TweenSmooth(TrackGlow, {Thickness = state and 1 or 0})
                     Util.TweenSmooth(Knob, {
                         Position = state and UDim2.new(1, -3, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
@@ -7924,10 +8141,23 @@ function Hyperion:CreateWindow(config)
 
                 if flag then Hyperion.Flags[flag] = value end
 
+                -- "120/600 px" — live value in accent, the max dimmed after it.
+                -- Pass HideMax = true for just the bare value.
+                local hideMax = cfg.HideMax or false
+                local function _valText()
+                    local cur = string.format("%.10g", value)
+                    if hideMax then return cur .. suffix end
+                    local d = Hyperion.Theme.TextDim
+                    return string.format('%s<font color="rgb(%d,%d,%d)">/%s%s</font>',
+                        cur,
+                        math.floor(d.R * 255 + 0.5), math.floor(d.G * 255 + 0.5), math.floor(d.B * 255 + 0.5),
+                        string.format("%.10g", max), suffix)
+                end
+
                 local Frame = Util.Create("Frame", {
                     Name = "Slider_" .. name,
                     BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 0, 44),
+                    Size = UDim2.new(1, 0, 0, 38),
                     ZIndex = 2,
                     Parent = Elements
                 })
@@ -7961,7 +8191,8 @@ function Hyperion:CreateWindow(config)
                     BackgroundTransparency = 1,
                     Size = UDim2.new(0.35, 0, 1, 0),
                     Position = UDim2.new(0.65, 0, 0, 0),
-                    Text = string.format("%.10g", value) .. suffix,
+                    Text = _valText(),
+                    RichText = true,
                     TextColor3 = Theme.Accent,
                     FontFace = Theme.FontMedium,
                     TextSize = 12,
@@ -7975,8 +8206,8 @@ function Hyperion:CreateWindow(config)
                 local Track = Util.Create("Frame", {
                     Name = "Track",
                     BackgroundColor3 = Theme.SliderBg,
-                    Size = UDim2.new(1, 0, 0, 6),
-                    Position = UDim2.new(0, 0, 0, 26),
+                    Size = UDim2.new(1, 0, 0, 5),
+                    Position = UDim2.new(0, 0, 0, 24),
                     ZIndex = 2,
                     Parent = Frame
                 })
@@ -7999,7 +8230,8 @@ function Hyperion:CreateWindow(config)
                 local _fillGrad = Util.Create("UIGradient", {
                     Color = ColorSequence.new({
                         ColorSequenceKeypoint.new(0, Theme.AccentDark),
-                        ColorSequenceKeypoint.new(1, Theme.Accent),
+                        ColorSequenceKeypoint.new(0.5, Theme.Accent),
+                        ColorSequenceKeypoint.new(1, Theme.AccentLight),
                     }),
                     Parent = Fill
                 })
@@ -8007,7 +8239,8 @@ function Hyperion:CreateWindow(config)
                     Color = function(t)
                         return ColorSequence.new({
                             ColorSequenceKeypoint.new(0, t.AccentDark),
-                            ColorSequenceKeypoint.new(1, t.Accent),
+                            ColorSequenceKeypoint.new(0.5, t.Accent),
+                            ColorSequenceKeypoint.new(1, t.AccentLight),
                         })
                     end
                 })
@@ -8015,7 +8248,7 @@ function Hyperion:CreateWindow(config)
                 local KnobObj = Util.Create("Frame", {
                     Name = "Knob",
                     BackgroundColor3 = Color3.new(1, 1, 1),
-                    Size = UDim2.new(0, 14, 0, 14),
+                    Size = UDim2.new(0, 11, 0, 11),
                     Position = UDim2.new(ratio, 0, 0.5, 0),
                     AnchorPoint = Vector2.new(0.5, 0.5),
                     ZIndex = 5,
@@ -8052,7 +8285,7 @@ function Hyperion:CreateWindow(config)
                     local rawVal = min + (max - min) * pos
                     value = math.clamp(math.floor(rawVal / round + 0.5) * round, min, max)
                     if flag then Hyperion.Flags[flag] = value end
-                    ValLabel.Text = string.format("%.10g", value) .. suffix
+                    ValLabel.Text = _valText()
                     local r = (value - min) / math.max(max - min, 0.001)
                     Fill.Size = UDim2.new(r, 0, 1, 0)
                     KnobObj.Position = UDim2.new(r, 0, 0.5, 0)
@@ -8063,7 +8296,7 @@ function Hyperion:CreateWindow(config)
                     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                         dragging = true
                         Util.TweenFast(KnobGlow, {Thickness = 3})
-                        Util.TweenFast(KnobObj, {Size = UDim2.new(0, 16, 0, 16)})
+                        Util.TweenFast(KnobObj, {Size = UDim2.new(0, 13, 0, 13)})
                         UpdateSlider(input)
                     end
                 end)
@@ -8071,7 +8304,7 @@ function Hyperion:CreateWindow(config)
                     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                         dragging = false
                         Util.TweenFast(KnobGlow, {Thickness = 0})
-                        Util.TweenFast(KnobObj, {Size = UDim2.new(0, 14, 0, 14)})
+                        Util.TweenFast(KnobObj, {Size = UDim2.new(0, 11, 0, 11)})
                     end
                 end)
 
@@ -8084,7 +8317,7 @@ function Hyperion:CreateWindow(config)
                     Hyperion.FlagCallbacks[flag] = function(v)
                         value = math.clamp(v, min, max)
                         Hyperion.Flags[flag] = value
-                        ValLabel.Text = string.format("%.10g", value) .. suffix
+                        ValLabel.Text = _valText()
                         local r = (value - min) / math.max(max - min, 0.001)
                         Fill.Size = UDim2.new(r, 0, 1, 0)
                         KnobObj.Position = UDim2.new(r, 0, 0.5, 0)
@@ -8093,7 +8326,7 @@ function Hyperion:CreateWindow(config)
                 end
 
                 local API = {}
-                function API:Set(v) value = math.clamp(v, min, max); if flag then Hyperion.Flags[flag] = value end; ValLabel.Text = string.format("%.10g", value) .. suffix; local r = (value - min) / math.max(max - min, 0.001); Fill.Size = UDim2.new(r, 0, 1, 0); KnobObj.Position = UDim2.new(r, 0, 0.5, 0); task.spawn(callback, value) end
+                function API:Set(v) value = math.clamp(v, min, max); if flag then Hyperion.Flags[flag] = value end; ValLabel.Text = _valText(); local r = (value - min) / math.max(max - min, 0.001); Fill.Size = UDim2.new(r, 0, 1, 0); KnobObj.Position = UDim2.new(r, 0, 0.5, 0); task.spawn(callback, value) end
                 function API:Get() return value end
                 API.Kind = "slider"; API.Min = min; API.Max = max
                 if flag then Hyperion.FlagAPIs[flag] = API end
