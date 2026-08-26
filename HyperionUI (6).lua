@@ -261,6 +261,40 @@ Hyperion.Lucide = {
     Palette    = "rbxassetid://10734910430",  -- lucide-palette
 }
 
+-- Preload icons + common textures once, off the main path, so the first
+-- hover / panel-open doesn't pop-in while Roblox fetches the asset.
+Hyperion._preloaded = false
+function Hyperion:PreloadAssets(extra)
+    if Hyperion._preloaded then return end
+    Hyperion._preloaded = true
+    task.spawn(function()
+        local list = {}
+        for _, id in pairs(Hyperion.Lucide) do
+            if type(id) == "string" then list[#list + 1] = id end
+        end
+        for _, id in ipairs({
+            "rbxassetid://6014261993", -- window drop shadow
+            "rbxassetid://1316045217", -- soft glow
+            "rbxassetid://4155801252", -- saturation/value picker
+            "rbxassetid://10747384394", -- close (x)
+            "rbxassetid://10734941499", -- notification default
+        }) do list[#list + 1] = id end
+        for _, id in ipairs(extra or {}) do list[#list + 1] = id end
+
+        local objs = {}
+        for _, id in ipairs(list) do
+            local ok, img = pcall(function()
+                local i = Instance.new("ImageLabel")
+                i.Image = id
+                return i
+            end)
+            if ok and img then objs[#objs + 1] = img end
+        end
+        pcall(function() game:GetService("ContentProvider"):PreloadAsync(objs) end)
+        for _, o in ipairs(objs) do pcall(function() o:Destroy() end) end
+    end)
+end
+
 ----------------------------------------------------------------
 -- THEME PRESETS
 ----------------------------------------------------------------
@@ -2080,6 +2114,124 @@ function Util.TweenSmooth(obj, props)
     return Util.Tween(obj, 0.28, props, Enum.EasingStyle.Quint)
 end
 
+-- Overshoot ("pop") for things that appear: cards, notifications, badges.
+function Util.TweenPop(obj, props, duration)
+    return Util.Tween(obj, duration or 0.22, props, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+end
+
+-- Fade a set of {instance, property} pairs in sequence, `gap` apart.
+-- Used to cascade a panel's contents in instead of snapping them all at once.
+function Util.Cascade(items, gap, duration)
+    gap = gap or 0.045
+    for i, it in ipairs(items) do
+        local inst, prop, to = it[1], it[2], it[3] or 0
+        if inst then
+            task.delay((i - 1) * gap, function()
+                if inst and inst.Parent then
+                    Util.Tween(inst, duration or 0.22, { [prop] = to }, Enum.EasingStyle.Quint)
+                end
+            end)
+        end
+    end
+end
+
+----------------------------------------------------------------
+-- TOOLTIPS
+-- One shared bubble per ScreenGui. Sits above the hovered element,
+-- flips below when there's no headroom, and clamps to the viewport.
+-- Kept on Util (not new locals) to stay clear of the register budget.
+----------------------------------------------------------------
+Util._tip = { frame = nil, label = nil, stroke = nil, target = nil }
+
+function Util._tipBuild(host)
+    local t = Util._tip
+    if t.frame and t.frame.Parent then return end
+    local f = Util.Create("Frame", {
+        Name = "HyperionTooltip",
+        BackgroundColor3 = Hyperion.Theme.Surface,
+        BackgroundTransparency = 1,
+        AutomaticSize = Enum.AutomaticSize.XY,
+        Size = UDim2.new(0, 0, 0, 0),
+        Visible = false,
+        ZIndex = 900,
+        Parent = host,
+    })
+    Util.AddCorner(f, Hyperion.Theme.CornerSmall)
+    t.stroke = Util.AddStroke(f, Hyperion.Theme.BorderLight, 1, 0.35)
+    Util.AddPadding(f, 5, 8, 5, 8)
+    t.label = Util.Create("TextLabel", {
+        BackgroundTransparency = 1,
+        AutomaticSize = Enum.AutomaticSize.XY,
+        Size = UDim2.new(0, 0, 0, 0),
+        Text = "",
+        TextColor3 = Hyperion.Theme.Text,
+        TextTransparency = 1,
+        FontFace = Hyperion.Theme.Font,
+        TextSize = 11,
+        TextWrapped = true,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex = 901,
+        Parent = f,
+    })
+    Util.Create("UISizeConstraint", { MaxSize = Vector2.new(190, math.huge), Parent = t.label })
+    t.frame = f
+end
+
+function Util.AttachTooltip(obj, text)
+    if not obj or type(text) ~= "string" or text == "" then return end
+    local hovering = false
+
+    obj.MouseEnter:Connect(function()
+        hovering = true
+        task.delay(0.4, function()
+            if not hovering or not obj.Parent then return end
+            local host = obj:FindFirstAncestorWhichIsA("ScreenGui")
+            if not host then return end
+            Util._tipBuild(host)
+            local t = Util._tip
+            local f, l = t.frame, t.label
+            if not f or not l then return end
+            t.target = obj
+            f.Parent = host
+            l.Text = text
+            -- resync to the live theme (bubble is created once, themes change)
+            f.BackgroundColor3 = Hyperion.Theme.Surface
+            l.TextColor3       = Hyperion.Theme.Text
+            if t.stroke then t.stroke.Color = Hyperion.Theme.BorderLight end
+            f.BackgroundTransparency = 1
+            l.TextTransparency = 1
+            f.Visible = true
+            task.wait() -- let AutomaticSize resolve before measuring
+            if t.target ~= obj or not obj.Parent then return end
+            local ap, as = obj.AbsolutePosition, obj.AbsoluteSize
+            local fs, hp = f.AbsoluteSize, host.AbsolutePosition
+            local vp = (workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize) or Vector2.new(1920, 1080)
+            local x = ap.X + as.X / 2 - fs.X / 2
+            local y = ap.Y - fs.Y - 6
+            if y < 4 then y = ap.Y + as.Y + 6 end
+            x = math.clamp(x, 4, math.max(4, vp.X - fs.X - 4))
+            f.Position = UDim2.fromOffset(x - hp.X, (y - hp.Y) + 4)
+            Util.Tween(f, 0.14, { BackgroundTransparency = 0.04 })
+            Util.Tween(l, 0.14, { TextTransparency = 0 })
+            Util.Tween(f, 0.18, { Position = UDim2.fromOffset(x - hp.X, y - hp.Y) }, Enum.EasingStyle.Quint)
+        end)
+    end)
+
+    obj.MouseLeave:Connect(function()
+        hovering = false
+        local t = Util._tip
+        if t.target ~= obj then return end
+        t.target = nil
+        local f, l = t.frame, t.label
+        if not f or not l then return end
+        Util.Tween(f, 0.1, { BackgroundTransparency = 1 })
+        Util.Tween(l, 0.1, { TextTransparency = 1 })
+        task.delay(0.12, function()
+            if Util._tip.target == nil and f and f.Parent then f.Visible = false end
+        end)
+    end)
+end
+
 function Util.AddCorner(parent, radius)
     return Util.Create("UICorner", {CornerRadius = radius or Hyperion.Theme.CornerRadius, Parent = parent})
 end
@@ -2163,7 +2315,11 @@ function Hyperion:Notify(config)
     config = config or {}
     local title    = config.Title or "Hyperion"
     local content  = config.Content or ""
-    local duration = config.Duration or 4
+    -- Auto-length: long messages get time to actually be read (clamped 3-10s).
+    local duration = config.Duration
+    if not duration then
+        duration = math.clamp(2.2 + (#tostring(content) + #tostring(title)) / 26, 3, 10)
+    end
     local nType    = config.Type or "Info"
 
     if not NotifHolder then return end
@@ -2236,7 +2392,7 @@ function Hyperion:Notify(config)
     })
     Util.AddList(TextStack, Enum.FillDirection.Vertical, 2)
 
-    Util.Create("TextLabel", {
+    local TitleLbl = Util.Create("TextLabel", {
         BackgroundTransparency = 1,
         Size             = UDim2.new(1, 0, 0, 16),
         Text             = title,
@@ -2247,8 +2403,9 @@ function Hyperion:Notify(config)
         Parent           = TextStack,
     })
 
+    local BodyLbl
     if content ~= "" then
-        Util.Create("TextLabel", {
+        BodyLbl = Util.Create("TextLabel", {
             BackgroundTransparency = 1,
             Size             = UDim2.new(1, 0, 0, 0),
             AutomaticSize    = Enum.AutomaticSize.Y,
@@ -2262,18 +2419,36 @@ function Hyperion:Notify(config)
         })
     end
 
-    -- Slide in from right, fade in
+    -- Slide in from the right and settle (Back easing), then cascade the
+    -- contents in so the card doesn't snap into existence all at once.
     notif.Position = UDim2.new(1, 20, 0, 0)
+    local _iconImg = IconCircle:FindFirstChildWhichIsA("ImageLabel")
+    local _icBg = IconCircle.BackgroundTransparency
+    IconCircle.BackgroundTransparency = 1
+    if _iconImg then _iconImg.ImageTransparency = 1 end
+    TitleLbl.TextTransparency = 1
+    if BodyLbl then BodyLbl.TextTransparency = 1 end
+
     task.spawn(function()
-        Util.Tween(notif, 0.3, {
-            BackgroundTransparency = 0,
-            Position = UDim2.new(0, 0, 0, 0),
-        }, Enum.EasingStyle.Quint)
+        Util.Tween(notif, 0.34, { Position = UDim2.new(0, 0, 0, 0) },
+            Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+        Util.Tween(notif, 0.22, { BackgroundTransparency = 0 }, Enum.EasingStyle.Quint)
+
+        local cascade = { { IconCircle, "BackgroundTransparency", _icBg } }
+        if _iconImg then cascade[#cascade + 1] = { _iconImg, "ImageTransparency", 0 } end
+        cascade[#cascade + 1] = { TitleLbl, "TextTransparency", 0 }
+        if BodyLbl then cascade[#cascade + 1] = { BodyLbl, "TextTransparency", 0 } end
+        Util.Cascade(cascade, 0.05, 0.2)
+
         task.wait(duration)
         Util.Tween(notif, 0.25, {
             BackgroundTransparency = 1,
             Position = UDim2.new(1, 20, 0, 0),
         }, Enum.EasingStyle.Quint)
+        Util.Tween(TitleLbl, 0.18, { TextTransparency = 1 })
+        if BodyLbl then Util.Tween(BodyLbl, 0.18, { TextTransparency = 1 }) end
+        if _iconImg then Util.Tween(_iconImg, 0.18, { ImageTransparency = 1 }) end
+        Util.Tween(IconCircle, 0.18, { BackgroundTransparency = 1 })
         task.wait(0.3)
         if notif and notif.Parent then notif:Destroy() end
     end)
@@ -2487,6 +2662,7 @@ end)
 ----------------------------------------------------------------
 function Hyperion:CreateWindow(config)
     config = config or {}
+    pcall(function() Hyperion:PreloadAssets(config.PreloadAssets) end)
     local windowConfig = {
         Title    = config.Title or "Hyperion",
         Logo     = config.Logo or "rbxassetid://134963728913547",
@@ -3165,21 +3341,27 @@ function Hyperion:CreateWindow(config)
         end
     end
 
-    -- Drop shadow (outside via negative offset)
-    local Shadow = Util.Create("ImageLabel", {
-        Name = "Shadow",
-        BackgroundTransparency = 1,
-        Size = UDim2.new(1, 50, 1, 50),
-        Position = UDim2.new(0.5, 0, 0.5, 0),
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        Image = "rbxassetid://6014261993",
-        ImageColor3 = Color3.fromRGB(0, 0, 0),
-        ImageTransparency = 0.45,
-        ScaleType = Enum.ScaleType.Slice,
-        SliceCenter = Rect.new(49, 49, 450, 450),
-        ZIndex = -1,
-        Parent = MainFrame
-    })
+    -- Layered drop shadow: umbra (tight/dark) -> penumbra (mid) -> antumbra (wide/faint).
+    -- Three passes at different spreads read as real depth; one flat pass reads as a halo.
+    local function _shadowLayer(name, spread, transparency, z)
+        return Util.Create("ImageLabel", {
+            Name = name,
+            BackgroundTransparency = 1,
+            Size = UDim2.new(1, spread, 1, spread),
+            Position = UDim2.new(0.5, 0, 0.5, 2 + spread * 0.05),
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Image = "rbxassetid://6014261993",
+            ImageColor3 = Color3.fromRGB(0, 0, 0),
+            ImageTransparency = transparency,
+            ScaleType = Enum.ScaleType.Slice,
+            SliceCenter = Rect.new(49, 49, 450, 450),
+            ZIndex = z,
+            Parent = MainFrame
+        })
+    end
+    _shadowLayer("ShadowUmbra",   24, 0.62, -3)
+    _shadowLayer("ShadowAntumbra", 96, 0.90, -1)
+    local Shadow = _shadowLayer("ShadowPenumbra", 56, 0.74, -2)
 
     -- ============================================================
     -- HEADER (48px)
@@ -7484,7 +7666,12 @@ function Hyperion:CreateWindow(config)
             local groupData = EnsureGroup(groupName)
             local parentCol = (side == "right") and groupData.Right or groupData.Left
             local _grpDisplay = (groupName ~= "__default") and groupName or secName
-            local function _regSearch(elName, elFrame, kind)
+            local function _regSearch(elName, elFrame, kind, elCfg)
+                -- Any element passing a Tooltip = "..." in its config gets a
+                -- hover bubble; every element type already routes through here.
+                if elCfg and elCfg.Tooltip and elFrame then
+                    pcall(Util.AttachTooltip, elFrame, elCfg.Tooltip)
+                end
                 if not elName or elName == "" then return end
                 table.insert(Hyperion._SearchIndex, {
                     name = elName, lname = string.lower(elName),
@@ -7618,7 +7805,7 @@ function Hyperion:CreateWindow(config)
                     ZIndex = 2,
                     Parent = Elements
                 })
-                _regSearch(name, Frame, "Toggle")
+                _regSearch(name, Frame, "Toggle", cfg)
                 Util.AddCorner(Frame, Theme.CornerSmall)
 
                 local ToggleLabel = Util.Create("TextLabel", {
@@ -7744,7 +7931,7 @@ function Hyperion:CreateWindow(config)
                     ZIndex = 2,
                     Parent = Elements
                 })
-                _regSearch(name, Frame, "Slider")
+                _regSearch(name, Frame, "Slider", cfg)
 
                 -- Label + Value row
                 local Row = Util.Create("Frame", {
@@ -7931,7 +8118,7 @@ function Hyperion:CreateWindow(config)
                     ZIndex = 2,
                     Parent = Elements
                 })
-                _regSearch(name, Btn, "Button")
+                _regSearch(name, Btn, "Button", cfg)
                 Util.AddCorner(Btn, Theme.CornerSmall)
                 local _btnStroke = Util.AddStroke(Btn, Theme.Border, 1, 0.45)
                 Themed(Btn, { BackgroundColor3 = function(t) return t.SurfaceLight end })
@@ -8032,7 +8219,7 @@ function Hyperion:CreateWindow(config)
                     ZIndex = 2,
                     Parent = Elements
                 })
-                _regSearch(name, Frame, "Dropdown")
+                _regSearch(name, Frame, "Dropdown", cfg)
 
                 local DropLabel = Util.Create("TextLabel", {
                     Name = "Label",
@@ -8292,7 +8479,7 @@ function Hyperion:CreateWindow(config)
                     ZIndex = 2,
                     Parent = Elements
                 })
-                _regSearch(name, Frame, "Textbox")
+                _regSearch(name, Frame, "Textbox", cfg)
 
                 local TbLabel = Util.Create("TextLabel", {
                     Name = "Label",
@@ -8370,7 +8557,7 @@ function Hyperion:CreateWindow(config)
                     ZIndex = 2,
                     Parent = Elements
                 })
-                _regSearch(name, Frame, "Keybind")
+                _regSearch(name, Frame, "Keybind", cfg)
 
                 local KbLabel = Util.Create("TextLabel", {
                     Name = "Label",
@@ -8488,7 +8675,7 @@ function Hyperion:CreateWindow(config)
                     ZIndex = 2,
                     Parent = Elements
                 })
-                _regSearch(name, Frame, "Color")
+                _regSearch(name, Frame, "Color", cfg)
 
                 Util.Create("TextLabel", {
                     Name = "Label",
