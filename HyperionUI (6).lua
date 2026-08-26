@@ -1819,13 +1819,9 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
             Color3.fromRGB(120, 230, 120), Color3.fromRGB(255, 200, 70),
             Color3.fromRGB(190, 120, 255),
         }
-        -- Hung just under the header (52px) and drawn on mParent, which is the
-        -- high-ZIndex canvas — StarCanvas sits at ZIndex 1, behind the header,
-        -- so anything drawn there would be invisible.
-        local TOP = 56
         for s = 1, 2 do
-            local baseY = TOP + (s - 1) * 20
-            local sag   = 20 + (s - 1) * 6
+            local baseY = 4 + (s - 1) * 24
+            local sag   = 24 + (s - 1) * 6
             local bulbs = math.max(6, math.floor(W / 64))
             local segs  = bulbs * 4
             local prevX, prevY
@@ -1844,7 +1840,7 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
                     wire.Position = UDim2.fromOffset((prevX + x) / 2, (prevY + y) / 2)
                     wire.Rotation = math.deg(math.atan2(dy, dx))
                     wire.ZIndex = 3
-                    wire.Parent = mParent
+                    wire.Parent = parent
                     table.insert(Hyperion._starFrames, wire)
                 end
                 prevX, prevY = x, y
@@ -1862,7 +1858,7 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
                 cap.Size = UDim2.fromOffset(4, 4)
                 cap.Position = UDim2.fromOffset(x, y)
                 cap.ZIndex = 4
-                cap.Parent = mParent
+                cap.Parent = parent
                 Instance.new("UICorner", cap).CornerRadius = UDim.new(0, 1)
                 table.insert(Hyperion._starFrames, cap)
 
@@ -1874,7 +1870,7 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
                 glow.Size = UDim2.fromOffset(22, 22)
                 glow.Position = UDim2.fromOffset(x, y - 2)
                 glow.ZIndex = 3
-                glow.Parent = mParent
+                glow.Parent = parent
                 Instance.new("UICorner", glow).CornerRadius = UDim.new(1, 0)
                 table.insert(Hyperion._starFrames, glow)
 
@@ -1886,7 +1882,7 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
                 bulb.Size = UDim2.fromOffset(8, 11)
                 bulb.Position = UDim2.fromOffset(x, y + 3)
                 bulb.ZIndex = 5
-                bulb.Parent = mParent
+                bulb.Parent = parent
                 Instance.new("UICorner", bulb).CornerRadius = UDim.new(0.5, 0)
                 table.insert(Hyperion._starFrames, bulb)
 
@@ -7441,7 +7437,9 @@ function Hyperion:CreateWindow(config)
         tabCfg = tabCfg or {}
         local tabName  = tabCfg.Name or "Tab"
         local tabIcon  = tabCfg.Icon or nil
-        local tabOrder = #WindowObj.Tabs + 1
+        -- x100 so sub-tab buttons can slot in directly beneath their parent tab
+        -- in the sidebar layout order.
+        local tabOrder = (#WindowObj.Tabs + 1) * 100
 
         local TabObj = {}
         TabObj.Sections = {}
@@ -7516,7 +7514,7 @@ function Hyperion:CreateWindow(config)
         local TabPage = Util.Create("ScrollingFrame", {
             Name = "Page_" .. tabName,
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 1, 0),  -- gap for the scrollbar is added only while it's shown
+            Size = UDim2.new(1, -4, 1, 0),  -- leave 4px right margin for custom scrollbar
             ScrollBarThickness = 0,
             ScrollingDirection = Enum.ScrollingDirection.Y,
             AutomaticCanvasSize = Enum.AutomaticSize.Y,
@@ -7547,18 +7545,9 @@ function Hyperion:CreateWindow(config)
             if not TabPage.Visible then return end
             local canvasY = TabPage.AbsoluteCanvasSize.Y
             local frameH = TabPage.AbsoluteSize.Y
-            -- Only reserve the 6px gutter while the thumb is actually visible,
-            -- so pages that don't scroll sit flush with the right edge.
-            -- Guarded so we never re-assign the same size (avoids resize thrash).
             if canvasY <= frameH then
                 ScrollThumb.Visible = false
-                if TabPage.Size.X.Offset ~= 0 then
-                    TabPage.Size = UDim2.new(1, 0, 1, 0)
-                end
                 return
-            end
-            if TabPage.Size.X.Offset ~= -6 then
-                TabPage.Size = UDim2.new(1, -6, 1, 0)
             end
             ScrollThumb.Visible = true
             local ratio = frameH / canvasY
@@ -7581,21 +7570,21 @@ function Hyperion:CreateWindow(config)
 
         local GroupBar = Util.Create("Frame", {
             Name = "GroupBar",
-            -- No container box or stroke: the sub-tab buttons sit directly above
-            -- the section cards. A floating outlined bar added an edge that lined
-            -- up with nothing, and its 10px left padding pushed the buttons out
-            -- of alignment with the columns below.
-            BackgroundTransparency = 1,
+            BackgroundColor3 = Theme.Surface,
             Position = UDim2.new(0, 0, 0, 0),
             Size = UDim2.new(1, 0, 0, 40),
             Visible = false,
             ZIndex = 3,
             Parent = TabPage
         })
+        Util.AddCorner(GroupBar, Theme.CornerSmall)
+        local GroupBarStroke = Util.AddStroke(GroupBar, Theme.BorderLight, 1.2, 0.08)
+        Themed(GroupBar, { BackgroundColor3 = function(t) return t.Surface end })
+        Themed(GroupBarStroke, { Color = function(t) return t.BorderLight end })
 
         local GroupList = Util.AddList(GroupBar, Enum.FillDirection.Horizontal, 8)
         GroupList.VerticalAlignment = Enum.VerticalAlignment.Center
-        Util.AddPadding(GroupBar, 4, 0, 4, 0)
+        Util.AddPadding(GroupBar, 6, 10, 6, 10)
 
         local GroupPages = Util.Create("Frame", {
             Name = "GroupPages",
@@ -7611,12 +7600,10 @@ function Hyperion:CreateWindow(config)
         TabObj.GroupOrder = {}
         TabObj.ActiveGroup = nil
 
+        -- Sub-tabs now live in the sidebar, so the content always starts at the
+        -- top of the page (no bar to offset around).
         local function UpdateGroupPagesPosition()
-            if GroupBar.Visible then
-                GroupPages.Position = UDim2.new(0, 0, 0, 44)
-            else
-                GroupPages.Position = UDim2.new(0, 0, 0, 0)
-            end
+            GroupPages.Position = UDim2.new(0, 0, 0, 0)
         end
 
         local function CreateGroup(groupName)
@@ -7663,26 +7650,30 @@ function Hyperion:CreateWindow(config)
 
             local GroupButton = nil
             if groupName ~= "__default" then
-                GroupBar.Visible = true
                 UpdateGroupPagesPosition()
 
+                -- Sub-tabs render in the sidebar, indented under their parent
+                -- tab, rather than in a bar floating over the content.
+                TabObj.GroupButtons = TabObj.GroupButtons or {}
                 GroupButton = Util.Create("TextButton", {
                     Name = "GroupBtn_" .. tostring(groupName),
-                    BackgroundColor3 = Theme.SurfaceLight,
-                    BackgroundTransparency = 0.12,
-                    AutomaticSize = Enum.AutomaticSize.X,
-                    Size = UDim2.new(0, 0, 0, 28),
+                    BackgroundColor3 = Theme.SidebarActive,
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 26),
                     Text = tostring(groupName),
-                    TextColor3 = Theme.Text,
-                    FontFace = Theme.FontBold,
+                    TextColor3 = Theme.TextDim,
+                    FontFace = Theme.FontMedium,
                     TextSize = 12,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     AutoButtonColor = false,
+                    Visible = (WindowObj.ActiveTab == TabObj),
+                    LayoutOrder = tabOrder + #TabObj.GroupButtons + 1,
                     ZIndex = 4,
-                    Parent = GroupBar
+                    Parent = TabContainer
                 })
+                TabObj.GroupButtons[#TabObj.GroupButtons + 1] = GroupButton
                 Util.AddCorner(GroupButton, Theme.CornerSmall)
-                Util.AddPadding(GroupButton, 0, 14, 0, 14)
+                Util.AddPadding(GroupButton, 0, 30, 0, 10)
                 local GroupButtonStroke = Util.AddStroke(GroupButton, Theme.BorderLight, 1, 0.28)
                 Themed(GroupButton, {
                     BackgroundColor3 = function(t)
@@ -7725,11 +7716,8 @@ function Hyperion:CreateWindow(config)
                     return total
                 end
 
-                -- Columns span the full content width so their outer edges line
-                -- up with the sub-tab bar and with single-column tabs (this used
-                -- to inset by 28px, leaving 2-column tabs visibly short).
                 local gap = 12
-                local usable = math.max(220, width)
+                local usable = math.max(220, width - 28)
                 local leftCount = CountSections(LeftColumn)
                 local rightCount = CountSections(RightColumn)
 
@@ -7827,6 +7815,18 @@ function Hyperion:CreateWindow(config)
                 Util.TweenSmooth(tab.ActiveBar, {Size = UDim2.new(0, 3, 0, 0)})
                 if tab.IconLabel then
                     Util.TweenFast(tab.IconLabel, {ImageColor3 = Theme.TextDim})
+                end
+            end
+
+            -- Only the active tab's sub-tabs are listed in the sidebar.
+            for _, ch in ipairs(TabContainer:GetChildren()) do
+                if ch:IsA("TextButton") and string.sub(ch.Name, 1, 9) == "GroupBtn_" then
+                    ch.Visible = false
+                end
+            end
+            if TabObj.GroupButtons then
+                for _, gb in ipairs(TabObj.GroupButtons) do
+                    if gb and gb.Parent then gb.Visible = true end
                 end
             end
 
@@ -7984,10 +7984,8 @@ function Hyperion:CreateWindow(config)
                 Name = "Divider",
                 BackgroundColor3 = Theme.Border,
                 BackgroundTransparency = 0.35,
-                -- Inset from the card edges: a full-width line runs straight into
-                -- the rounded corners and reads as a disconnected edge.
-                Size = UDim2.new(1, -20, 0, 1),
-                Position = UDim2.new(0, 10, 1, -1),
+                Size = UDim2.new(1, 0, 0, 1),
+                Position = UDim2.new(0, 0, 1, -1),
                 BorderSizePixel = 0,
                 ZIndex = 2,
                 Parent = SecHeader
@@ -8052,7 +8050,7 @@ function Hyperion:CreateWindow(config)
                 local Track = Util.Create("Frame", {
                     Name = "Track",
                     BackgroundColor3 = value and Theme.Accent or Theme.ToggleOff,
-                    Size = UDim2.new(0, 40, 0, 22),
+                    Size = UDim2.new(0, 34, 0, 18),
                     Position = UDim2.new(1, 0, 0.5, 0),
                     AnchorPoint = Vector2.new(1, 0.5),
                     ZIndex = 3,
@@ -8082,7 +8080,7 @@ function Hyperion:CreateWindow(config)
                 local Knob = Util.Create("Frame", {
                     Name = "Knob",
                     BackgroundColor3 = Color3.new(1, 1, 1),
-                    Size = UDim2.new(0, 16, 0, 16),
+                    Size = UDim2.new(0, 12, 0, 12),
                     Position = value and UDim2.new(1, -3, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
                     AnchorPoint = value and Vector2.new(1, 0.5) or Vector2.new(0, 0.5),
                     ZIndex = 4,
