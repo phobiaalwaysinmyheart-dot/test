@@ -2415,12 +2415,28 @@ function Util._cpBuild(host)
     })
     Util.AddCorner(c.hueCur, UDim.new(1, 0))
 
-    c.hex = Util.Create("TextLabel", {
-        BackgroundTransparency = 1, Size = UDim2.new(1, -16, 0, 22),
-        Position = UDim2.fromOffset(8, 116), Text = "#FFFFFF",
-        TextColor3 = Hyperion.Theme.Text, FontFace = Hyperion.Theme.Font,
-        TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 951, Parent = f,
+    -- Editable hex field: type a colour in directly instead of hunting for it.
+    c.hex = Util.Create("TextBox", {
+        BackgroundColor3 = Hyperion.Theme.InputBg, Size = UDim2.new(1, -56, 0, 22),
+        Position = UDim2.fromOffset(8, 115), Text = "#FFFFFF", PlaceholderText = "#RRGGBB",
+        TextColor3 = Hyperion.Theme.Text, PlaceholderColor3 = Hyperion.Theme.TextMuted,
+        FontFace = Hyperion.Theme.Font, TextSize = 12,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        ClearTextOnFocus = false, BorderSizePixel = 0, ZIndex = 951, Parent = f,
     })
+    Util.AddCorner(c.hex, UDim.new(0, 4))
+    Util.AddStroke(c.hex, Hyperion.Theme.Border, 1, 0.35)
+    c.hex.FocusLost:Connect(function()
+        local str = tostring(c.hex.Text):gsub("%s", ""):gsub("^#", "")
+        if #str == 3 then
+            str = str:sub(1,1):rep(2) .. str:sub(2,2):rep(2) .. str:sub(3,3):rep(2)
+        end
+        if str:match("^%x%x%x%x%x%x$") then
+            c.h, c.s, c.v = Color3.toHSV(Color3.fromRGB(
+                tonumber(str:sub(1,2), 16), tonumber(str:sub(3,4), 16), tonumber(str:sub(5,6), 16)))
+        end
+        c.commit() -- rewrites the field, so bad input snaps back
+    end)
     -- Explicit close button + a full-screen catcher behind the popup. Clicking
     -- anywhere outside hits the catcher, which is far more reliable than
     -- bounds-checking raw input coordinates.
