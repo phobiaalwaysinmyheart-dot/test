@@ -2421,6 +2421,29 @@ function Util._cpBuild(host)
         TextColor3 = Hyperion.Theme.Text, FontFace = Hyperion.Theme.Font,
         TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 951, Parent = f,
     })
+    -- Explicit close button + a full-screen catcher behind the popup. Clicking
+    -- anywhere outside hits the catcher, which is far more reliable than
+    -- bounds-checking raw input coordinates.
+    local close = Util.Create("TextButton", {
+        Name = "Close", BackgroundTransparency = 1, Text = "X",
+        TextColor3 = Hyperion.Theme.TextDim, FontFace = Hyperion.Theme.FontBold,
+        TextSize = 12, Size = UDim2.fromOffset(20, 20),
+        Position = UDim2.new(1, -24, 0, 115), AutoButtonColor = false,
+        ZIndex = 952, Parent = f,
+    })
+    c.catch = Util.Create("TextButton", {
+        Name = "ColorCatchAway", BackgroundTransparency = 1, Text = "",
+        Size = UDim2.fromScale(1, 1), Visible = false,
+        AutoButtonColor = false, ZIndex = 949, Parent = host,
+    })
+    function c.close()
+        f.Visible = false
+        if c.catch then c.catch.Visible = false end
+        c.owner = nil
+    end
+    close.MouseButton1Click:Connect(c.close)
+    c.catch.MouseButton1Click:Connect(c.close)
+
     c.frame = f
 
     function c.commit()
@@ -2433,31 +2456,40 @@ function Util._cpBuild(host)
         if c.set then c.set(col) end
     end
 
-    c.sv.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then c.svDrag = true end end)
-    c.sv.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then c.svDrag = false end end)
-    c.hue.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then c.hueDrag = true end end)
-    c.hue.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then c.hueDrag = false end end)
+    -- Self-contained drag. The shared InputPool.ColorCallbacks table is
+    -- reassigned during window setup, which silently dropped this callback and
+    -- left the picker unresponsive, so we own the connection instead.
+    local function applySV(px, py)
+        c.s = math.clamp((px - c.sv.AbsolutePosition.X) / math.max(c.sv.AbsoluteSize.X, 1), 0, 1)
+        c.v = 1 - math.clamp((py - c.sv.AbsolutePosition.Y) / math.max(c.sv.AbsoluteSize.Y, 1), 0, 1)
+        c.commit()
+    end
+    local function applyHue(py)
+        c.h = math.clamp((py - c.hue.AbsolutePosition.Y) / math.max(c.hue.AbsoluteSize.Y, 1), 0, 1)
+        c.commit()
+    end
 
-    table.insert(InputPool.ColorCallbacks, function(input)
-        if c.svDrag then
-            c.s = math.clamp((input.Position.X - c.sv.AbsolutePosition.X) / math.max(c.sv.AbsoluteSize.X, 1), 0, 1)
-            c.v = 1 - math.clamp((input.Position.Y - c.sv.AbsolutePosition.Y) / math.max(c.sv.AbsoluteSize.Y, 1), 0, 1)
-            c.commit()
-        elseif c.hueDrag then
-            c.h = math.clamp((input.Position.Y - c.hue.AbsolutePosition.Y) / math.max(c.hue.AbsoluteSize.Y, 1), 0, 1)
-            c.commit()
+    c.sv.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            c.svDrag = true
+            applySV(i.Position.X, i.Position.Y)
         end
     end)
-
-    -- click-away to dismiss (ignored briefly after opening so the swatch
-    -- click that opened it doesn't immediately close it again)
-    UserInputService.InputBegan:Connect(function(input)
-        if not f.Visible or c.svDrag or c.hueDrag then return end
-        if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
-        if os.clock() - c.openedAt < 0.15 then return end
-        local p, fp, fs = input.Position, f.AbsolutePosition, f.AbsoluteSize
-        if p.X < fp.X or p.X > fp.X + fs.X or p.Y < fp.Y or p.Y > fp.Y + fs.Y then
-            f.Visible = false
+    c.hue.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            c.hueDrag = true
+            applyHue(i.Position.Y)
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(i)
+        if not f.Visible then return end
+        if i.UserInputType ~= Enum.UserInputType.MouseMovement and i.UserInputType ~= Enum.UserInputType.Touch then return end
+        if c.svDrag then applySV(i.Position.X, i.Position.Y)
+        elseif c.hueDrag then applyHue(i.Position.Y) end
+    end)
+    UserInputService.InputEnded:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            c.svDrag, c.hueDrag = false, false
         end
     end)
 end
@@ -2469,6 +2501,12 @@ function Util.AttachColorSwatch(swatch, getColor, setColor)
         Util._cpBuild(host)
         local c = Util._cp
         if not c.frame then return end
+        -- clicking the same swatch again closes it
+        if c.frame.Visible and c.owner == swatch then
+            if c.close then c.close() end
+            return
+        end
+        c.owner = swatch
         c.set = setColor
         c.h, c.s, c.v = Color3.toHSV(getColor())
         local ap, hp = swatch.AbsolutePosition, host.AbsolutePosition
@@ -2477,6 +2515,7 @@ function Util.AttachColorSwatch(swatch, getColor, setColor)
         local y = math.clamp(ap.Y + 26, 4, math.max(4, vp.Y - 154))
         c.frame.Position = UDim2.fromOffset(x - hp.X, y - hp.Y)
         c.openedAt = os.clock()
+        if c.catch then c.catch.Visible = true end
         c.frame.Visible = true
         c.commit()
     end)
