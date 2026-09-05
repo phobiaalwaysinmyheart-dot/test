@@ -203,7 +203,7 @@ Hyperion.Theme = {
     FontSemiBold    = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
     FontBold        = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold,     Enum.FontStyle.Normal),
 }
-Hyperion._currentThemeName = "Purple"
+Hyperion._currentThemeName = "Hyperion"
 Hyperion.AnimatedEffects = true
 
 Hyperion.Lucide = {
@@ -1198,6 +1198,12 @@ Hyperion.Themes = {
         InputBg      = Color3.fromRGB(20,   5,  12),
     },
 }
+
+for k, v in pairs(Hyperion.Themes.Hyperion) do
+    if k ~= "Logo" and k ~= "GradientStops" and k ~= "GradientMid" and k ~= "Animated" and k ~= "StarColor" and k ~= "ParticleStyle" and k ~= "StarColors" and k ~= "TitleGradient" and k ~= "LogoGradient" and k ~= "BackgroundImage" and k ~= "BackgroundTint" and k ~= "TitleText" then
+        Hyperion.Theme[k] = v
+    end
+end
 
 -- Apply a named theme or a custom table of color overrides.
 function Hyperion:SetTheme(nameOrTable)
@@ -4023,8 +4029,8 @@ function Hyperion:CreateWindow(config)
     -- ============================================================
     -- HEADER (48px)
     -- ============================================================
-    local HeaderHeight = 52
-    local SidebarWidth = 144
+    local HeaderHeight = 64
+    local SidebarWidth = 200
     local Header = Util.Create("Frame", {
         Name = "Header",
         BackgroundColor3 = Theme.Surface,
@@ -4102,7 +4108,7 @@ function Hyperion:CreateWindow(config)
     local LogoImage = Util.Create("ImageLabel", {
         Name = "Logo",
         BackgroundTransparency = 1,
-        Size = UDim2.new(0, 26, 0, 26),
+        Size = UDim2.new(0, 40, 0, 40),
         Position = UDim2.new(0, 0, 0.5, 0),
         AnchorPoint = Vector2.new(0, 0.5),
         Image = "",
@@ -4147,12 +4153,12 @@ function Hyperion:CreateWindow(config)
     local TitleLabel = Util.Create("TextLabel", {
         Name = "Title",
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -(hasLogo and 32 or 0), 1, 0),
-        Position = UDim2.new(0, hasLogo and 32 or 0, 0, 0),
+        Size = UDim2.new(1, -(hasLogo and 48 or 0), 1, 0),
+        Position = UDim2.new(0, hasLogo and 48 or 0, 0, 0),
         Text = windowConfig.Title,
         TextColor3 = Color3.new(1, 1, 1),
         FontFace = Theme.FontBold,
-        TextSize = 16,
+        TextSize = 22,
         TextTruncate = Enum.TextTruncate.AtEnd,
         TextXAlignment = Enum.TextXAlignment.Left,
         TextYAlignment = Enum.TextYAlignment.Center,
@@ -8049,8 +8055,7 @@ function Hyperion:CreateWindow(config)
             Name = "GroupBar",
             BackgroundColor3 = Theme.Surface,
             Position = UDim2.new(0, 0, 0, 0),
-            Size = UDim2.new(0, 0, 0, 40),
-            AutomaticSize = Enum.AutomaticSize.X,
+            Size = UDim2.new(1, 0, 0, 40),
             Visible = false,
             ZIndex = 3,
             Parent = TabPage
@@ -9924,34 +9929,45 @@ function Hyperion:CreateWindow(config)
                 local DivFrame = Util.Create("Frame", {
                     Name = "Div",
                     BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 0, title and 24 or 10),
+                    Size = UDim2.new(1, 0, 0, title and 22 or 14),
                     ZIndex = 2,
                     Parent = Elements
                 })
+                local Line = Util.Create("Frame", {
+                    Name = "Line",
+                    BackgroundColor3 = Theme.Border,
+                    BackgroundTransparency = 0.55,
+                    Size = UDim2.new(1, 0, 0, 1),
+                    Position = UDim2.new(0, 0, 0.5, 0),
+                    AnchorPoint = Vector2.new(0, 0.5),
+                    BorderSizePixel = 0,
+                    ZIndex = 2,
+                    Parent = DivFrame
+                })
+                Themed(Line, { BackgroundColor3 = function(t) return t.Border end })
                 if title then
-                    Util.Create("TextLabel", {
+                    local Cap = Util.Create("TextLabel", {
                         Name = "T",
                         BackgroundTransparency = 1,
-                        Size = UDim2.new(1, 0, 0, 14),
+                        Size = UDim2.new(0, 0, 1, 0),
+                        AutomaticSize = Enum.AutomaticSize.X,
                         Text = string.upper(title),
                         TextColor3 = Theme.TextMuted,
                         FontFace = Theme.FontSemiBold,
                         TextSize = 10,
                         TextXAlignment = Enum.TextXAlignment.Left,
-                        ZIndex = 2,
+                        ZIndex = 3,
                         Parent = DivFrame
                     })
+                    Themed(Cap, { TextColor3 = function(t) return t.TextMuted end })
+                    local function fitLine()
+                        local w = Cap.AbsoluteSize.X + 8
+                        Line.Position = UDim2.new(0, w, 0.5, 0)
+                        Line.Size = UDim2.new(1, -w, 0, 1)
+                    end
+                    Cap:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitLine)
+                    task.defer(fitLine)
                 end
-                Util.Create("Frame", {
-                    Name = "Line",
-                    BackgroundColor3 = Theme.Border,
-                    BackgroundTransparency = 0.4,
-                    Size = UDim2.new(1, 0, 0, 1),
-                    Position = UDim2.new(0, 0, 1, -1),
-                    BorderSizePixel = 0,
-                    ZIndex = 2,
-                    Parent = DivFrame
-                })
             end
 
             -- ==============================================
