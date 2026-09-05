@@ -4029,8 +4029,8 @@ function Hyperion:CreateWindow(config)
     -- ============================================================
     -- HEADER (48px)
     -- ============================================================
-    local HeaderHeight = 96
-    local SidebarWidth = 164
+    local HeaderHeight = 56
+    local SidebarWidth = 210
     local Header = Util.Create("Frame", {
         Name = "Header",
         BackgroundColor3 = Theme.Surface,
@@ -4098,8 +4098,8 @@ function Hyperion:CreateWindow(config)
     local LogoContainer = Util.Create("Frame", {
         Name = "LogoContainer",
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -16, 0, HeaderHeight),
-        Position = UDim2.new(0, 8, 0, 0),
+        Size = UDim2.new(1, -30, 0, HeaderHeight),
+        Position = UDim2.new(0, 15, 0, 0),
         ZIndex = 6,
         Parent = Header
     })
@@ -4108,9 +4108,9 @@ function Hyperion:CreateWindow(config)
     local LogoImage = Util.Create("ImageLabel", {
         Name = "Logo",
         BackgroundTransparency = 1,
-        Size = UDim2.new(0, 50, 0, 50),
-        Position = UDim2.new(0.5, 0, 0, 12),
-        AnchorPoint = Vector2.new(0.5, 0),
+        Size = UDim2.new(0, 22, 0, 22),
+        Position = UDim2.new(0, 0, 0.5, 0),
+        AnchorPoint = Vector2.new(0, 0.5),
         Image = "",
         ImageColor3 = Theme.Accent,
         Visible = false,
@@ -4153,14 +4153,14 @@ function Hyperion:CreateWindow(config)
     local TitleLabel = Util.Create("TextLabel", {
         Name = "Title",
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, 0, 0, hasLogo and 26 or HeaderHeight),
-        Position = UDim2.new(0, 0, 0, hasLogo and 66 or 0),
+        Size = UDim2.new(1, -(hasLogo and 30 or 0), 1, 0),
+        Position = UDim2.new(0, hasLogo and 30 or 0, 0, 0),
         Text = windowConfig.Title,
         TextColor3 = Color3.new(1, 1, 1),
-        FontFace = Theme.FontBold,
-        TextSize = 22,
+        FontFace = Theme.FontSemiBold,
+        TextSize = 14,
         TextTruncate = Enum.TextTruncate.AtEnd,
-        TextXAlignment = Enum.TextXAlignment.Center,
+        TextXAlignment = Enum.TextXAlignment.Left,
         TextYAlignment = Enum.TextYAlignment.Center,
         ZIndex = 6,
         Parent = LogoContainer
@@ -4379,7 +4379,6 @@ function Hyperion:CreateWindow(config)
         MakeDot("DotMin", -50, Color3.fromRGB(255, 189, 46), "Collapse", ToggleCollapse)
     end)()
 
-    TopRightInfo.Position = UDim2.new(1, -74, 0.5, 0)
 
     -- ============================================================
     -- SIDEBAR
@@ -4409,6 +4408,28 @@ function Hyperion:CreateWindow(config)
     LogoContainer.Parent = Sidebar
     LogoContainer.ZIndex = 5
 
+    TopRightInfo.Parent = Sidebar
+    TopRightInfo.AnchorPoint = Vector2.new(0, 0)
+    TopRightInfo.Position = UDim2.new(0, 8, 1, -82)
+    TopRightInfo.Size = UDim2.new(1, -16, 0, 42)
+    TopRightInfo.ZIndex = 5
+
+    WindowObj._crumb = Util.Create("TextLabel", {
+        Name = "Crumb",
+        BackgroundTransparency = 1,
+        Size = UDim2.new(0, 240, 1, 0),
+        Position = UDim2.new(0, 16, 0, 0),
+        Text = "",
+        TextColor3 = Theme.TextDim,
+        FontFace = Theme.FontMedium,
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextTruncate = Enum.TextTruncate.AtEnd,
+        ZIndex = 6,
+        Parent = Header
+    })
+    Themed(WindowObj._crumb, { TextColor3 = function(t) return t.TextDim end })
+
     Themed(Util.Create("Frame", {
         Name = "TopSep",
         BackgroundColor3 = Theme.Border,
@@ -4437,7 +4458,7 @@ function Hyperion:CreateWindow(config)
     local TabContainer = Util.Create("ScrollingFrame", {
         Name = "Tabs",
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -1, 1, -(HeaderHeight + 48)),
+        Size = UDim2.new(1, -1, 1, -(HeaderHeight + 92)),
         Position = UDim2.new(0, 0, 0, HeaderHeight + 5),
         ScrollBarThickness = 0,
         ScrollingDirection = Enum.ScrollingDirection.Y,
@@ -7926,6 +7947,27 @@ function Hyperion:CreateWindow(config)
         local tabIcon  = tabCfg.Icon or nil
         local tabOrder = #WindowObj.Tabs + 1
 
+        local tabSection = tabCfg.Section
+        if tabSection and tabSection ~= WindowObj._lastTabSection then
+            WindowObj._lastTabSection = tabSection
+            local SecCap = Util.Create("TextLabel", {
+                Name = "NavSection_" .. tabSection,
+                BackgroundTransparency = 1,
+                Size = UDim2.new(1, -12, 0, 24),
+                Text = string.upper(tabSection),
+                TextColor3 = Theme.TextMuted,
+                FontFace = Theme.FontSemiBold,
+                TextSize = 10,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextYAlignment = Enum.TextYAlignment.Bottom,
+                LayoutOrder = tabOrder * 2 - 1,
+                ZIndex = 3,
+                Parent = TabContainer
+            })
+            Util.AddPadding(SecCap, 0, 0, 4, 4)
+            Themed(SecCap, { TextColor3 = function(t) return t.TextMuted end })
+        end
+
         local TabObj = {}
         TabObj.Sections = {}
         TabObj.Name = tabName
@@ -7935,10 +7977,10 @@ function Hyperion:CreateWindow(config)
             Name = "Tab_" .. tabName,
             BackgroundColor3 = Theme.Sidebar,
             BackgroundTransparency = 0,
-            Size = UDim2.new(1, 0, 0, 36),
+            Size = UDim2.new(1, 0, 0, 34),
             Text = "",
             AutoButtonColor = false,
-            LayoutOrder = tabOrder,
+            LayoutOrder = tabOrder * 2,
             ZIndex = 3,
             Parent = TabContainer
         })
@@ -8316,6 +8358,7 @@ function Hyperion:CreateWindow(config)
                 Util.TweenFast(IconLabel, {ImageColor3 = Theme.Accent})
             end
             WindowObj.ActiveTab = TabObj
+            if WindowObj._crumb then WindowObj._crumb.Text = tabName end
         end
         TabObj.Activate = ActivateTab
 
