@@ -4023,15 +4023,16 @@ function Hyperion:CreateWindow(config)
     -- HEADER (48px)
     -- ============================================================
     local HeaderHeight = 52
+    local SidebarWidth = 144
     local Header = Util.Create("Frame", {
         Name = "Header",
         BackgroundColor3 = Theme.Surface,
-        Size = UDim2.new(1, 0, 0, HeaderHeight),
+        Size = UDim2.new(1, -SidebarWidth, 0, HeaderHeight),
+        Position = UDim2.new(0, SidebarWidth, 0, 0),
         BorderSizePixel = 0,
         ZIndex = 5,
         Parent = MainFrame
     })
-    -- Only round top corners
     Util.AddCorner(Header, Theme.CornerLarge)
     local _headerBottomFix = Util.Create("Frame", {
         Name = "BottomFix",
@@ -4042,6 +4043,15 @@ function Hyperion:CreateWindow(config)
         ZIndex = 5,
         Parent = Header
     })
+    local _headerLeftFix = Util.Create("Frame", {
+        Name = "LeftFix",
+        BackgroundColor3 = Theme.Surface,
+        Size = UDim2.new(0, 14, 1, 0),
+        BorderSizePixel = 0,
+        ZIndex = 5,
+        Parent = Header
+    })
+    Themed(_headerLeftFix, { BackgroundColor3 = function(t) return t.Surface end })
     Themed(Header, { BackgroundColor3 = function(t) return t.Surface end })
     Themed(_headerBottomFix, { BackgroundColor3 = function(t) return t.Surface end })
 
@@ -4082,8 +4092,8 @@ function Hyperion:CreateWindow(config)
     local LogoContainer = Util.Create("Frame", {
         Name = "LogoContainer",
         BackgroundTransparency = 1,
-        Size = UDim2.new(0, 360, 1, 0),
-        Position = UDim2.new(0, 14, 0, 0),
+        Size = UDim2.new(1, -20, 0, HeaderHeight),
+        Position = UDim2.new(0, 12, 0, 0),
         ZIndex = 6,
         Parent = Header
     })
@@ -4092,8 +4102,8 @@ function Hyperion:CreateWindow(config)
     local LogoImage = Util.Create("ImageLabel", {
         Name = "Logo",
         BackgroundTransparency = 1,
-        Size = UDim2.new(0, 72, 0, 72),
-        Position = UDim2.new(0, 0, 0.5, 2),
+        Size = UDim2.new(0, 26, 0, 26),
+        Position = UDim2.new(0, 0, 0.5, 0),
         AnchorPoint = Vector2.new(0, 0.5),
         Image = "",
         ImageColor3 = Theme.Accent,
@@ -4137,12 +4147,13 @@ function Hyperion:CreateWindow(config)
     local TitleLabel = Util.Create("TextLabel", {
         Name = "Title",
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -(hasLogo and 72 or 0), 1, 0),
-        Position = UDim2.new(0, hasLogo and 72 or 0, 0, 0),
+        Size = UDim2.new(1, -(hasLogo and 32 or 0), 1, 0),
+        Position = UDim2.new(0, hasLogo and 32 or 0, 0, 0),
         Text = windowConfig.Title,
         TextColor3 = Color3.new(1, 1, 1),
         FontFace = Theme.FontBold,
-        TextSize = 24,
+        TextSize = 16,
+        TextTruncate = Enum.TextTruncate.AtEnd,
         TextXAlignment = Enum.TextXAlignment.Left,
         TextYAlignment = Enum.TextYAlignment.Center,
         ZIndex = 6,
@@ -4280,101 +4291,72 @@ function Hyperion:CreateWindow(config)
     })
     Themed(ExpiresInfo, { TextColor3 = function(t) return t.TextMuted end })
 
-    -- Minimize button
-    local MinBtn = Util.Create("TextButton", {
-        Name = "MinBtn",
-        BackgroundColor3 = Theme.SurfaceLight,
-        BackgroundTransparency = 0.62,
-        Size = UDim2.new(0, 24, 0, 24),
-        Position = UDim2.new(1, -12, 0.5, 0),
-        AnchorPoint = Vector2.new(1, 0.5),
-        Text = "—",
-        TextColor3 = Theme.TextDim,
-        FontFace = Theme.FontSemiBold,
-        TextSize = 12,
-        AutoButtonColor = false,
-        ZIndex = 7,
-        Parent = Header
-    })
-    Util.AddCorner(MinBtn, Theme.CornerSmall)
-    Themed(MinBtn, {
-        BackgroundColor3 = function(t) return t.SurfaceLight end,
-        TextColor3 = function(t) return t.TextDim end,
-    })
-
-    MinBtn.MouseEnter:Connect(function()
-        Util.TweenFast(MinBtn, {BackgroundTransparency = 0, BackgroundColor3 = Hyperion.Theme.SurfaceHover, TextColor3 = Hyperion.Theme.Text})
-    end)
-    MinBtn.MouseLeave:Connect(function()
-        Util.TweenFast(MinBtn, {BackgroundTransparency = 0.5, BackgroundColor3 = Hyperion.Theme.SurfaceLight, TextColor3 = Hyperion.Theme.TextDim})
-    end)
-    MinBtn.MouseButton1Click:Connect(function()
-        WindowObj:Toggle()
-    end)
-
-    -- Fullscreen button (to the left of minimize)
     local _isFullscreen = false
     local _preFullscreenSize = nil
     local _preFullscreenPos  = nil
+    local _collapsed = false
+    local _preCollapseSize = nil
 
-    local FullscreenBtn = Util.Create("ImageButton", {
-        Name = "FullscreenBtn",
-        BackgroundColor3 = Theme.SurfaceLight,
-        BackgroundTransparency = 0.62,
-        Size = UDim2.new(0, 24, 0, 24),
-        Position = UDim2.new(1, -40, 0.5, 0),
-        AnchorPoint = Vector2.new(1, 0.5),
-        Image = "rbxassetid://10734896206",  -- lucide-minus used as placeholder; we draw custom
-        ImageTransparency = 1,
-        AutoButtonColor = false,
-        ZIndex = 7,
-        Parent = Header
-    })
-    Util.AddCorner(FullscreenBtn, Theme.CornerSmall)
-    Themed(FullscreenBtn, {
-        BackgroundColor3 = function(t) return t.SurfaceLight end,
-    })
+    local function MakeDot(dotName, xOff, hotColor, tip, fn)
+        local d = Util.Create("TextButton", {
+            Name = dotName,
+            BackgroundColor3 = Theme.TextMuted,
+            BackgroundTransparency = 0.15,
+            Size = UDim2.fromOffset(12, 12),
+            Position = UDim2.new(1, xOff, 0.5, 0),
+            AnchorPoint = Vector2.new(1, 0.5),
+            Text = "",
+            AutoButtonColor = false,
+            BorderSizePixel = 0,
+            ZIndex = 7,
+            Parent = Header,
+        })
+        Util.AddCorner(d, UDim.new(1, 0))
+        Themed(d, { BackgroundColor3 = function(t) return t.TextMuted end })
+        d.MouseEnter:Connect(function()
+            Util.TweenFast(d, { BackgroundColor3 = hotColor, BackgroundTransparency = 0 })
+        end)
+        d.MouseLeave:Connect(function()
+            Util.TweenFast(d, { BackgroundColor3 = Hyperion.Theme.TextMuted, BackgroundTransparency = 0.15 })
+        end)
+        d.MouseButton1Click:Connect(fn)
+        pcall(Util.AttachTooltip, d, tip)
+        return d
+    end
 
-    -- Draw expand/collapse icon inside button using small frames
-    local _fsIconA = Util.Create("Frame", {
-        BackgroundColor3 = Theme.TextDim,
-        Size = UDim2.new(0, 10, 0, 10),
-        Position = UDim2.new(0.5, 0, 0.5, 0),
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundTransparency = 1,
-        BorderSizePixel = 0,
-        ZIndex = 8,
-        Parent = FullscreenBtn,
-    })
-    local _fsStroke = Util.AddStroke(_fsIconA, Theme.TextDim, 1.5, 0)
-    Util.AddCorner(_fsIconA, UDim.new(0, 2))
-    Themed(_fsStroke, { Color = function(t) return t.TextDim end })
+    local function ToggleCollapse()
+        if not _collapsed then
+            _collapsed = true
+            _preCollapseSize = MainFrame.Size
+            MainFrame.ClipsDescendants = true
+            Util.Tween(MainFrame, 0.26, {
+                Size = UDim2.new(0, _preCollapseSize.X.Offset, 0, HeaderHeight),
+            }, Enum.EasingStyle.Quint)
+        else
+            _collapsed = false
+            local restore = _preCollapseSize or windowConfig.Size
+            Util.Tween(MainFrame, 0.26, { Size = restore }, Enum.EasingStyle.Quint)
+            task.delay(0.3, function()
+                if not _collapsed and MainFrame and MainFrame.Parent then
+                    MainFrame.ClipsDescendants = false
+                end
+            end)
+        end
+    end
 
-    FullscreenBtn.MouseEnter:Connect(function()
-        Util.TweenFast(FullscreenBtn, {BackgroundTransparency = 0, BackgroundColor3 = Hyperion.Theme.SurfaceHover})
-        Util.TweenFast(_fsStroke, {Color = Hyperion.Theme.Text})
-    end)
-    FullscreenBtn.MouseLeave:Connect(function()
-        Util.TweenFast(FullscreenBtn, {BackgroundTransparency = 0.62, BackgroundColor3 = Hyperion.Theme.SurfaceLight})
-        Util.TweenFast(_fsStroke, {Color = Hyperion.Theme.TextDim})
-    end)
-
-    FullscreenBtn.MouseButton1Click:Connect(function()
+    local function ToggleFullscreen()
         local viewportSize = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
+        if _collapsed then ToggleCollapse() end
         if not _isFullscreen then
             _preFullscreenSize = WindowObj.CurrentSize
             _preFullscreenPos  = MainFrame.Position
             _isFullscreen = true
-            local fullW = math.floor(viewportSize.X - 20)
-            local fullH = math.floor(viewportSize.Y - 20)
-            local fullSize = UDim2.new(0, fullW, 0, fullH)
+            local fullSize = UDim2.new(0, math.floor(viewportSize.X - 20), 0, math.floor(viewportSize.Y - 20))
             WindowObj.CurrentSize = fullSize
             Util.Tween(MainFrame, 0.3, {
                 Size = fullSize,
                 Position = UDim2.new(0.5, 0, 0.5, 0),
             }, Enum.EasingStyle.Quint)
-            -- Shrink icon to indicate "restore"
-            Util.TweenFast(_fsIconA, {Size = UDim2.new(0, 7, 0, 7)})
         else
             _isFullscreen = false
             local restoreSize = _preFullscreenSize or windowConfig.Size
@@ -4383,27 +4365,57 @@ function Hyperion:CreateWindow(config)
                 Size = restoreSize,
                 Position = _preFullscreenPos or UDim2.new(0.5, 0, 0.5, 0),
             }, Enum.EasingStyle.Quint)
-            Util.TweenFast(_fsIconA, {Size = UDim2.new(0, 10, 0, 10)})
         end
-    end)
+    end
 
-    -- Shift TopRightInfo to account for fullscreen button
+    MakeDot("DotClose", -14, Color3.fromRGB(255, 95, 86), "Hide (Right Shift to reopen)", function()
+        WindowObj:Toggle()
+    end)
+    MakeDot("DotMax", -32, Color3.fromRGB(39, 201, 63), "Fullscreen", ToggleFullscreen)
+    MakeDot("DotMin", -50, Color3.fromRGB(255, 189, 46), "Collapse", ToggleCollapse)
+
     TopRightInfo.Position = UDim2.new(1, -74, 0.5, 0)
 
     -- ============================================================
     -- SIDEBAR
     -- ============================================================
-    local SidebarWidth = 144
     local Sidebar = Util.Create("Frame", {
         Name = "Sidebar",
         BackgroundColor3 = Theme.Sidebar,
-        Size = UDim2.new(0, SidebarWidth, 1, -HeaderHeight),
-        Position = UDim2.new(0, 0, 0, HeaderHeight),
+        Size = UDim2.new(0, SidebarWidth, 1, 0),
+        Position = UDim2.new(0, 0, 0, 0),
         BorderSizePixel = 0,
         ZIndex = 3,
         Parent = MainFrame
     })
+    Util.AddCorner(Sidebar, Theme.CornerLarge)
     Themed(Sidebar, { BackgroundColor3 = function(t) return t.Sidebar end })
+
+    local _sidebarRightFix = Util.Create("Frame", {
+        Name = "RightFix",
+        BackgroundColor3 = Theme.Sidebar,
+        Size = UDim2.new(0, 14, 1, 0),
+        Position = UDim2.new(1, -14, 0, 0),
+        BorderSizePixel = 0,
+        ZIndex = 3,
+        Parent = Sidebar
+    })
+    Themed(_sidebarRightFix, { BackgroundColor3 = function(t) return t.Sidebar end })
+
+    LogoContainer.Parent = Sidebar
+    LogoContainer.ZIndex = 5
+
+    local _sidebarTopSep = Util.Create("Frame", {
+        Name = "TopSep",
+        BackgroundColor3 = Theme.Border,
+        BackgroundTransparency = 0.55,
+        Size = UDim2.new(1, -20, 0, 1),
+        Position = UDim2.new(0, 10, 0, HeaderHeight - 1),
+        BorderSizePixel = 0,
+        ZIndex = 5,
+        Parent = Sidebar
+    })
+    Themed(_sidebarTopSep, { BackgroundColor3 = function(t) return t.Border end })
 
     -- Right border line
     local _sidebarBorder = Util.Create("Frame", {
@@ -4422,8 +4434,8 @@ function Hyperion:CreateWindow(config)
     local TabContainer = Util.Create("ScrollingFrame", {
         Name = "Tabs",
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -1, 1, -48),
-        Position = UDim2.new(0, 0, 0, 5),
+        Size = UDim2.new(1, -1, 1, -(HeaderHeight + 48)),
+        Position = UDim2.new(0, 0, 0, HeaderHeight + 5),
         ScrollBarThickness = 0,
         ScrollingDirection = Enum.ScrollingDirection.Y,
         AutomaticCanvasSize = Enum.AutomaticSize.Y,
@@ -7280,8 +7292,8 @@ function Hyperion:CreateWindow(config)
     local ContentArea = Util.Create("Frame", {
         Name = "Content",
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -SidebarWidth, 1, -HeaderHeight),
-        Position = UDim2.new(0, SidebarWidth, 0, HeaderHeight),
+        Size = UDim2.new(1, -(SidebarWidth + 24), 1, -(HeaderHeight + 6)),
+        Position = UDim2.new(0, SidebarWidth + 14, 0, HeaderHeight + 6),
         ClipsDescendants = false,
         ZIndex = 2,
         Parent = MainFrame
@@ -7551,7 +7563,10 @@ function Hyperion:CreateWindow(config)
             if _isFullscreen then
                 _isFullscreen = false
                 WindowObj.CurrentSize = _preFullscreenSize or windowConfig.Size
-                Util.TweenFast(_fsIconA, {Size = UDim2.new(0, 10, 0, 10)})
+            end
+            if _collapsed then
+                _collapsed = false
+                MainFrame.ClipsDescendants = false
             end
             MainFrame.Size = UDim2.new(
                 0, math.floor(WindowObj.CurrentSize.X.Offset * 0.97),
@@ -8049,9 +8064,9 @@ function Hyperion:CreateWindow(config)
             Parent = TabPage
         })
         Util.AddCorner(GroupBar, Theme.CornerSmall)
-        local GroupBarStroke = Util.AddStroke(GroupBar, Theme.BorderLight, 1.2, 0.08)
+        local GroupBarStroke = Util.AddStroke(GroupBar, Theme.Border, 1, 0.6)
         Themed(GroupBar, { BackgroundColor3 = function(t) return t.Surface end })
-        Themed(GroupBarStroke, { Color = function(t) return t.BorderLight end })
+        Themed(GroupBarStroke, { Color = function(t) return t.Border end })
 
         local GroupList = Util.AddList(GroupBar, Enum.FillDirection.Horizontal, 8)
         GroupList.VerticalAlignment = Enum.VerticalAlignment.Center
@@ -8073,7 +8088,7 @@ function Hyperion:CreateWindow(config)
 
         local function UpdateGroupPagesPosition()
             if GroupBar.Visible then
-                GroupPages.Position = UDim2.new(0, 0, 0, 44)
+                GroupPages.Position = UDim2.new(0, 0, 0, 54)
             else
                 GroupPages.Position = UDim2.new(0, 0, 0, 0)
             end
@@ -8393,9 +8408,9 @@ function Hyperion:CreateWindow(config)
                 end
             end)
             Util.AddCorner(SectionFrame, Theme.CornerRadius)
-            local _secStroke = Util.AddStroke(SectionFrame, Theme.BorderLight, 1, 0.35)
+            local _secStroke = Util.AddStroke(SectionFrame, Theme.Border, 1, 0.62)
             Themed(SectionFrame, { BackgroundColor3 = function(t) return t.Surface end })
-            Themed(_secStroke, { Color = function(t) return t.BorderLight end })
+            Themed(_secStroke, { Color = function(t) return t.Border end })
 
             -- Section header
             local SecHeader = Util.Create("Frame", {
