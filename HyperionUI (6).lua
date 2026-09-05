@@ -4029,8 +4029,8 @@ function Hyperion:CreateWindow(config)
     -- ============================================================
     -- HEADER (48px)
     -- ============================================================
-    local HeaderHeight = 72
-    local SidebarWidth = 180
+    local HeaderHeight = 96
+    local SidebarWidth = 164
     local Header = Util.Create("Frame", {
         Name = "Header",
         BackgroundColor3 = Theme.Surface,
@@ -4098,8 +4098,8 @@ function Hyperion:CreateWindow(config)
     local LogoContainer = Util.Create("Frame", {
         Name = "LogoContainer",
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -20, 0, HeaderHeight),
-        Position = UDim2.new(0, 12, 0, 0),
+        Size = UDim2.new(1, -16, 0, HeaderHeight),
+        Position = UDim2.new(0, 8, 0, 0),
         ZIndex = 6,
         Parent = Header
     })
@@ -4108,9 +4108,9 @@ function Hyperion:CreateWindow(config)
     local LogoImage = Util.Create("ImageLabel", {
         Name = "Logo",
         BackgroundTransparency = 1,
-        Size = UDim2.new(0, 44, 0, 44),
-        Position = UDim2.new(0, 0, 0.5, 0),
-        AnchorPoint = Vector2.new(0, 0.5),
+        Size = UDim2.new(0, 50, 0, 50),
+        Position = UDim2.new(0.5, 0, 0, 12),
+        AnchorPoint = Vector2.new(0.5, 0),
         Image = "",
         ImageColor3 = Theme.Accent,
         Visible = false,
@@ -4153,14 +4153,14 @@ function Hyperion:CreateWindow(config)
     local TitleLabel = Util.Create("TextLabel", {
         Name = "Title",
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -(hasLogo and 52 or 0), 1, 0),
-        Position = UDim2.new(0, hasLogo and 52 or 0, 0, 0),
+        Size = UDim2.new(1, 0, 0, hasLogo and 26 or HeaderHeight),
+        Position = UDim2.new(0, 0, 0, hasLogo and 66 or 0),
         Text = windowConfig.Title,
         TextColor3 = Color3.new(1, 1, 1),
         FontFace = Theme.FontBold,
-        TextSize = 21,
+        TextSize = 22,
         TextTruncate = Enum.TextTruncate.AtEnd,
-        TextXAlignment = Enum.TextXAlignment.Left,
+        TextXAlignment = Enum.TextXAlignment.Center,
         TextYAlignment = Enum.TextYAlignment.Center,
         ZIndex = 6,
         Parent = LogoContainer
@@ -7997,7 +7997,7 @@ function Hyperion:CreateWindow(config)
         local TabPage = Util.Create("ScrollingFrame", {
             Name = "Page_" .. tabName,
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, -4, 1, 0),  -- leave 4px right margin for custom scrollbar
+            Size = UDim2.new(1, -12, 1, 0),  -- gutter on the right for the custom scrollbar
             ScrollBarThickness = 0,
             ScrollingDirection = Enum.ScrollingDirection.Y,
             AutomaticCanvasSize = Enum.AutomaticSize.Y,
@@ -8014,8 +8014,8 @@ function Hyperion:CreateWindow(config)
             Name = "ScrollThumb",
             BackgroundColor3 = Theme.Accent,
             BackgroundTransparency = 0.45,
-            Size = UDim2.new(0, 3, 0, 40),
-            Position = UDim2.new(1, -3, 0, 0),
+            Size = UDim2.new(0, 4, 0, 40),
+            Position = UDim2.new(1, -8, 0, 4),
             BorderSizePixel = 0,
             ZIndex = 10,
             Visible = false,
@@ -8034,11 +8034,12 @@ function Hyperion:CreateWindow(config)
             end
             ScrollThumb.Visible = true
             local ratio = frameH / canvasY
-            local thumbH = math.max(20, math.floor(frameH * ratio))
+            local trackSpan = frameH - 8
+            local thumbH = math.max(24, math.floor(trackSpan * ratio))
             local scrollPct = TabPage.CanvasPosition.Y / (canvasY - frameH)
-            local trackH = frameH - thumbH
-            ScrollThumb.Size = UDim2.new(0, 3, 0, thumbH)
-            ScrollThumb.Position = UDim2.new(1, -3, 0, math.floor(scrollPct * trackH))
+            local trackH = trackSpan - thumbH
+            ScrollThumb.Size = UDim2.new(0, 4, 0, thumbH)
+            ScrollThumb.Position = UDim2.new(1, -8, 0, 4 + math.floor(scrollPct * trackH))
         end
 
         TabPage:GetPropertyChangedSignal("CanvasPosition"):Connect(UpdateScrollThumb)
@@ -8055,7 +8056,7 @@ function Hyperion:CreateWindow(config)
             Name = "GroupBar",
             BackgroundColor3 = Theme.Surface,
             Position = UDim2.new(0, 0, 0, 0),
-            Size = UDim2.new(1, 4, 0, 40),
+            Size = UDim2.new(1, 12, 0, 40),
             Visible = false,
             ZIndex = 3,
             Parent = TabPage
