@@ -4029,7 +4029,7 @@ function Hyperion:CreateWindow(config)
     -- ============================================================
     -- HEADER (48px)
     -- ============================================================
-    local HeaderHeight = 78
+    local HeaderHeight = 56
     local SidebarWidth = 210
     local Header = Util.Create("Frame", {
         Name = "Header",
@@ -4424,21 +4424,6 @@ function Hyperion:CreateWindow(config)
     LogoContainer.ZIndex = 5
 
 
-    WindowObj._crumb = Util.Create("TextLabel", {
-        Name = "Crumb",
-        BackgroundTransparency = 1,
-        Size = UDim2.new(0, 240, 1, 0),
-        Position = UDim2.new(0, 16, 0, 0),
-        Text = "",
-        TextColor3 = Theme.TextDim,
-        FontFace = Theme.FontMedium,
-        TextSize = 13,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        TextTruncate = Enum.TextTruncate.AtEnd,
-        ZIndex = 6,
-        Parent = Header
-    })
-    Themed(WindowObj._crumb, { TextColor3 = function(t) return t.TextDim end })
 
     Themed(Util.Create("Frame", {
         Name = "TopSep",
@@ -8364,7 +8349,6 @@ function Hyperion:CreateWindow(config)
                 Util.TweenFast(IconLabel, {ImageColor3 = Theme.Accent})
             end
             WindowObj.ActiveTab = TabObj
-            if WindowObj._crumb then WindowObj._crumb.Text = tabName end
         end
         TabObj.Activate = ActivateTab
 
