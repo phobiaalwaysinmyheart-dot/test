@@ -3162,89 +3162,6 @@ function Util.AddList(parent, dir, padding, hAlign, vAlign, sortOrder)
     })
 end
 
-Util._dimState = setmetatable({}, { __mode = "k" })
-
-function Util.SetDimmed(root, dimmed, alpha)
-    if not root or not root.Parent then return end
-    alpha = alpha or 0.55
-    local st = Util._dimState[root]
-
-    if dimmed then
-        if st then return end
-        st = {}
-        local blocker = root:FindFirstChild("_HypBlock")
-        if not blocker then
-            blocker = Util.Create("TextButton", {
-                Name = "_HypBlock", BackgroundTransparency = 1, Text = "",
-                Size = UDim2.fromScale(1, 1), AutoButtonColor = false,
-                ZIndex = 100, Parent = root,
-            })
-        end
-        blocker.Visible = true
-
-        local list = root:GetDescendants()
-        table.insert(list, 1, root)
-        for i = 1, #list do
-            local d = list[i]
-            if d.Name ~= "_HypBlock" then
-                local orig, props = nil, {}
-                if d:IsA("GuiObject") then
-                    orig = orig or {}
-                    orig.BackgroundTransparency = d.BackgroundTransparency
-                    props.BackgroundTransparency = d.BackgroundTransparency + (1 - d.BackgroundTransparency) * alpha
-                end
-                if d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox") then
-                    orig = orig or {}
-                    orig.TextTransparency = d.TextTransparency
-                    props.TextTransparency = d.TextTransparency + (1 - d.TextTransparency) * alpha
-                end
-                if d:IsA("ImageLabel") or d:IsA("ImageButton") then
-                    orig = orig or {}
-                    orig.ImageTransparency = d.ImageTransparency
-                    props.ImageTransparency = d.ImageTransparency + (1 - d.ImageTransparency) * alpha
-                end
-                if d:IsA("UIStroke") then
-                    orig = orig or {}
-                    orig.Transparency = d.Transparency
-                    props.Transparency = d.Transparency + (1 - d.Transparency) * alpha
-                end
-                if orig then
-                    st[d] = orig
-                    Util.Tween(d, 0.18, props)
-                end
-            end
-        end
-        Util._dimState[root] = st
-    else
-        if not st then return end
-        local blocker = root:FindFirstChild("_HypBlock")
-        if blocker then blocker.Visible = false end
-        for inst, orig in pairs(st) do
-            if inst.Parent then Util.Tween(inst, 0.18, orig) end
-        end
-        Util._dimState[root] = nil
-    end
-end
-
-Hyperion._depMap = {}
-
-function Hyperion:_RegisterDep(flagName, fn)
-    if type(flagName) ~= "string" or type(fn) ~= "function" then return end
-    local l = Hyperion._depMap[flagName]
-    if not l then l = {}; Hyperion._depMap[flagName] = l end
-    l[#l + 1] = fn
-    task.defer(function()
-        pcall(fn, Hyperion.Flags[flagName] and true or false)
-    end)
-end
-
-function Hyperion:_FireDeps(flagName, v)
-    local l = Hyperion._depMap[flagName]
-    if not l then return end
-    local on = v and true or false
-    for i = 1, #l do pcall(l[i], on) end
-end
-
 function Util.Ripple(button, color)
     local ripple = Util.Create("Frame", {
         Name = "Ripple",
@@ -8781,28 +8698,6 @@ function Hyperion:CreateWindow(config)
                 if elCfg and elCfg.Tooltip and elFrame then
                     pcall(Util.AttachTooltip, elFrame, elCfg.Tooltip)
                 end
-                if elCfg and elCfg.DependsOn and elFrame then
-                    local deps = elCfg.DependsOn
-                    if type(deps) == "string" then deps = { deps } end
-                    local want = (elCfg.DependsOnValue == nil) and true or elCfg.DependsOnValue
-                    local state = {}
-                    local function evalDeps()
-                        local all = true
-                        for i = 1, #deps do
-                            if not state[deps[i]] then all = false break end
-                        end
-                        if want == false then all = not all end
-                        Util.SetDimmed(elFrame, not all)
-                    end
-                    for i = 1, #deps do
-                        local d = deps[i]
-                        state[d] = Hyperion.Flags[d] and true or false
-                        Hyperion:_RegisterDep(d, function(on)
-                            state[d] = on
-                            evalDeps()
-                        end)
-                    end
-                end
                 if not elName or elName == "" then return end
                 table.insert(Hyperion._SearchIndex, {
                     name = elName, lname = string.lower(elName),
@@ -9011,90 +8906,34 @@ function Hyperion:CreateWindow(config)
                 -- toggle renders exactly as before. ZIndex 6 keeps them above the
                 -- full-row hitbox so their own clicks land.
                 local accOffset = -48
-                local _colorAcc = cfg.Colors
-                if not _colorAcc and type(cfg.Color) == "table" then _colorAcc = { cfg.Color } end
-                if type(_colorAcc) == "table" then
-                    for _ci = 1, #_colorAcc do
-                        local ccfg = _colorAcc[_ci]
-                        if type(ccfg) == "table" then
-                            local ccol = ccfg.Default or Color3.fromRGB(255, 255, 255)
-                            if ccfg.Flag then Hyperion.Flags[ccfg.Flag] = ccol end
-                            local Sw = Util.Create("TextButton", {
-                                Name = "Swatch" .. _ci, BackgroundColor3 = ccol, Text = "",
-                                Size = UDim2.fromOffset(22, 22),
-                                Position = UDim2.new(1, accOffset, 0.5, 0),
-                                AnchorPoint = Vector2.new(1, 0.5),
-                                AutoButtonColor = false, ZIndex = 6, Parent = Frame,
-                            })
-                            Util.AddCorner(Sw, UDim.new(0, 4))
-                            local _swStroke = Util.AddStroke(Sw, Theme.BorderLight, 1, 0.3)
-                            Themed(_swStroke, { Color = function(t) return t.BorderLight end })
-                            local function applyCol(c2)
-                                Sw.BackgroundColor3 = c2
-                                if ccfg.Flag then Hyperion.Flags[ccfg.Flag] = c2 end
-                                if ccfg.Callback then task.spawn(ccfg.Callback, c2) end
-                            end
-                            Util.AttachColorSwatch(Sw, function() return Sw.BackgroundColor3 end, applyCol,
-                                { Title = ccfg.Name or name })
-                            if ccfg.Tooltip then pcall(Util.AttachTooltip, Sw, ccfg.Tooltip) end
-                            if ccfg.Flag then
-                                Hyperion.FlagCallbacks[ccfg.Flag] = applyCol
-                                local cAPI = { Kind = "color" }
-                                function cAPI:Set(v2) applyCol(v2) end
-                                function cAPI:Get() return Sw.BackgroundColor3 end
-                                Hyperion.FlagAPIs[ccfg.Flag] = cAPI
-                            end
-                            accOffset = accOffset - 28
-                        end
-                    end
-                end
-                if type(cfg.Mode) == "table" and type(cfg.Mode.Values) == "table" and #cfg.Mode.Values > 0 then
-                    local mcfg = cfg.Mode
-                    local mvals = mcfg.Values
-                    local midx = 1
-                    for i = 1, #mvals do
-                        if mvals[i] == mcfg.Default then midx = i break end
-                    end
-                    if mcfg.Flag then Hyperion.Flags[mcfg.Flag] = mvals[midx] end
-                    local mw = mcfg.Width or 56
-                    local ModeChip = Util.Create("TextButton", {
-                        Name = "ModeChip", BackgroundColor3 = Theme.SurfaceActive,
-                        BackgroundTransparency = 0.25,
-                        Size = UDim2.fromOffset(mw, 20),
+                if type(cfg.Color) == "table" then
+                    local ccfg = cfg.Color
+                    local ccol = ccfg.Default or Color3.fromRGB(255, 255, 255)
+                    if ccfg.Flag then Hyperion.Flags[ccfg.Flag] = ccol end
+                    local Sw = Util.Create("TextButton", {
+                        Name = "Swatch", BackgroundColor3 = ccol, Text = "",
+                        Size = UDim2.fromOffset(22, 22),
                         Position = UDim2.new(1, accOffset, 0.5, 0),
                         AnchorPoint = Vector2.new(1, 0.5),
-                        Text = tostring(mvals[midx]),
-                        TextColor3 = Theme.TextDim, FontFace = Theme.FontMedium,
-                        TextSize = 10, TextTruncate = Enum.TextTruncate.AtEnd,
                         AutoButtonColor = false, ZIndex = 6, Parent = Frame,
                     })
-                    Util.AddCorner(ModeChip, UDim.new(0, 4))
-                    Themed(ModeChip, { BackgroundColor3 = function(t) return t.SurfaceActive end })
-                    Themed(ModeChip, { TextColor3 = function(t) return t.TextDim end })
-                    local function applyMode(v2, fire)
-                        for i = 1, #mvals do
-                            if mvals[i] == v2 then midx = i break end
-                        end
-                        ModeChip.Text = tostring(mvals[midx])
-                        if mcfg.Flag then Hyperion.Flags[mcfg.Flag] = mvals[midx] end
-                        if fire ~= false and mcfg.Callback then task.spawn(mcfg.Callback, mvals[midx]) end
+                    Util.AddCorner(Sw, UDim.new(0, 4))
+                    local _swStroke = Util.AddStroke(Sw, Theme.BorderLight, 1, 0.3)
+                    Themed(_swStroke, { Color = function(t) return t.BorderLight end })
+                    local function applyCol(c2)
+                        Sw.BackgroundColor3 = c2
+                        if ccfg.Flag then Hyperion.Flags[ccfg.Flag] = c2 end
+                        if ccfg.Callback then task.spawn(ccfg.Callback, c2) end
                     end
-                    ModeChip.MouseButton1Click:Connect(function()
-                        midx = midx % #mvals + 1
-                        applyMode(mvals[midx])
-                        Util.TweenFast(ModeChip, { TextColor3 = Hyperion.Theme.Accent })
-                        task.delay(0.16, function()
-                            Util.TweenFast(ModeChip, { TextColor3 = Hyperion.Theme.TextDim })
-                        end)
-                    end)
-                    if mcfg.Flag then
-                        Hyperion.FlagCallbacks[mcfg.Flag] = applyMode
-                        local mAPI = { Kind = "mode", Values = mvals }
-                        function mAPI:Set(v2) applyMode(v2) end
-                        function mAPI:Get() return mvals[midx] end
-                        Hyperion.FlagAPIs[mcfg.Flag] = mAPI
+                    Util.AttachColorSwatch(Sw, function() return Sw.BackgroundColor3 end, applyCol)
+                    if ccfg.Flag then
+                        Hyperion.FlagCallbacks[ccfg.Flag] = applyCol
+                        local cAPI = { Kind = "color" }
+                        function cAPI:Set(v2) applyCol(v2) end
+                        function cAPI:Get() return Sw.BackgroundColor3 end
+                        Hyperion.FlagAPIs[ccfg.Flag] = cAPI
                     end
-                    accOffset = accOffset - (mw + 6)
+                    accOffset = accOffset - 28
                 end
                 if type(cfg.Keybind) == "table" then
                     local kcfg = cfg.Keybind
@@ -9140,7 +8979,6 @@ function Hyperion:CreateWindow(config)
                         Position = state and UDim2.new(1, -3, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
                         AnchorPoint = state and Vector2.new(1, 0.5) or Vector2.new(0, 0.5),
                     })
-                    if flag then Hyperion:_FireDeps(flag, state) end
                 end
 
                 -- Register callback for config loading
@@ -9171,7 +9009,6 @@ function Hyperion:CreateWindow(config)
                 local API = {}
                 function API:Set(v) value = v; if flag then Hyperion.Flags[flag] = v end; UpdateVisual(v); task.spawn(callback, v) end
                 function API:Get() return value end
-                function API:SetEnabled(v) Util.SetDimmed(Frame, not v) end
                 API.Kind = "toggle"
                 if flag then Hyperion.FlagAPIs[flag] = API end
                 return API
@@ -9404,7 +9241,6 @@ function Hyperion:CreateWindow(config)
                 local API = {}
                 function API:Set(v) value = math.clamp(v, min, max); if flag then Hyperion.Flags[flag] = value end; _setVal(); local r = (value - min) / math.max(max - min, 0.001); Fill.Size = UDim2.new(r, 0, 1, 0); KnobObj.Position = UDim2.new(r, 0, 0.5, 0); task.spawn(callback, value) end
                 function API:Get() return value end
-                function API:SetEnabled(v) Util.SetDimmed(Frame, not v) end
                 API.Kind = "slider"; API.Min = min; API.Max = max
                 if flag then Hyperion.FlagAPIs[flag] = API end
                 return API
@@ -9502,8 +9338,6 @@ function Hyperion:CreateWindow(config)
                     local lbl = Btn:FindFirstChild("Lbl")
                     if lbl then lbl.Text = t end
                 end
-                function API:SetEnabled(v) Util.SetDimmed(Btn, not v) end
-                API.Kind = "button"
                 return API
             end
 
@@ -10019,7 +9853,6 @@ function Hyperion:CreateWindow(config)
                     UpdateDisplay()
                     if opened then Resize() end
                 end
-                function API:SetEnabled(v) Util.SetDimmed(Frame, not v) end
                 API.Kind = "dropdown"; API.Values = values
                 if flag then Hyperion.FlagAPIs[flag] = API end
                 return API
@@ -10108,9 +9941,6 @@ function Hyperion:CreateWindow(config)
                 local API = {}
                 function API:Set(v) Input.Text = v; value = v; if flag then Hyperion.Flags[flag] = v end end
                 function API:Get() return value end
-                function API:SetEnabled(v) Util.SetDimmed(Frame, not v) end
-                API.Kind = "textbox"
-                if flag then Hyperion.FlagAPIs[flag] = API end
                 return API
             end
 
@@ -10219,15 +10049,11 @@ function Hyperion:CreateWindow(config)
                 function API:Set(v) value = v; if flag then Hyperion.Flags[flag] = v end; KbBtn.Text = KeyName(v); Hyperion:_FireKeybindChanged(entry) end
                 function API:Get() return value end
 
-                function API:SetEnabled(v) Util.SetDimmed(Frame, not v) end
-                API.Kind = "keybind"
-
                 entry.GetKey     = function() return value end
                 entry.KeyName    = function() return KeyName(value) end
                 entry.StartRebind = BeginListen
                 Hyperion:_RegisterKeybind(entry)
 
-                if flag then Hyperion.FlagAPIs[flag] = API end
                 return API
             end
 
@@ -10374,7 +10200,6 @@ function Hyperion:CreateWindow(config)
                     Emit()
                 end
                 function API:Get() return color, alpha end
-                function API:SetEnabled(v) Util.SetDimmed(Frame, not v) end
                 API.Kind = "color"
                 if flag then Hyperion.FlagAPIs[flag] = API end
                 return API
