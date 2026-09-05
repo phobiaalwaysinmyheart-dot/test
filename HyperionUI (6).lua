@@ -3353,6 +3353,7 @@ function Hyperion:CreateWindow(config)
 
     -- Window object
     local WindowObj = {}
+    local _px = {}
     WindowObj.Tabs      = {}
     WindowObj.ActiveTab = nil
     WindowObj.Flags     = Hyperion.Flags
@@ -4043,15 +4044,14 @@ function Hyperion:CreateWindow(config)
         ZIndex = 5,
         Parent = Header
     })
-    local _headerLeftFix = Util.Create("Frame", {
+    Themed(Util.Create("Frame", {
         Name = "LeftFix",
         BackgroundColor3 = Theme.Surface,
         Size = UDim2.new(0, 14, 1, 0),
         BorderSizePixel = 0,
         ZIndex = 5,
         Parent = Header
-    })
-    Themed(_headerLeftFix, { BackgroundColor3 = function(t) return t.Surface end })
+    }), { BackgroundColor3 = function(t) return t.Surface end })
     Themed(Header, { BackgroundColor3 = function(t) return t.Surface end })
     Themed(_headerBottomFix, { BackgroundColor3 = function(t) return t.Surface end })
 
@@ -4291,88 +4291,87 @@ function Hyperion:CreateWindow(config)
     })
     Themed(ExpiresInfo, { TextColor3 = function(t) return t.TextMuted end })
 
-    local _isFullscreen = false
-    local _preFullscreenSize = nil
-    local _preFullscreenPos  = nil
-    local _collapsed = false
-    local _preCollapseSize = nil
+    WindowObj._isFullscreen = false
+    WindowObj._collapsed = false
 
-    local function MakeDot(dotName, xOff, hotColor, tip, fn)
-        local d = Util.Create("TextButton", {
-            Name = dotName,
-            BackgroundColor3 = Theme.TextMuted,
-            BackgroundTransparency = 0.15,
-            Size = UDim2.fromOffset(12, 12),
-            Position = UDim2.new(1, xOff, 0.5, 0),
-            AnchorPoint = Vector2.new(1, 0.5),
-            Text = "",
-            AutoButtonColor = false,
-            BorderSizePixel = 0,
-            ZIndex = 7,
-            Parent = Header,
-        })
-        Util.AddCorner(d, UDim.new(1, 0))
-        Themed(d, { BackgroundColor3 = function(t) return t.TextMuted end })
-        d.MouseEnter:Connect(function()
-            Util.TweenFast(d, { BackgroundColor3 = hotColor, BackgroundTransparency = 0 })
-        end)
-        d.MouseLeave:Connect(function()
-            Util.TweenFast(d, { BackgroundColor3 = Hyperion.Theme.TextMuted, BackgroundTransparency = 0.15 })
-        end)
-        d.MouseButton1Click:Connect(fn)
-        pcall(Util.AttachTooltip, d, tip)
-        return d
-    end
-
-    local function ToggleCollapse()
-        if not _collapsed then
-            _collapsed = true
-            _preCollapseSize = MainFrame.Size
-            MainFrame.ClipsDescendants = true
-            Util.Tween(MainFrame, 0.26, {
-                Size = UDim2.new(0, _preCollapseSize.X.Offset, 0, HeaderHeight),
-            }, Enum.EasingStyle.Quint)
-        else
-            _collapsed = false
-            local restore = _preCollapseSize or windowConfig.Size
-            Util.Tween(MainFrame, 0.26, { Size = restore }, Enum.EasingStyle.Quint)
-            task.delay(0.3, function()
-                if not _collapsed and MainFrame and MainFrame.Parent then
-                    MainFrame.ClipsDescendants = false
-                end
+    ;(function()
+        local function MakeDot(dotName, xOff, hotColor, tip, fn)
+            local d = Util.Create("TextButton", {
+                Name = dotName,
+                BackgroundColor3 = Theme.TextMuted,
+                BackgroundTransparency = 0.15,
+                Size = UDim2.fromOffset(12, 12),
+                Position = UDim2.new(1, xOff, 0.5, 0),
+                AnchorPoint = Vector2.new(1, 0.5),
+                Text = "",
+                AutoButtonColor = false,
+                BorderSizePixel = 0,
+                ZIndex = 7,
+                Parent = Header,
+            })
+            Util.AddCorner(d, UDim.new(1, 0))
+            Themed(d, { BackgroundColor3 = function(t) return t.TextMuted end })
+            d.MouseEnter:Connect(function()
+                Util.TweenFast(d, { BackgroundColor3 = hotColor, BackgroundTransparency = 0 })
             end)
+            d.MouseLeave:Connect(function()
+                Util.TweenFast(d, { BackgroundColor3 = Hyperion.Theme.TextMuted, BackgroundTransparency = 0.15 })
+            end)
+            d.MouseButton1Click:Connect(fn)
+            pcall(Util.AttachTooltip, d, tip)
+            return d
         end
-    end
 
-    local function ToggleFullscreen()
-        local viewportSize = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
-        if _collapsed then ToggleCollapse() end
-        if not _isFullscreen then
-            _preFullscreenSize = WindowObj.CurrentSize
-            _preFullscreenPos  = MainFrame.Position
-            _isFullscreen = true
-            local fullSize = UDim2.new(0, math.floor(viewportSize.X - 20), 0, math.floor(viewportSize.Y - 20))
-            WindowObj.CurrentSize = fullSize
-            Util.Tween(MainFrame, 0.3, {
-                Size = fullSize,
-                Position = UDim2.new(0.5, 0, 0.5, 0),
-            }, Enum.EasingStyle.Quint)
-        else
-            _isFullscreen = false
-            local restoreSize = _preFullscreenSize or windowConfig.Size
-            WindowObj.CurrentSize = restoreSize
-            Util.Tween(MainFrame, 0.3, {
-                Size = restoreSize,
-                Position = _preFullscreenPos or UDim2.new(0.5, 0, 0.5, 0),
-            }, Enum.EasingStyle.Quint)
+        local function ToggleCollapse()
+            if not WindowObj._collapsed then
+                WindowObj._collapsed = true
+                WindowObj._preCollapseSize = MainFrame.Size
+                MainFrame.ClipsDescendants = true
+                Util.Tween(MainFrame, 0.26, {
+                    Size = UDim2.new(0, WindowObj._preCollapseSize.X.Offset, 0, HeaderHeight),
+                }, Enum.EasingStyle.Quint)
+            else
+                WindowObj._collapsed = false
+                Util.Tween(MainFrame, 0.26, {
+                    Size = WindowObj._preCollapseSize or windowConfig.Size,
+                }, Enum.EasingStyle.Quint)
+                task.delay(0.3, function()
+                    if not WindowObj._collapsed and MainFrame and MainFrame.Parent then
+                        MainFrame.ClipsDescendants = false
+                    end
+                end)
+            end
         end
-    end
 
-    MakeDot("DotClose", -14, Color3.fromRGB(255, 95, 86), "Hide (Right Shift to reopen)", function()
-        WindowObj:Toggle()
-    end)
-    MakeDot("DotMax", -32, Color3.fromRGB(39, 201, 63), "Fullscreen", ToggleFullscreen)
-    MakeDot("DotMin", -50, Color3.fromRGB(255, 189, 46), "Collapse", ToggleCollapse)
+        MakeDot("DotClose", -14, Color3.fromRGB(255, 95, 86), "Hide (Right Shift to reopen)", function()
+            WindowObj:Toggle()
+        end)
+
+        MakeDot("DotMax", -32, Color3.fromRGB(39, 201, 63), "Fullscreen", function()
+            local vpSize = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
+            if WindowObj._collapsed then ToggleCollapse() end
+            if not WindowObj._isFullscreen then
+                WindowObj._preFullscreenSize = WindowObj.CurrentSize
+                WindowObj._preFullscreenPos  = MainFrame.Position
+                WindowObj._isFullscreen = true
+                local fullSize = UDim2.new(0, math.floor(vpSize.X - 20), 0, math.floor(vpSize.Y - 20))
+                WindowObj.CurrentSize = fullSize
+                Util.Tween(MainFrame, 0.3, {
+                    Size = fullSize,
+                    Position = UDim2.new(0.5, 0, 0.5, 0),
+                }, Enum.EasingStyle.Quint)
+            else
+                WindowObj._isFullscreen = false
+                WindowObj.CurrentSize = WindowObj._preFullscreenSize or windowConfig.Size
+                Util.Tween(MainFrame, 0.3, {
+                    Size = WindowObj.CurrentSize,
+                    Position = WindowObj._preFullscreenPos or UDim2.new(0.5, 0, 0.5, 0),
+                }, Enum.EasingStyle.Quint)
+            end
+        end)
+
+        MakeDot("DotMin", -50, Color3.fromRGB(255, 189, 46), "Collapse", ToggleCollapse)
+    end)()
 
     TopRightInfo.Position = UDim2.new(1, -74, 0.5, 0)
 
@@ -4391,7 +4390,7 @@ function Hyperion:CreateWindow(config)
     Util.AddCorner(Sidebar, Theme.CornerLarge)
     Themed(Sidebar, { BackgroundColor3 = function(t) return t.Sidebar end })
 
-    local _sidebarRightFix = Util.Create("Frame", {
+    Themed(Util.Create("Frame", {
         Name = "RightFix",
         BackgroundColor3 = Theme.Sidebar,
         Size = UDim2.new(0, 14, 1, 0),
@@ -4399,13 +4398,12 @@ function Hyperion:CreateWindow(config)
         BorderSizePixel = 0,
         ZIndex = 3,
         Parent = Sidebar
-    })
-    Themed(_sidebarRightFix, { BackgroundColor3 = function(t) return t.Sidebar end })
+    }), { BackgroundColor3 = function(t) return t.Sidebar end })
 
     LogoContainer.Parent = Sidebar
     LogoContainer.ZIndex = 5
 
-    local _sidebarTopSep = Util.Create("Frame", {
+    Themed(Util.Create("Frame", {
         Name = "TopSep",
         BackgroundColor3 = Theme.Border,
         BackgroundTransparency = 0.55,
@@ -4414,8 +4412,7 @@ function Hyperion:CreateWindow(config)
         BorderSizePixel = 0,
         ZIndex = 5,
         Parent = Sidebar
-    })
-    Themed(_sidebarTopSep, { BackgroundColor3 = function(t) return t.Border end })
+    }), { BackgroundColor3 = function(t) return t.Border end })
 
     -- Right border line
     local _sidebarBorder = Util.Create("Frame", {
@@ -5552,20 +5549,14 @@ function Hyperion:CreateWindow(config)
     })
     CfgScroll.Parent = CfgSlideClip
 
-    local _closeChat = nil
-    local _closeTheme = nil
-    local _closePlayers = nil
-    local _openChat, _toggleChat, _addChatMsg, _setChatStatus, _clearChat, _setChatSend
-    local _setChatPersonas, _onPersonaChange, _onNewChat, _getPersona
-    local _openPlayers, _togglePlayers, _onPlayersRefresh, _playersScroll
 
     local function OpenConfigPanel()
         if cfgPanelOpen then return end
         cfgPanelOpen = true
         _G._HyperionCfgOpen = true
-        if _closeChat then _closeChat() end
-        if _closeTheme then _closeTheme() end
-        if _closePlayers then _closePlayers() end
+        if _px._closeChat then _px._closeChat() end
+        if _px._closeTheme then _px._closeTheme() end
+        if _px._closePlayers then _px._closePlayers() end
         HideDeleteConfirm()
         RefreshConfigList()
 
@@ -6245,8 +6236,8 @@ function Hyperion:CreateWindow(config)
         chatPanelOpen = true
         _G._HyperionChatOpen = true
         if cfgPanelOpen then CloseConfigPanel() end
-        if _closeTheme then _closeTheme() end
-        if _closePlayers then _closePlayers() end
+        if _px._closeTheme then _px._closeTheme() end
+        if _px._closePlayers then _px._closePlayers() end
         ChatOverlay.Position = CHAT_CLOSED
         ChatOverlay.BackgroundTransparency = 1
         ChatOverlay.Visible = true
@@ -6269,7 +6260,7 @@ function Hyperion:CreateWindow(config)
         end)
     end
 
-    _closeChat = CloseChatPanel
+    _px._closeChat = CloseChatPanel
 
     ChatBtn.MouseButton1Click:Connect(function()
         if chatPanelOpen then CloseChatPanel() else OpenChatPanel() end
@@ -6296,20 +6287,18 @@ function Hyperion:CreateWindow(config)
         end,
     })
 
-    _openChat      = OpenChatPanel
-    _toggleChat    = function() if chatPanelOpen then CloseChatPanel() else OpenChatPanel() end end
-    _addChatMsg    = function(role, text) AddChatBubble(role == "user" and "user" or "ai", tostring(text)) end
-    _setChatStatus = SetChatStatus
-    _clearChat     = ClearChatLog
-    _setChatSend   = function(fn) chatSendHandler = fn end
-    _setChatPersonas = function(list) BuildPersonaList(list) end
-    _onPersonaChange = function(fn) personaHandler = fn end
-    _onNewChat       = function(fn) newChatHandler = fn end
-    _getPersona      = function() return currentPersona end
+    _px._openChat      = OpenChatPanel
+    _px._toggleChat    = function() if chatPanelOpen then CloseChatPanel() else OpenChatPanel() end end
+    _px._addChatMsg    = function(role, text) AddChatBubble(role == "user" and "user" or "ai", tostring(text)) end
+    _px._setChatStatus = SetChatStatus
+    _px._clearChat     = ClearChatLog
+    _px._setChatSend   = function(fn) chatSendHandler = fn end
+    _px._setChatPersonas = function(list) BuildPersonaList(list) end
+    _px._onPersonaChange = function(fn) personaHandler = fn end
+    _px._onNewChat       = function(fn) newChatHandler = fn end
+    _px._getPersona      = function() return currentPersona end
     end)() -- AI CHAT PANEL scope
 
-    local _showKb, _hideKb, _toggleKb
-    local _openTheme, _toggleTheme
 
     -- ================================================================
     -- KEYBIND HUD  (on-screen list, left side; click a key to rebind)
@@ -6481,9 +6470,9 @@ function Hyperion:CreateWindow(config)
     KeybindBtn.MouseButton1Click:Connect(function() SetKbHud(not kbHudVisible) end)
     Themed(KeybindBtn, { ImageColor3 = function(t) return kbHudVisible and t.Accent or t.TextMuted end })
 
-    _showKb   = function() SetKbHud(true)  end
-    _hideKb   = function() SetKbHud(false) end
-    _toggleKb = function() SetKbHud(not kbHudVisible) end
+    _px._showKb   = function() SetKbHud(true)  end
+    _px._hideKb   = function() SetKbHud(false) end
+    _px._toggleKb = function() SetKbHud(not kbHudVisible) end
     end)() -- KEYBIND HUD scope
 
     -- ================================================================
@@ -7112,8 +7101,8 @@ function Hyperion:CreateWindow(config)
         if themePanelOpen then return end
         themePanelOpen = true
         if cfgPanelOpen then CloseConfigPanel() end
-        if _closeChat then _closeChat() end
-        if _closePlayers then _closePlayers() end
+        if _px._closeChat then _px._closeChat() end
+        if _px._closePlayers then _px._closePlayers() end
         SelectField(selectedField)
         RefreshThemeList()
         AnimateThemeOpen()
@@ -7132,7 +7121,7 @@ function Hyperion:CreateWindow(config)
             if not themePanelOpen and ThemeOverlay and ThemeOverlay.Parent then ThemeOverlay.Visible = false end
         end)
     end
-    _closeTheme = CloseThemePanel
+    _px._closeTheme = CloseThemePanel
 
     ThemeBtn.MouseButton1Click:Connect(function()
         if themePanelOpen then CloseThemePanel() else OpenThemePanel() end
@@ -7153,8 +7142,8 @@ function Hyperion:CreateWindow(config)
 
     Themed(ThemeBtn, { ImageColor3 = function(t) return themePanelOpen and t.Accent or t.TextMuted end })
 
-    _openTheme   = OpenThemePanel
-    _toggleTheme = function() if themePanelOpen then CloseThemePanel() else OpenThemePanel() end end
+    _px._openTheme   = OpenThemePanel
+    _px._toggleTheme = function() if themePanelOpen then CloseThemePanel() else OpenThemePanel() end end
     end)() -- THEME CREATOR scope
 
     -- ================================================================
@@ -7242,8 +7231,8 @@ function Hyperion:CreateWindow(config)
         if playersPanelOpen then return end
         playersPanelOpen = true
         if cfgPanelOpen then CloseConfigPanel() end
-        if _closeChat then _closeChat() end
-        if _closeTheme then _closeTheme() end
+        if _px._closeChat then _px._closeChat() end
+        if _px._closeTheme then _px._closeTheme() end
         doRefresh()
         PlayersOverlay.Position = PL_CLOSED
         PlayersOverlay.BackgroundTransparency = 1
@@ -7260,7 +7249,7 @@ function Hyperion:CreateWindow(config)
             if not playersPanelOpen and PlayersOverlay and PlayersOverlay.Parent then PlayersOverlay.Visible = false end
         end)
     end
-    _closePlayers = ClosePlayersPanel
+    _px._closePlayers = ClosePlayersPanel
 
     PlayersBtn.MouseButton1Click:Connect(function()
         if playersPanelOpen then ClosePlayersPanel() else OpenPlayersPanel() end
@@ -7280,10 +7269,10 @@ function Hyperion:CreateWindow(config)
     end)
     Themed(PlayersBtn, { ImageColor3 = function(t) return playersPanelOpen and t.Accent or t.TextMuted end })
 
-    _openPlayers      = OpenPlayersPanel
-    _togglePlayers    = function() if playersPanelOpen then ClosePlayersPanel() else OpenPlayersPanel() end end
-    _onPlayersRefresh = function(fn) refreshHandler = fn end
-    _playersScroll    = PlScroll
+    _px._openPlayers      = OpenPlayersPanel
+    _px._togglePlayers    = function() if playersPanelOpen then ClosePlayersPanel() else OpenPlayersPanel() end end
+    _px._onPlayersRefresh = function(fn) refreshHandler = fn end
+    _px._playersScroll    = PlScroll
     end)() -- PLAYERS PANEL scope
 
     -- ============================================================
@@ -7302,6 +7291,7 @@ function Hyperion:CreateWindow(config)
     -- ============================================================
     -- RESIZE HELPERS
     -- ============================================================
+    ;(function()
     local function ClampWindowSize(size)
         local viewportSize = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
 
@@ -7393,6 +7383,7 @@ function Hyperion:CreateWindow(config)
     function WindowObj:SetSize(size)
         ApplyWindowSize(size)
     end
+    end)()
 
     -- Set a custom background image. Pass nil or "" to clear.
     -- tintAlpha: 0=no tint, 1=fully opaque tint (default 0.45)
@@ -7433,6 +7424,7 @@ function Hyperion:CreateWindow(config)
     -- ============================================================
     -- DRAGGING (with viewport bounds clamping)
     -- ============================================================
+    ;(function()
     local Dragging, DragStart, StartPos = false, Vector3.new(), UDim2.new()
     local _dragTarget = nil
 
@@ -7490,6 +7482,7 @@ function Hyperion:CreateWindow(config)
             _dragTarget.Y.Scale, cur.Y.Offset + (_dragTarget.Y.Offset - cur.Y.Offset) * a
         )
     end)
+    end)()
 
     -- ============================================================
     -- KEYBIND TOGGLE
@@ -7560,12 +7553,12 @@ function Hyperion:CreateWindow(config)
             ScreenGui.Enabled = true
             MainFrame.Visible = true
             -- If was fullscreen, restore before showing
-            if _isFullscreen then
-                _isFullscreen = false
-                WindowObj.CurrentSize = _preFullscreenSize or windowConfig.Size
+            if WindowObj._isFullscreen then
+                WindowObj._isFullscreen = false
+                WindowObj.CurrentSize = WindowObj._preFullscreenSize or windowConfig.Size
             end
-            if _collapsed then
-                _collapsed = false
+            if WindowObj._collapsed then
+                WindowObj._collapsed = false
                 MainFrame.ClipsDescendants = false
             end
             MainFrame.Size = UDim2.new(
@@ -7672,29 +7665,29 @@ function Hyperion:CreateWindow(config)
         RefreshConfigList()
     end
 
-    function WindowObj:OpenChatPanel()  if _openChat then _openChat() end end
-    function WindowObj:CloseChatPanel() if _closeChat then _closeChat() end end
-    function WindowObj:ToggleChatPanel() if _toggleChat then _toggleChat() end end
-    function WindowObj:AddChatMessage(role, text) if _addChatMsg then _addChatMsg(role, text) end end
-    function WindowObj:SetChatStatus(text) if _setChatStatus then _setChatStatus(text) end end
-    function WindowObj:ClearChat()         if _clearChat then _clearChat() end end
-    function WindowObj:OnChatSend(fn)      if _setChatSend then _setChatSend(fn) end end
-    function WindowObj:SetChatPersonas(list) if _setChatPersonas then _setChatPersonas(list) end end
-    function WindowObj:OnPersonaChange(fn) if _onPersonaChange then _onPersonaChange(fn) end end
-    function WindowObj:OnNewChat(fn)       if _onNewChat then _onNewChat(fn) end end
-    function WindowObj:GetPersona()        if _getPersona then return _getPersona() end end
+    function WindowObj:OpenChatPanel()  if _px._openChat then _px._openChat() end end
+    function WindowObj:CloseChatPanel() if _px._closeChat then _px._closeChat() end end
+    function WindowObj:ToggleChatPanel() if _px._toggleChat then _px._toggleChat() end end
+    function WindowObj:AddChatMessage(role, text) if _px._addChatMsg then _px._addChatMsg(role, text) end end
+    function WindowObj:SetChatStatus(text) if _px._setChatStatus then _px._setChatStatus(text) end end
+    function WindowObj:ClearChat()         if _px._clearChat then _px._clearChat() end end
+    function WindowObj:OnChatSend(fn)      if _px._setChatSend then _px._setChatSend(fn) end end
+    function WindowObj:SetChatPersonas(list) if _px._setChatPersonas then _px._setChatPersonas(list) end end
+    function WindowObj:OnPersonaChange(fn) if _px._onPersonaChange then _px._onPersonaChange(fn) end end
+    function WindowObj:OnNewChat(fn)       if _px._onNewChat then _px._onNewChat(fn) end end
+    function WindowObj:GetPersona()        if _px._getPersona then return _px._getPersona() end end
 
-    function WindowObj:OpenThemePanel()  if _openTheme then _openTheme() end end
-    function WindowObj:CloseThemePanel() if _closeTheme then _closeTheme() end end
-    function WindowObj:ToggleThemePanel() if _toggleTheme then _toggleTheme() end end
-    function WindowObj:OpenPlayersPanel()  if _openPlayers then _openPlayers() end end
-    function WindowObj:ClosePlayersPanel() if _closePlayers then _closePlayers() end end
-    function WindowObj:TogglePlayersPanel() if _togglePlayers then _togglePlayers() end end
-    function WindowObj:OnPlayersRefresh(fn) if _onPlayersRefresh then _onPlayersRefresh(fn) end end
-    function WindowObj:GetPlayersContainer() return _playersScroll end
-    function WindowObj:ShowKeybindList()   if _showKb then _showKb() end end
-    function WindowObj:HideKeybindList()   if _hideKb then _hideKb() end end
-    function WindowObj:ToggleKeybindList() if _toggleKb then _toggleKb() end end
+    function WindowObj:OpenThemePanel()  if _px._openTheme then _px._openTheme() end end
+    function WindowObj:CloseThemePanel() if _px._closeTheme then _px._closeTheme() end end
+    function WindowObj:ToggleThemePanel() if _px._toggleTheme then _px._toggleTheme() end end
+    function WindowObj:OpenPlayersPanel()  if _px._openPlayers then _px._openPlayers() end end
+    function WindowObj:ClosePlayersPanel() if _px._closePlayers then _px._closePlayers() end end
+    function WindowObj:TogglePlayersPanel() if _px._togglePlayers then _px._togglePlayers() end end
+    function WindowObj:OnPlayersRefresh(fn) if _px._onPlayersRefresh then _px._onPlayersRefresh(fn) end end
+    function WindowObj:GetPlayersContainer() return _px._playersScroll end
+    function WindowObj:ShowKeybindList()   if _px._showKb then _px._showKb() end end
+    function WindowObj:HideKeybindList()   if _px._hideKb then _px._hideKb() end end
+    function WindowObj:ToggleKeybindList() if _px._toggleKb then _px._toggleKb() end end
 
     -- ============================================================
     -- THEME PICKER  (call from any section: Section:AddThemePicker())
