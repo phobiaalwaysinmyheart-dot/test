@@ -3869,7 +3869,7 @@ function Hyperion:CreateWindow(config)
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
         Size = UDim2.new(1, 0, 1, 0),
-        ZIndex = 50,
+        ZIndex = 1,
         ClipsDescendants = true,
         Parent = MainFrame,
     })
@@ -7937,9 +7937,7 @@ function Hyperion:CreateWindow(config)
             Parent = TabContainer
         })
         Util.AddCorner(TabButton, Theme.CornerSmall)
-        local _tabStroke = Util.AddStroke(TabButton, Theme.Border, 1, 0.35)
         Themed(TabButton, { BackgroundColor3 = function(t) return t.Sidebar end })
-        Themed(_tabStroke, { Color = function(t) return t.Border end })
 
         -- Active indicator bar (left edge)
         local ActiveBar = Util.Create("Frame", {
@@ -8051,7 +8049,8 @@ function Hyperion:CreateWindow(config)
             Name = "GroupBar",
             BackgroundColor3 = Theme.Surface,
             Position = UDim2.new(0, 0, 0, 0),
-            Size = UDim2.new(1, 0, 0, 40),
+            Size = UDim2.new(0, 0, 0, 40),
+            AutomaticSize = Enum.AutomaticSize.X,
             Visible = false,
             ZIndex = 3,
             Parent = TabPage
@@ -8081,7 +8080,7 @@ function Hyperion:CreateWindow(config)
 
         local function UpdateGroupPagesPosition()
             if GroupBar.Visible then
-                GroupPages.Position = UDim2.new(0, 0, 0, 54)
+                GroupPages.Position = UDim2.new(0, 0, 0, 52)
             else
                 GroupPages.Position = UDim2.new(0, 0, 0, 0)
             end
@@ -8760,7 +8759,9 @@ function Hyperion:CreateWindow(config)
                     BackgroundTransparency = 1,
                     Size = UDim2.new(0, 0, 1, 0),
                     AutomaticSize = Enum.AutomaticSize.X,
-                    Text = "/" .. string.format("%.10g", max) .. suffix,
+                    Text = (min == 0)
+                        and ("/" .. string.format("%.10g", max) .. suffix)
+                        or ("  " .. string.format("%.10g", min) .. "\u{2026}" .. string.format("%.10g", max) .. suffix),
                     TextColor3 = Theme.TextDim,
                     FontFace = Theme.FontMedium,
                     TextSize = 12,
@@ -9024,14 +9025,14 @@ function Hyperion:CreateWindow(config)
                 local rows = {}
                 local Choose
 
-                local optsY = 54 + (searchable and 30 or 0)
+                local optsY = 32 + (searchable and 30 or 0)
 
                 if flag then Hyperion.Flags[flag] = selected end
 
                 local Frame = Util.Create("Frame", {
                     Name = "Drop_" .. name,
                     BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 0, 58),
+                    Size = UDim2.new(1, 0, 0, 34),
                     ClipsDescendants = false,
                     ZIndex = 2,
                     Parent = Elements
@@ -9041,7 +9042,8 @@ function Hyperion:CreateWindow(config)
                 local DropLabel = Util.Create("TextLabel", {
                     Name = "Label",
                     BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 0, 16),
+                    Size = UDim2.new(0.42, -10, 1, 0),
+                    TextTruncate = Enum.TextTruncate.AtEnd,
                     Text = name,
                     TextColor3 = Theme.Text,
                     FontFace = Theme.Font,
@@ -9055,8 +9057,9 @@ function Hyperion:CreateWindow(config)
                 local DropBtn = Util.Create("TextButton", {
                     Name = "DropBtn",
                     BackgroundColor3 = Theme.SurfaceLight,
-                    Size = UDim2.new(1, 0, 0, 30),
-                    Position = UDim2.new(0, 0, 0, 22),
+                    Size = UDim2.new(0.58, 0, 0, 26),
+                    Position = UDim2.new(0.42, 0, 0.5, 0),
+                    AnchorPoint = Vector2.new(0, 0.5),
                     Text = "",
                     AutoButtonColor = false,
                     BorderSizePixel = 0,
@@ -9121,7 +9124,7 @@ function Hyperion:CreateWindow(config)
                         Name = "Search",
                         BackgroundColor3 = Theme.InputBg,
                         Size = UDim2.new(1, 0, 0, 26),
-                        Position = UDim2.new(0, 0, 0, 54),
+                        Position = UDim2.new(0, 0, 0, 32),
                         Text = "",
                         PlaceholderText = "Search...",
                         TextColor3 = Theme.Text,
@@ -9149,7 +9152,7 @@ function Hyperion:CreateWindow(config)
                         Name = "SearchIcon",
                         BackgroundTransparency = 1,
                         Size = UDim2.new(0, 12, 0, 12),
-                        Position = UDim2.new(0, 8, 0, 61),
+                        Position = UDim2.new(0, 8, 0, 39),
                         Image = "rbxassetid://10734943674",
                         ImageColor3 = Theme.TextMuted,
                         ScaleType = Enum.ScaleType.Fit,
@@ -9401,7 +9404,7 @@ function Hyperion:CreateWindow(config)
                     opened = false
                     filter = ""
                     Util.TweenSmooth(OptsFrame, { Size = UDim2.new(1, 0, 0, 0) })
-                    Util.TweenSmooth(Frame, { Size = UDim2.new(1, 0, 0, 58) })
+                    Util.TweenSmooth(Frame, { Size = UDim2.new(1, 0, 0, 34) })
                     Util.TweenFast(dropStroke, { Color = Hyperion.Theme.BorderLight, Transparency = 0.25 })
                     Util.TweenFast(Arrow, { ImageColor3 = Hyperion.Theme.TextMuted })
                     Util.Tween(Arrow, 0.2, { Rotation = 0 }, Enum.EasingStyle.Quint)
