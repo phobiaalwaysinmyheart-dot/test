@@ -2407,134 +2407,70 @@ function Util._tipBuild(host)
     t.frame = f
 end
 
-Util._cp = { frame=nil, h=0, s=0, v=1, a=0, useAlpha=false, page="Color",
-             set=nil, setA=nil, owner=nil, onClose=nil, orig=nil, origA=0,
+Util._cp = { frame=nil, h=0, s=0, v=1, a=0, useAlpha=false,
+             set=nil, setA=nil, owner=nil, onClose=nil, openedAt=0,
              svDrag=false, hueDrag=false, aDrag=false,
-             pages={}, tabs={}, fields={}, labels={}, boxes={}, fbtns={},
              awayConn=nil, posConn=nil }
-Util._cpRecent = {}
-Util._cpPresets = {
-    Color3.fromRGB(255,255,255), Color3.fromRGB(198,198,205), Color3.fromRGB(130,130,140),
-    Color3.fromRGB(64,64,72),    Color3.fromRGB(18,18,22),    Color3.fromRGB(225,65,75),
-    Color3.fromRGB(255,120,60),  Color3.fromRGB(245,185,55),  Color3.fromRGB(232,228,90),
-    Color3.fromRGB(140,215,90),  Color3.fromRGB(75,210,115),  Color3.fromRGB(70,205,180),
-    Color3.fromRGB(0,255,170),   Color3.fromRGB(100,200,255), Color3.fromRGB(100,160,255),
-    Color3.fromRGB(90,110,245),  Color3.fromRGB(140,90,245),  Color3.fromRGB(190,110,255),
-    Color3.fromRGB(240,110,220), Color3.fromRGB(255,105,160), Color3.fromRGB(180,120,90),
-    Color3.fromRGB(120,90,70),
-}
 
 function Util._cpBuild(host)
     local c = Util._cp
     if c.frame and c.frame.Parent then return end
 
     local T = Hyperion.Theme
-    table.clear(c.boxes)
-    table.clear(c.labels)
-    table.clear(c.fbtns)
 
     local f = Util.Create("Frame", {
         Name = "HyperionColorPopup", BackgroundColor3 = T.Surface,
-        Size = UDim2.fromOffset(300, 268), Visible = false, BorderSizePixel = 0,
+        Size = UDim2.fromOffset(240, 186), Visible = false, BorderSizePixel = 0,
         ClipsDescendants = true, ZIndex = 950, Parent = host,
     })
-    Util.AddCorner(f, T.CornerRadius)
+    Util.AddCorner(f, T.CornerSmall)
     c.stroke = Util.AddStroke(f, T.BorderLight, 1, 0.15)
     c.frame = f
 
     c.title = Util.Create("TextLabel", {
         Name = "Title", BackgroundTransparency = 1,
-        Size = UDim2.new(1, -40, 0, 16), Position = UDim2.fromOffset(10, 9),
+        Size = UDim2.new(1, -38, 0, 16), Position = UDim2.fromOffset(9, 8),
         Text = "Colour", TextColor3 = T.Text, FontFace = T.FontMedium, TextSize = 12,
-        TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextTruncate = Enum.TextTruncate.AtEnd,
         ZIndex = 952, Parent = f,
     })
 
     c.closeBtn = Util.Create("ImageButton", {
         Name = "Close", BackgroundTransparency = 1, Image = "rbxassetid://10747384394",
         ImageColor3 = T.TextMuted, ImageTransparency = 0.2,
-        Size = UDim2.fromOffset(13, 13), Position = UDim2.new(1, -22, 0, 10),
+        Size = UDim2.fromOffset(13, 13), Position = UDim2.new(1, -21, 0, 9),
         ScaleType = Enum.ScaleType.Fit, ZIndex = 953, Parent = f,
     })
 
-    local function mkPage(name)
-        local p = Util.Create("Frame", {
-            Name = name, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
-            Visible = (name == "Color"), ZIndex = 952, Parent = f,
-        })
-        c.pages[name] = p
-        return p
-    end
-
-    local pColor  = mkPage("Color")
-    local pValues = mkPage("Values")
-    local pPal    = mkPage("Palette")
-
-    local function mkTab(name, x)
-        local b = Util.Create("TextButton", {
-            Name = name, BackgroundColor3 = T.SurfaceLight, BackgroundTransparency = 1,
-            Size = UDim2.fromOffset(92, 22), Position = UDim2.fromOffset(x, 32),
-            Text = name, TextColor3 = T.TextDim, FontFace = T.Font, TextSize = 11,
-            AutoButtonColor = false, BorderSizePixel = 0, ZIndex = 953, Parent = f,
-        })
-        Util.AddCorner(b, UDim.new(0, 4))
-        local acc = Util.Create("Frame", {
-            Name = "Acc", BackgroundColor3 = T.Accent, BorderSizePixel = 0,
-            Size = UDim2.new(0, 18, 0, 2), Position = UDim2.new(0.5, 0, 1, -3),
-            AnchorPoint = Vector2.new(0.5, 0), Visible = false, ZIndex = 954, Parent = b,
-        })
-        Util.AddCorner(acc, UDim.new(1, 0))
-        c.tabs[name] = { btn = b, acc = acc }
-        b.MouseButton1Click:Connect(function() c.showPage(name) end)
-        return b
-    end
-
-    mkTab("Color", 8)
-    mkTab("Values", 104)
-    mkTab("Palette", 200)
-
-    function c.showPage(name)
-        c.page = name
-        for n, t in pairs(c.tabs) do
-            local on = (n == name)
-            t.acc.Visible = on
-            t.acc.BackgroundColor3 = Hyperion.Theme.Accent
-            Util.TweenFast(t.btn, {
-                BackgroundTransparency = on and 0 or 1,
-                TextColor3 = on and Hyperion.Theme.Text or Hyperion.Theme.TextDim,
-            })
-        end
-        for n, p in pairs(c.pages) do p.Visible = (n == name) end
-    end
-
     c.sv = Util.Create("ImageLabel", {
         Name = "SV", BackgroundColor3 = Color3.fromHSV(0, 1, 1),
-        Size = UDim2.fromOffset(262, 132), Position = UDim2.fromOffset(8, 62),
+        Size = UDim2.fromOffset(202, 118), Position = UDim2.fromOffset(8, 30),
         Image = "rbxassetid://4155801252", BorderSizePixel = 0,
-        ZIndex = 952, Parent = pColor,
+        ZIndex = 951, Parent = f,
     })
     Util.AddCorner(c.sv, UDim.new(0, 5))
 
     c.svPoint = Util.Create("Frame", {
         Name = "Point", BackgroundColor3 = Color3.new(1, 1, 1),
         Size = UDim2.fromOffset(9, 9), AnchorPoint = Vector2.new(0.5, 0.5),
-        BorderSizePixel = 0, ZIndex = 954, Parent = c.sv,
+        BorderSizePixel = 0, ZIndex = 953, Parent = c.sv,
     })
     Util.AddCorner(c.svPoint, UDim.new(1, 0))
     c.svStroke = Util.AddStroke(c.svPoint, Color3.new(1, 1, 1), 2, 0)
 
     c.svHit = Util.Create("Frame", {
         Name = "SVHit", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
-        ZIndex = 955, Parent = c.sv,
+        ZIndex = 954, Parent = c.sv,
     })
 
-    c.hSlider = Util.Create("Frame", {
+    c.hue = Util.Create("Frame", {
         Name = "Hue", BackgroundColor3 = Color3.new(1, 1, 1),
-        Size = UDim2.fromOffset(14, 132), Position = UDim2.fromOffset(278, 62),
-        BorderSizePixel = 0, ZIndex = 952, Parent = pColor,
+        Size = UDim2.fromOffset(14, 118), Position = UDim2.fromOffset(218, 30),
+        BorderSizePixel = 0, ZIndex = 951, Parent = f,
     })
-    Util.AddCorner(c.hSlider, UDim.new(0, 4))
-    Util.Create("UIGradient", { Rotation = 90, Parent = c.hSlider,
+    Util.AddCorner(c.hue, UDim.new(0, 4))
+    Util.Create("UIGradient", { Rotation = 90, Parent = c.hue,
         Color = ColorSequence.new({
             ColorSequenceKeypoint.new(0,     Color3.fromRGB(255,0,0)),
             ColorSequenceKeypoint.new(0.167, Color3.fromRGB(255,255,0)),
@@ -2545,223 +2481,67 @@ function Util._cpBuild(host)
             ColorSequenceKeypoint.new(1,     Color3.fromRGB(255,0,0)),
         }),
     })
-    c.hKnob = Util.Create("Frame", {
+    c.hueKnob = Util.Create("Frame", {
         Name = "Knob", BackgroundColor3 = Color3.new(1, 1, 1),
         Size = UDim2.new(1, 6, 0, 5), AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.new(0.5, 0, 0, 0), BorderSizePixel = 0,
-        ZIndex = 954, Parent = c.hSlider,
+        ZIndex = 953, Parent = c.hue,
     })
-    Util.AddCorner(c.hKnob, UDim.new(1, 0))
-    c.hStroke = Util.AddStroke(c.hKnob, Color3.fromRGB(28, 28, 32), 1, 0.35)
-    c.hHit = Util.Create("Frame", {
+    Util.AddCorner(c.hueKnob, UDim.new(1, 0))
+    Util.AddStroke(c.hueKnob, Color3.fromRGB(28, 28, 32), 1, 0.35)
+    c.hueHit = Util.Create("Frame", {
         Name = "HueHit", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
-        ZIndex = 955, Parent = c.hSlider,
+        ZIndex = 954, Parent = c.hue,
     })
 
-    c.aSlider = Util.Create("Frame", {
-        Name = "Alpha", BackgroundColor3 = Color3.fromRGB(196, 196, 202),
-        Size = UDim2.fromOffset(14, 132), Position = UDim2.fromOffset(278, 62),
-        Visible = false, BorderSizePixel = 0, ZIndex = 952, Parent = pColor,
+    c.alphaBg = Util.Create("Frame", {
+        Name = "AlphaBg", BackgroundColor3 = Color3.fromRGB(196, 196, 202),
+        Size = UDim2.fromOffset(224, 12), Position = UDim2.fromOffset(8, 156),
+        Visible = false, BorderSizePixel = 0, ZIndex = 951, Parent = f,
     })
-    Util.AddCorner(c.aSlider, UDim.new(0, 4))
-    c.aFill = Util.Create("Frame", {
+    Util.AddCorner(c.alphaBg, UDim.new(0, 3))
+    c.alphaFill = Util.Create("Frame", {
         Name = "Fill", BackgroundColor3 = Color3.new(1, 1, 1),
-        Size = UDim2.fromScale(1, 1), BorderSizePixel = 0, ZIndex = 953, Parent = c.aSlider,
+        Size = UDim2.fromScale(1, 1), BorderSizePixel = 0,
+        ZIndex = 952, Parent = c.alphaBg,
     })
-    Util.AddCorner(c.aFill, UDim.new(0, 4))
-    Util.Create("UIGradient", { Rotation = 90, Parent = c.aFill,
+    Util.AddCorner(c.alphaFill, UDim.new(0, 3))
+    Util.Create("UIGradient", { Parent = c.alphaFill,
         Transparency = NumberSequence.new({
             NumberSequenceKeypoint.new(0, 0),
             NumberSequenceKeypoint.new(1, 1),
         }),
     })
-    c.aKnob = Util.Create("Frame", {
+    c.alphaKnob = Util.Create("Frame", {
         Name = "Knob", BackgroundColor3 = Color3.new(1, 1, 1),
-        Size = UDim2.new(1, 6, 0, 5), AnchorPoint = Vector2.new(0.5, 0.5),
-        Position = UDim2.new(0.5, 0, 0, 0), BorderSizePixel = 0,
-        ZIndex = 954, Parent = c.aSlider,
+        Size = UDim2.new(0, 5, 1, 6), AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0, 0, 0.5, 0), BorderSizePixel = 0,
+        ZIndex = 953, Parent = c.alphaBg,
     })
-    Util.AddCorner(c.aKnob, UDim.new(1, 0))
-    c.aStroke = Util.AddStroke(c.aKnob, Color3.fromRGB(28, 28, 32), 1, 0.35)
-    c.aHit = Util.Create("Frame", {
+    Util.AddCorner(c.alphaKnob, UDim.new(1, 0))
+    Util.AddStroke(c.alphaKnob, Color3.fromRGB(28, 28, 32), 1, 0.35)
+    c.alphaHit = Util.Create("Frame", {
         Name = "AlphaHit", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
-        ZIndex = 955, Parent = c.aSlider,
+        ZIndex = 954, Parent = c.alphaBg,
     })
 
-    c.oldSw = Util.Create("TextButton", {
-        Name = "OldColor", BackgroundColor3 = Color3.new(1, 1, 1),
-        Size = UDim2.fromOffset(142, 24), Position = UDim2.fromOffset(8, 202),
-        Text = "", AutoButtonColor = false, BorderSizePixel = 0,
-        ZIndex = 952, Parent = pColor,
+    c.hex = Util.Create("TextBox", {
+        Name = "Hex", BackgroundColor3 = T.InputBg,
+        Size = UDim2.fromOffset(224, 22), Position = UDim2.fromOffset(8, 156),
+        Text = "", PlaceholderText = "#RRGGBB",
+        TextColor3 = T.Text, PlaceholderColor3 = T.TextMuted,
+        FontFace = T.Font, TextSize = 12,
+        TextXAlignment = Enum.TextXAlignment.Center,
+        ClearTextOnFocus = false, BorderSizePixel = 0, ZIndex = 952, Parent = f,
     })
-    Util.Create("UICorner", { CornerRadius = UDim.new(0, 4), Parent = c.oldSw })
-    c.newSw = Util.Create("Frame", {
-        Name = "NewColor", BackgroundColor3 = Color3.new(1, 1, 1),
-        Size = UDim2.fromOffset(142, 24), Position = UDim2.fromOffset(150, 202),
-        BorderSizePixel = 0, ZIndex = 952, Parent = pColor,
-    })
-    Util.Create("UICorner", { CornerRadius = UDim.new(0, 4), Parent = c.newSw })
-
-    c.oldTag = Util.Create("TextLabel", {
-        BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Text = "OLD",
-        TextColor3 = Color3.new(1, 1, 1), FontFace = T.FontBold, TextSize = 9,
-        TextTransparency = 0.35, ZIndex = 953, Parent = c.oldSw,
-    })
-    c.newTag = Util.Create("TextLabel", {
-        BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Text = "NEW",
-        TextColor3 = Color3.new(1, 1, 1), FontFace = T.FontBold, TextSize = 9,
-        TextTransparency = 0.35, ZIndex = 953, Parent = c.newSw,
-    })
-
-    local function mkField(page, lbl, x, y, w)
-        local l = Util.Create("TextLabel", {
-            BackgroundTransparency = 1, Size = UDim2.fromOffset(26, 22),
-            Position = UDim2.fromOffset(x, y), Text = lbl,
-            TextColor3 = T.TextMuted, FontFace = T.FontMedium, TextSize = 11,
-            TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 953, Parent = page,
-        })
-        local b = Util.Create("TextBox", {
-            BackgroundColor3 = T.InputBg, Size = UDim2.fromOffset(w, 22),
-            Position = UDim2.fromOffset(x + 28, y), Text = "",
-            TextColor3 = T.Text, PlaceholderColor3 = T.TextMuted,
-            FontFace = T.Font, TextSize = 11,
-            TextXAlignment = Enum.TextXAlignment.Center,
-            ClearTextOnFocus = false, BorderSizePixel = 0, ZIndex = 953, Parent = page,
-        })
-        Util.AddCorner(b, UDim.new(0, 4))
-        Util.AddStroke(b, T.Border, 1, 0.35)
-        c.boxes[#c.boxes + 1] = b
-        c.labels[#c.labels + 1] = l
-        return b, l
-    end
-
-    local F = c.fields
-    F.hex = mkField(pValues, "HEX", 8,   62,  108)
-    F.r   = mkField(pValues, "R",   8,   92,  108)
-    F.g   = mkField(pValues, "G",   8,   122, 108)
-    F.b   = mkField(pValues, "B",   8,   152, 108)
-    F.a, c.aFieldLbl = mkField(pValues, "A", 154, 62,  108)
-    F.hh  = mkField(pValues, "H",   154, 92,  108)
-    F.ss  = mkField(pValues, "S",   154, 122, 108)
-    F.vv  = mkField(pValues, "V",   154, 152, 108)
-
-    local function mkGridLabel(text, y)
-        local l = Util.Create("TextLabel", {
-            BackgroundTransparency = 1, Size = UDim2.new(1, -16, 0, 14),
-            Position = UDim2.fromOffset(9, y), Text = text,
-            TextColor3 = T.TextMuted, FontFace = T.FontMedium, TextSize = 10,
-            TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 953, Parent = pPal,
-        })
-        c.labels[#c.labels + 1] = l
-    end
-
-    local function mkGrid(y, h)
-        local g = Util.Create("Frame", {
-            BackgroundTransparency = 1, Size = UDim2.new(1, -16, 0, h),
-            Position = UDim2.fromOffset(8, y), ZIndex = 952, Parent = pPal,
-        })
-        Util.Create("UIGridLayout", {
-            CellSize = UDim2.fromOffset(22, 22), CellPadding = UDim2.fromOffset(4, 4),
-            SortOrder = Enum.SortOrder.LayoutOrder, Parent = g,
-        })
-        return g
-    end
-
-    mkGridLabel("PRESETS", 62)
-    c.presetGrid = mkGrid(80, 48)
-    mkGridLabel("RECENT", 136)
-    c.recentGrid = mkGrid(154, 22)
-
-    local function mkFooterBtn(icon, x, tip, fn)
-        local b = Util.Create("TextButton", {
-            BackgroundColor3 = T.SurfaceLight, Text = "",
-            Size = UDim2.fromOffset(24, 24), Position = UDim2.fromOffset(x, 234),
-            AutoButtonColor = false, BorderSizePixel = 0, ZIndex = 953, Parent = f,
-        })
-        Util.AddCorner(b, UDim.new(0, 4))
-        local img = Util.Create("ImageLabel", {
-            BackgroundTransparency = 1, Image = icon, ImageColor3 = T.TextDim,
-            Size = UDim2.fromOffset(13, 13), Position = UDim2.fromScale(0.5, 0.5),
-            AnchorPoint = Vector2.new(0.5, 0.5), ScaleType = Enum.ScaleType.Fit,
-            ZIndex = 954, Parent = b,
-        })
-        b.MouseEnter:Connect(function()
-            Util.TweenFast(img, { ImageColor3 = Hyperion.Theme.Text })
-        end)
-        b.MouseLeave:Connect(function()
-            Util.TweenFast(img, { ImageColor3 = Hyperion.Theme.TextDim })
-        end)
-        b.MouseButton1Click:Connect(fn)
-        Util.AttachTooltip(b, tip)
-        c.fbtns[#c.fbtns + 1] = { btn = b, img = img }
-        return b
-    end
-
-    function c.setHSVFromColor(col)
-        local nh, ns, nv = Color3.toHSV(col)
-        if ns > 0.0001 then c.h = nh end
-        c.s, c.v = ns, nv
-    end
-
-    local function parseHex(str)
-        str = tostring(str):gsub("%s", ""):gsub("^#", "")
-        if #str == 3 then
-            str = str:sub(1,1):rep(2) .. str:sub(2,2):rep(2) .. str:sub(3,3):rep(2)
-        end
-        if not str:match("^%x%x%x%x%x%x") then return nil end
-        local col = Color3.fromRGB(
-            tonumber(str:sub(1,2), 16), tonumber(str:sub(3,4), 16), tonumber(str:sub(5,6), 16))
-        local al
-        if #str == 8 then al = 1 - (tonumber(str:sub(7,8), 16) / 255) end
-        return col, al
-    end
-
-    c.copyBtn = mkFooterBtn("rbxassetid://10709812159", 8, "Copy hex", function()
-        pcall(function()
-            if typeof(setclipboard) == "function" then setclipboard(c.fields.hex.Text) end
-        end)
-    end)
-    c.pasteBtn = mkFooterBtn("rbxassetid://10709799288", 36, "Paste hex", function()
-        local ok, txt = pcall(function()
-            if typeof(getclipboard) == "function" then return getclipboard() end
-        end)
-        if not ok or type(txt) ~= "string" then return end
-        local col, al = parseHex(txt)
-        if not col then return end
-        c.setHSVFromColor(col)
-        if al and c.useAlpha then c.a = al; if c.setA then c.setA(c.a) end end
-        c.commit()
-    end)
-    c.resetBtn = mkFooterBtn("rbxassetid://10734933056", 64, "Reset to original", function()
-        if not c.orig then return end
-        c.setHSVFromColor(c.orig)
-        if c.useAlpha then
-            c.a = c.origA
-            if c.setA then c.setA(c.a) end
-        end
-        c.commit()
-    end)
-
-    c.doneBtn = Util.Create("TextButton", {
-        Name = "Done", BackgroundColor3 = T.Accent, Text = "Done",
-        TextColor3 = Color3.new(1, 1, 1), FontFace = T.FontMedium, TextSize = 12,
-        Size = UDim2.fromOffset(70, 24), Position = UDim2.fromOffset(222, 234),
-        AutoButtonColor = false, BorderSizePixel = 0, ZIndex = 953, Parent = f,
-    })
-    Util.AddCorner(c.doneBtn, UDim.new(0, 4))
+    Util.AddCorner(c.hex, UDim.new(0, 4))
+    c.hexStroke = Util.AddStroke(c.hex, T.Border, 1, 0.35)
 
     function c.layout(useAlpha)
-        c.aSlider.Visible = useAlpha
-        c.fields.a.Visible = useAlpha
-        c.aFieldLbl.Visible = useAlpha
-        if useAlpha then
-            c.sv.Size = UDim2.fromOffset(240, 132)
-            c.hSlider.Position = UDim2.fromOffset(256, 62)
-            c.aSlider.Position = UDim2.fromOffset(278, 62)
-        else
-            c.sv.Size = UDim2.fromOffset(262, 132)
-            c.hSlider.Position = UDim2.fromOffset(278, 62)
-        end
+        c.alphaBg.Visible = useAlpha
+        local hexY = useAlpha and 176 or 156
+        c.hex.Position = UDim2.fromOffset(8, hexY)
+        c.frame.Size = UDim2.fromOffset(240, hexY + 30)
     end
 
     function c.sync()
@@ -2771,102 +2551,30 @@ function Util._cpBuild(host)
         c.title.TextColor3 = t.Text
         c.title.FontFace = t.FontMedium
         c.closeBtn.ImageColor3 = t.TextMuted
-        c.doneBtn.BackgroundColor3 = t.Accent
-        for i = 1, #c.boxes do
-            local b = c.boxes[i]
-            b.BackgroundColor3 = t.InputBg
-            b.TextColor3 = t.Text
-            b.PlaceholderColor3 = t.TextMuted
-        end
-        for i = 1, #c.labels do c.labels[i].TextColor3 = t.TextMuted end
-        for n, tb in pairs(c.tabs) do
-            local on = (n == c.page)
-            tb.acc.BackgroundColor3 = t.Accent
-            tb.btn.BackgroundColor3 = t.SurfaceLight
-            tb.btn.BackgroundTransparency = on and 0 or 1
-            tb.btn.TextColor3 = on and t.Text or t.TextDim
-        end
-        for i = 1, #c.fbtns do
-            c.fbtns[i].btn.BackgroundColor3 = t.SurfaceLight
-            c.fbtns[i].img.ImageColor3 = t.TextDim
-        end
+        c.hex.BackgroundColor3 = t.InputBg
+        c.hex.TextColor3 = t.Text
+        c.hex.PlaceholderColor3 = t.TextMuted
+        if c.hexStroke then c.hexStroke.Color = t.Border end
     end
 
-    function c.pushRecent(col)
-        local list = Util._cpRecent
-        for i = #list, 1, -1 do
-            local e = list[i]
-            if math.abs(e.R - col.R) < 0.004
-               and math.abs(e.G - col.G) < 0.004
-               and math.abs(e.B - col.B) < 0.004 then
-                table.remove(list, i)
-            end
-        end
-        table.insert(list, 1, col)
-        while #list > 11 do table.remove(list) end
-    end
-
-    local function fillGrid(grid, list)
-        for _, ch in ipairs(grid:GetChildren()) do
-            if ch:IsA("TextButton") then ch:Destroy() end
-        end
-        for i = 1, #list do
-            local col = list[i]
-            local b = Util.Create("TextButton", {
-                Name = "S" .. i, BackgroundColor3 = col, Text = "",
-                AutoButtonColor = false, BorderSizePixel = 0,
-                LayoutOrder = i, ZIndex = 953, Parent = grid,
-            })
-            Util.AddCorner(b, UDim.new(0, 4))
-            Util.AddStroke(b, Hyperion.Theme.BorderLight, 1, 0.45)
-            b.MouseButton1Click:Connect(function()
-                c.setHSVFromColor(col)
-                c.commit()
-            end)
-        end
-    end
-
-    function c.renderSwatches()
-        fillGrid(c.presetGrid, Util._cpPresets)
-        fillGrid(c.recentGrid, Util._cpRecent)
-    end
-
-    function c.commit(skip)
+    function c.commit(skipHex)
         local col = Color3.fromHSV(c.h, c.s, c.v)
         c.sv.BackgroundColor3 = Color3.fromHSV(c.h, 1, 1)
         c.svPoint.Position = UDim2.new(c.s, 0, 1 - c.v, 0)
         c.svPoint.BackgroundColor3 = col
-        c.hKnob.Position = UDim2.new(0.5, 0, c.h, 0)
-        c.aFill.BackgroundColor3 = col
-        c.aKnob.Position = UDim2.new(0.5, 0, c.a, 0)
-        c.newSw.BackgroundColor3 = col
-        c.newSw.BackgroundTransparency = c.useAlpha and c.a or 0
+        c.hueKnob.Position = UDim2.new(0.5, 0, c.h, 0)
+        c.alphaFill.BackgroundColor3 = col
+        c.alphaKnob.Position = UDim2.new(c.a, 0, 0.5, 0)
 
         local lum = 0.299 * col.R + 0.587 * col.G + 0.114 * col.B
-        local ink = (lum > 0.55) and Color3.fromRGB(26, 26, 30) or Color3.new(1, 1, 1)
-        c.svStroke.Color = ink
-        c.newTag.TextColor3 = ink
+        c.svStroke.Color = (lum > 0.55) and Color3.fromRGB(26, 26, 30) or Color3.new(1, 1, 1)
 
-        local r = math.floor(col.R * 255 + 0.5)
-        local g = math.floor(col.G * 255 + 0.5)
-        local b = math.floor(col.B * 255 + 0.5)
-        local Fl = c.fields
-        if skip ~= Fl.hex then
-            if c.useAlpha then
-                Fl.hex.Text = string.format("#%02X%02X%02X%02X", r, g, b,
-                    math.floor((1 - c.a) * 255 + 0.5))
-            else
-                Fl.hex.Text = string.format("#%02X%02X%02X", r, g, b)
-            end
+        if not skipHex then
+            c.hex.Text = string.format("#%02X%02X%02X",
+                math.floor(col.R * 255 + 0.5),
+                math.floor(col.G * 255 + 0.5),
+                math.floor(col.B * 255 + 0.5))
         end
-        if skip ~= Fl.r  then Fl.r.Text  = tostring(r) end
-        if skip ~= Fl.g  then Fl.g.Text  = tostring(g) end
-        if skip ~= Fl.b  then Fl.b.Text  = tostring(b) end
-        if skip ~= Fl.a  then Fl.a.Text  = tostring(math.floor((1 - c.a) * 100 + 0.5)) end
-        if skip ~= Fl.hh then Fl.hh.Text = tostring(math.floor(c.h * 360 + 0.5)) end
-        if skip ~= Fl.ss then Fl.ss.Text = tostring(math.floor(c.s * 100 + 0.5)) end
-        if skip ~= Fl.vv then Fl.vv.Text = tostring(math.floor(c.v * 100 + 0.5)) end
-
         if c.set then c.set(col) end
     end
 
@@ -2875,67 +2583,29 @@ function Util._cpBuild(host)
         c.svDrag, c.hueDrag, c.aDrag = false, false, false
         if c.awayConn then c.awayConn:Disconnect(); c.awayConn = nil end
         if c.posConn then c.posConn:Disconnect(); c.posConn = nil end
-        c.pushRecent(Color3.fromHSV(c.h, c.s, c.v))
         local oc = c.onClose
         c.owner, c.onClose, c.set, c.setA = nil, nil, nil, nil
-        Util.Tween(c.frame, 0.14, { Size = UDim2.fromOffset(0, 0) }, Enum.EasingStyle.Quint)
-        task.delay(0.16, function()
+        Util.Tween(c.frame, 0.12, { Size = UDim2.fromOffset(0, 0) }, Enum.EasingStyle.Quint)
+        task.delay(0.14, function()
             if not c.owner and c.frame then c.frame.Visible = false end
         end)
         if oc then task.spawn(oc) end
     end
 
     c.closeBtn.MouseButton1Click:Connect(function() c.close() end)
-    c.doneBtn.MouseButton1Click:Connect(function() c.close() end)
-    c.oldSw.MouseButton1Click:Connect(function()
-        if not c.orig then return end
-        c.setHSVFromColor(c.orig)
-        if c.useAlpha then
-            c.a = c.origA
-            if c.setA then c.setA(c.a) end
+
+    c.hex.FocusLost:Connect(function()
+        local str = tostring(c.hex.Text):gsub("%s", ""):gsub("^#", "")
+        if #str == 3 then
+            str = str:sub(1,1):rep(2) .. str:sub(2,2):rep(2) .. str:sub(3,3):rep(2)
+        end
+        if str:match("^%x%x%x%x%x%x$") then
+            local nh, ns, nv = Color3.toHSV(Color3.fromRGB(
+                tonumber(str:sub(1,2), 16), tonumber(str:sub(3,4), 16), tonumber(str:sub(5,6), 16)))
+            if ns > 0.0001 then c.h = nh end
+            c.s, c.v = ns, nv
         end
         c.commit()
-    end)
-
-    F.hex.FocusLost:Connect(function()
-        local col, al = parseHex(F.hex.Text)
-        if col then
-            c.setHSVFromColor(col)
-            if al and c.useAlpha then c.a = al; if c.setA then c.setA(c.a) end end
-        end
-        c.commit()
-    end)
-
-    local function rgbLost(box)
-        return function()
-            local col = Color3.fromRGB(
-                math.clamp(tonumber(F.r.Text) or 0, 0, 255),
-                math.clamp(tonumber(F.g.Text) or 0, 0, 255),
-                math.clamp(tonumber(F.b.Text) or 0, 0, 255))
-            c.setHSVFromColor(col)
-            c.commit(box)
-        end
-    end
-    F.r.FocusLost:Connect(rgbLost(F.r))
-    F.g.FocusLost:Connect(rgbLost(F.g))
-    F.b.FocusLost:Connect(rgbLost(F.b))
-
-    F.hh.FocusLost:Connect(function()
-        c.h = math.clamp(tonumber(F.hh.Text) or 0, 0, 360) / 360
-        c.commit(F.hh)
-    end)
-    F.ss.FocusLost:Connect(function()
-        c.s = math.clamp(tonumber(F.ss.Text) or 0, 0, 100) / 100
-        c.commit(F.ss)
-    end)
-    F.vv.FocusLost:Connect(function()
-        c.v = math.clamp(tonumber(F.vv.Text) or 0, 0, 100) / 100
-        c.commit(F.vv)
-    end)
-    F.a.FocusLost:Connect(function()
-        c.a = 1 - (math.clamp(tonumber(F.a.Text) or 100, 0, 100) / 100)
-        if c.setA then c.setA(c.a) end
-        c.commit(F.a)
     end)
 
     local function applySV(px, py)
@@ -2944,47 +2614,32 @@ function Util._cpBuild(host)
         c.commit()
     end
     local function applyHue(py)
-        c.h = math.clamp((py - c.hSlider.AbsolutePosition.Y) / math.max(c.hSlider.AbsoluteSize.Y, 1), 0, 1)
+        c.h = math.clamp((py - c.hue.AbsolutePosition.Y) / math.max(c.hue.AbsoluteSize.Y, 1), 0, 1)
         c.commit()
     end
-    local function applyAlpha(py)
-        c.a = math.clamp((py - c.aSlider.AbsolutePosition.Y) / math.max(c.aSlider.AbsoluteSize.Y, 1), 0, 1)
+    local function applyAlpha(px)
+        c.a = math.clamp((px - c.alphaBg.AbsolutePosition.X) / math.max(c.alphaBg.AbsoluteSize.X, 1), 0, 1)
+        c.alphaKnob.Position = UDim2.new(c.a, 0, 0.5, 0)
         if c.setA then c.setA(c.a) end
-        c.commit()
     end
 
-    local function grip(hit, knob, big, small, onDown)
-        hit.InputBegan:Connect(function(i)
-            if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-                Util.TweenFast(knob, { Size = big })
-                onDown(i)
-            end
-        end)
-        hit.MouseEnter:Connect(function()
-            if not (c.svDrag or c.hueDrag or c.aDrag) then Util.TweenFast(knob, { Size = big }) end
-        end)
-        hit.MouseLeave:Connect(function()
-            if not (c.svDrag or c.hueDrag or c.aDrag) then Util.TweenFast(knob, { Size = small }) end
-        end)
-    end
-
-    grip(c.svHit, c.svPoint, UDim2.fromOffset(13, 13), UDim2.fromOffset(9, 9), function(i)
-        c.svDrag = true
-        applySV(i.Position.X, i.Position.Y)
+    c.svHit.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            c.svDrag = true
+            applySV(i.Position.X, i.Position.Y)
+        end
     end)
-    grip(c.hHit, c.hKnob, UDim2.new(1, 8, 0, 7), UDim2.new(1, 6, 0, 5), function(i)
-        c.hueDrag = true
-        applyHue(i.Position.Y)
+    c.hueHit.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            c.hueDrag = true
+            applyHue(i.Position.Y)
+        end
     end)
-    grip(c.aHit, c.aKnob, UDim2.new(1, 8, 0, 7), UDim2.new(1, 6, 0, 5), function(i)
-        c.aDrag = true
-        applyAlpha(i.Position.Y)
-    end)
-
-    Hyperion:OnThemeChanged(function()
-        if not (c.frame and c.frame.Parent) then return end
-        c.sync()
-        if c.frame.Visible then c.renderSwatches() end
+    c.alphaHit.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            c.aDrag = true
+            applyAlpha(i.Position.X)
+        end
     end)
 
     if c.uisChanged then c.uisChanged:Disconnect() end
@@ -2995,14 +2650,16 @@ function Util._cpBuild(host)
         if i.UserInputType ~= Enum.UserInputType.MouseMovement and i.UserInputType ~= Enum.UserInputType.Touch then return end
         if c.svDrag then applySV(i.Position.X, i.Position.Y)
         elseif c.hueDrag then applyHue(i.Position.Y)
-        elseif c.aDrag then applyAlpha(i.Position.Y) end
+        elseif c.aDrag then applyAlpha(i.Position.X) end
     end)
     c.uisEnded = UserInputService.InputEnded:Connect(function(i)
-        if i.UserInputType ~= Enum.UserInputType.MouseButton1 and i.UserInputType ~= Enum.UserInputType.Touch then return end
-        if c.svDrag then Util.TweenFast(c.svPoint, { Size = UDim2.fromOffset(9, 9) }) end
-        if c.hueDrag then Util.TweenFast(c.hKnob, { Size = UDim2.new(1, 6, 0, 5) }) end
-        if c.aDrag then Util.TweenFast(c.aKnob, { Size = UDim2.new(1, 6, 0, 5) }) end
-        c.svDrag, c.hueDrag, c.aDrag = false, false, false
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            c.svDrag, c.hueDrag, c.aDrag = false, false, false
+        end
+    end)
+
+    Hyperion:OnThemeChanged(function()
+        if c.frame and c.frame.Parent then c.sync() end
     end)
 end
 
@@ -3024,25 +2681,22 @@ function Util.AttachColorSwatch(swatch, getColor, setColor, opts)
         c.useAlpha = opts.Alpha and true or false
         c.title.Text = opts.Title or "Colour"
         c.a = (opts.GetAlpha and opts.GetAlpha()) or 0
-        c.origA = c.a
-        c.orig = getColor() or Color3.new(1, 1, 1)
-        c.setHSVFromColor(c.orig)
-        c.oldSw.BackgroundColor3 = c.orig
-        c.oldSw.BackgroundTransparency = c.useAlpha and c.a or 0
-        local olum = 0.299 * c.orig.R + 0.587 * c.orig.G + 0.114 * c.orig.B
-        c.oldTag.TextColor3 = (olum > 0.55) and Color3.fromRGB(26, 26, 30) or Color3.new(1, 1, 1)
+
+        local nh, ns, nv = Color3.toHSV(getColor() or Color3.new(1, 1, 1))
+        if ns > 0.0001 then c.h = nh end
+        c.s, c.v = ns, nv
+
         c.sync()
         c.layout(c.useAlpha)
-        c.showPage(c.page or "Color")
-        c.renderSwatches()
 
+        local hgt = c.frame.Size.Y.Offset
         local ap, asz = swatch.AbsolutePosition, swatch.AbsoluteSize
         local hp = host.AbsolutePosition
         local vp = (workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize) or Vector2.new(1920, 1080)
-        local x = math.clamp(ap.X + asz.X - 300, 4, math.max(4, vp.X - 304))
+        local x = math.clamp(ap.X + asz.X - 240, 4, math.max(4, vp.X - 244))
         local y = ap.Y + asz.Y + 6
-        if y + 268 > vp.Y - 4 then y = ap.Y - 268 - 6 end
-        y = math.clamp(y, 4, math.max(4, vp.Y - 272))
+        if y + hgt > vp.Y - 4 then y = ap.Y - hgt - 6 end
+        y = math.clamp(y, 4, math.max(4, vp.Y - hgt - 4))
 
         c.frame.Position = UDim2.fromOffset(x - hp.X, y - hp.Y)
         c.frame.Size = UDim2.fromOffset(0, 0)
@@ -3050,7 +2704,7 @@ function Util.AttachColorSwatch(swatch, getColor, setColor, opts)
         c.frame.Visible = true
         c.commit()
         if opts.OnOpen then task.spawn(opts.OnOpen) end
-        Util.Tween(c.frame, 0.18, { Size = UDim2.fromOffset(300, 268) }, Enum.EasingStyle.Quint)
+        Util.Tween(c.frame, 0.16, { Size = UDim2.fromOffset(240, hgt) }, Enum.EasingStyle.Quint)
 
         c.posConn = swatch:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
             if os.clock() - c.openedAt < 0.25 then return end
@@ -3064,8 +2718,8 @@ function Util.AttachColorSwatch(swatch, getColor, setColor, opts)
             local fp, fs = c.frame.AbsolutePosition, c.frame.AbsoluteSize
             if p.X >= fp.X and p.X <= fp.X + fs.X and p.Y >= fp.Y and p.Y <= fp.Y + fs.Y then return end
             if c.owner then
-                local op, os = c.owner.AbsolutePosition, c.owner.AbsoluteSize
-                if p.X >= op.X and p.X <= op.X + os.X and p.Y >= op.Y and p.Y <= op.Y + os.Y then return end
+                local op, os2 = c.owner.AbsolutePosition, c.owner.AbsoluteSize
+                if p.X >= op.X and p.X <= op.X + os2.X and p.Y >= op.Y and p.Y <= op.Y + os2.Y then return end
             end
             c.close()
         end)
