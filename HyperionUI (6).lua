@@ -3328,7 +3328,7 @@ function Hyperion:CreateWindow(config)
     local windowConfig = {
         Title    = config.Title or "Hyperion",
         Logo     = config.Logo or "rbxassetid://134963728913547",
-        Size     = config.Size or UDim2.new(0, 880, 0, 600),
+        Size     = config.Size or UDim2.new(0, 980, 0, 620),
         Keybind  = config.Keybind or Enum.KeyCode.RightControl,
         Theme    = config.Theme or {},
         -- Key system
@@ -4029,8 +4029,8 @@ function Hyperion:CreateWindow(config)
     -- ============================================================
     -- HEADER (48px)
     -- ============================================================
-    local HeaderHeight = 64
-    local SidebarWidth = 200
+    local HeaderHeight = 72
+    local SidebarWidth = 180
     local Header = Util.Create("Frame", {
         Name = "Header",
         BackgroundColor3 = Theme.Surface,
@@ -4108,7 +4108,7 @@ function Hyperion:CreateWindow(config)
     local LogoImage = Util.Create("ImageLabel", {
         Name = "Logo",
         BackgroundTransparency = 1,
-        Size = UDim2.new(0, 40, 0, 40),
+        Size = UDim2.new(0, 44, 0, 44),
         Position = UDim2.new(0, 0, 0.5, 0),
         AnchorPoint = Vector2.new(0, 0.5),
         Image = "",
@@ -4153,12 +4153,12 @@ function Hyperion:CreateWindow(config)
     local TitleLabel = Util.Create("TextLabel", {
         Name = "Title",
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -(hasLogo and 48 or 0), 1, 0),
-        Position = UDim2.new(0, hasLogo and 48 or 0, 0, 0),
+        Size = UDim2.new(1, -(hasLogo and 52 or 0), 1, 0),
+        Position = UDim2.new(0, hasLogo and 52 or 0, 0, 0),
         Text = windowConfig.Title,
         TextColor3 = Color3.new(1, 1, 1),
         FontFace = Theme.FontBold,
-        TextSize = 22,
+        TextSize = 21,
         TextTruncate = Enum.TextTruncate.AtEnd,
         TextXAlignment = Enum.TextXAlignment.Left,
         TextYAlignment = Enum.TextYAlignment.Center,
@@ -7287,8 +7287,8 @@ function Hyperion:CreateWindow(config)
     local ContentArea = Util.Create("Frame", {
         Name = "Content",
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -(SidebarWidth + 24), 1, -(HeaderHeight + 6)),
-        Position = UDim2.new(0, SidebarWidth + 14, 0, HeaderHeight + 6),
+        Size = UDim2.new(1, -(SidebarWidth + 20), 1, -HeaderHeight),
+        Position = UDim2.new(0, SidebarWidth + 10, 0, HeaderHeight),
         ClipsDescendants = false,
         ZIndex = 2,
         Parent = MainFrame
@@ -8055,7 +8055,7 @@ function Hyperion:CreateWindow(config)
             Name = "GroupBar",
             BackgroundColor3 = Theme.Surface,
             Position = UDim2.new(0, 0, 0, 0),
-            Size = UDim2.new(1, 0, 0, 40),
+            Size = UDim2.new(1, 4, 0, 40),
             Visible = false,
             ZIndex = 3,
             Parent = TabPage
