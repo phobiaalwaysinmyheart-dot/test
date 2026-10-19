@@ -3373,7 +3373,7 @@ function Hyperion:CreateWindow(config)
     local windowConfig = {
         Title    = config.Title or "Hyperion",
         Logo     = config.Logo or "rbxassetid://134963728913547",
-        Size     = config.Size or UDim2.new(0, 930, 0, 555),
+        Size     = config.Size or UDim2.new(0, 880, 0, 555),
         Keybind  = config.Keybind or Enum.KeyCode.RightControl,
         Theme    = config.Theme or {},
         -- Key system
@@ -4131,8 +4131,8 @@ function Hyperion:CreateWindow(config)
     local LogoImage = Util.Create("ImageLabel", {
         Name = "Logo",
         BackgroundTransparency = 1,
-        Size = UDim2.new(0, 62, 0, 62),
-        Position = UDim2.new(0, 0, 0.5, 0),
+        Size = UDim2.new(0, 80, 0, 80),
+        Position = UDim2.new(0, 0, 0.5, 4),
         AnchorPoint = Vector2.new(0, 0.5),
         Image = "",
         ImageColor3 = Theme.Accent,
@@ -4176,8 +4176,8 @@ function Hyperion:CreateWindow(config)
     local TitleLabel = Util.Create("TextLabel", {
         Name = "Title",
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -(hasLogo and 68 or 0), 1, 0),
-        Position = UDim2.new(0, hasLogo and 64 or 0, 0, 0),
+        Size = UDim2.new(1, -(hasLogo and 78 or 0), 1, 0),
+        Position = UDim2.new(0, hasLogo and 74 or 0, 0, 0),
         Text = windowConfig.Title,
         TextColor3 = Color3.new(1, 1, 1),
         FontFace = Theme.FontBold,
@@ -7626,8 +7626,8 @@ function Hyperion:CreateWindow(config)
 
         LogoImage.Image = assetId
         LogoImage.Visible = true
-        TitleLabel.Position = UDim2.new(0, 64, 0, 0)
-        TitleLabel.Size = UDim2.new(1, -68, 1, 0)
+        TitleLabel.Position = UDim2.new(0, 74, 0, 0)
+        TitleLabel.Size = UDim2.new(1, -78, 1, 0)
         SubtitleLabel.Position = UDim2.new(0, 46, 0, 0)
         SubtitleLabel.Size = UDim2.new(0, 1, 0, 1)
     end
@@ -8583,6 +8583,7 @@ function Hyperion:CreateWindow(config)
                 })
                 _regSearch(name, Frame, "Toggle", cfg)
                 Util.AddCorner(Frame, Theme.CornerSmall)
+                Themed(Frame, { BackgroundColor3 = function(t) return t.SurfaceLight end })
 
                 local ToggleLabel = Util.Create("TextLabel", {
                     Name = "Label",
@@ -8942,7 +8943,7 @@ function Hyperion:CreateWindow(config)
                 local KnobObj = Util.Create("Frame", {
                     Name = "Knob",
                     BackgroundColor3 = Color3.new(1, 1, 1),
-                    Size = UDim2.new(0, 11, 0, 11),
+                    Size = UDim2.new(0, 9, 0, 9),
                     Position = UDim2.new(ratio, 0, 0.5, 0),
                     AnchorPoint = Vector2.new(0.5, 0.5),
                     ZIndex = 5,
@@ -9046,26 +9047,53 @@ function Hyperion:CreateWindow(config)
                 Hitbox.MouseEnter:Connect(function() overHit = true; _glow() end)
                 Hitbox.MouseLeave:Connect(function() overHit = false; _glow() end)
 
+                local shown, target = ratio, ratio
+                local glideConn
+                local function _paint(r)
+                    Fill.Size = UDim2.new(r, 0, 1, 0)
+                    KnobObj.Position = UDim2.new(r, 0, 0.5, 0)
+                end
+                local function _glide(r)
+                    target = r
+                    if glideConn then return end
+                    glideConn = RunService.RenderStepped:Connect(function(dt)
+                        shown = shown + (target - shown) * (1 - math.exp(-20 * dt))
+                        if math.abs(target - shown) < 0.0004 then shown = target end
+                        _paint(shown)
+                        if shown == target then
+                            glideConn:Disconnect()
+                            glideConn = nil
+                        end
+                    end)
+                end
+                local function _jump(r)
+                    target, shown = r, r
+                    if glideConn then glideConn:Disconnect(); glideConn = nil end
+                    _paint(r)
+                end
+                local function _ratioOf(v) return (v - min) / math.max(max - min, 0.001) end
+
                 local function UpdateSlider(input)
                     local pos = math.clamp(
                         (input.Position.X - Track.AbsolutePosition.X) / math.max(Track.AbsoluteSize.X, 1),
                         0, 1
                     )
                     local rawVal = min + (max - min) * pos
-                    value = math.clamp(math.floor(rawVal / round + 0.5) * round, min, max)
-                    if flag then Hyperion.Flags[flag] = value end
-                    _setVal()
-                    local r = (value - min) / math.max(max - min, 0.001)
-                    Fill.Size = UDim2.new(r, 0, 1, 0)
-                    KnobObj.Position = UDim2.new(r, 0, 0.5, 0)
-                    task.spawn(callback, value)
+                    local nv = math.clamp(math.floor(rawVal / round + 0.5) * round, min, max)
+                    _glide(pos)
+                    if nv ~= value then
+                        value = nv
+                        if flag then Hyperion.Flags[flag] = value end
+                        _setVal()
+                        task.spawn(callback, value)
+                    end
                 end
 
                 Hitbox.InputBegan:Connect(function(input)
                     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                         dragging = true
                         Util.TweenFast(KnobGlow, {Thickness = 3})
-                        Util.TweenFast(KnobObj, {Size = UDim2.new(0, 13, 0, 13)})
+                        Util.TweenFast(KnobObj, {Size = UDim2.new(0, 11, 0, 11)})
                         _glow()
                         UpdateSlider(input)
                     end
@@ -9074,7 +9102,8 @@ function Hyperion:CreateWindow(config)
                     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
                         dragging = false
                         Util.TweenFast(KnobGlow, {Thickness = 0})
-                        Util.TweenFast(KnobObj, {Size = UDim2.new(0, 11, 0, 11)})
+                        Util.TweenFast(KnobObj, {Size = UDim2.new(0, 9, 0, 9)})
+                        _glide(_ratioOf(value))
                         _glow()
                     end
                 end)
@@ -9089,15 +9118,13 @@ function Hyperion:CreateWindow(config)
                         value = math.clamp(v, min, max)
                         Hyperion.Flags[flag] = value
                         _setVal()
-                        local r = (value - min) / math.max(max - min, 0.001)
-                        Fill.Size = UDim2.new(r, 0, 1, 0)
-                        KnobObj.Position = UDim2.new(r, 0, 0.5, 0)
+                        _jump(_ratioOf(value))
                         task.spawn(callback, value)
                     end
                 end
 
                 local API = {}
-                function API:Set(v) value = math.clamp(v, min, max); if flag then Hyperion.Flags[flag] = value end; _setVal(); local r = (value - min) / math.max(max - min, 0.001); Fill.Size = UDim2.new(r, 0, 1, 0); KnobObj.Position = UDim2.new(r, 0, 0.5, 0); task.spawn(callback, value) end
+                function API:Set(v) value = math.clamp(v, min, max); if flag then Hyperion.Flags[flag] = value end; _setVal(); _jump(_ratioOf(value)); task.spawn(callback, value) end
                 function API:Get() return value end
                 API.Kind = "slider"; API.Min = min; API.Max = max
                 if flag then Hyperion.FlagAPIs[flag] = API end
