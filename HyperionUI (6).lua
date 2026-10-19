@@ -2460,9 +2460,9 @@ function Util.AccentBarGradient(bar, theme)
         Color = seq(theme),
         Rotation = 90,
         Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0.6),
+            NumberSequenceKeypoint.new(0, 0.25),
             NumberSequenceKeypoint.new(0.5, 0),
-            NumberSequenceKeypoint.new(1, 0.6),
+            NumberSequenceKeypoint.new(1, 0.25),
         }),
         Parent = bar,
     })
@@ -4161,7 +4161,7 @@ function Hyperion:CreateWindow(config)
     -- ============================================================
     -- HEADER (48px)
     -- ============================================================
-    local HeaderHeight = 40
+    local HeaderHeight = 36
     local SidebarWidth = 176
     local Header = Util.Create("Frame", {
         Name = "Header",
@@ -4243,7 +4243,7 @@ function Hyperion:CreateWindow(config)
     local LogoImage = Util.Create("ImageLabel", {
         Name = "Logo",
         BackgroundTransparency = 1,
-        Size = UDim2.new(0, 66, 0, 66),
+        Size = UDim2.new(0, 58, 0, 58),
         Position = UDim2.new(0, 0, 0.5, 3),
         AnchorPoint = Vector2.new(0, 0.5),
         Image = "",
@@ -4307,8 +4307,8 @@ function Hyperion:CreateWindow(config)
     local TitleLabel = Util.Create("TextLabel", {
         Name = "Title",
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -(hasLogo and 68 or 0), 1, 0),
-        Position = UDim2.new(0, hasLogo and 64 or 0, 0, 0),
+        Size = UDim2.new(1, -(hasLogo and 60 or 0), 1, 0),
+        Position = UDim2.new(0, hasLogo and 56 or 0, 0, 0),
         Text = windowConfig.Title,
         TextColor3 = Color3.new(1, 1, 1),
         FontFace = Theme.FontBold,
@@ -4320,7 +4320,7 @@ function Hyperion:CreateWindow(config)
         ZIndex = 6,
         Parent = LogoContainer
     })
-    Util.Create("UITextSizeConstraint", { MaxTextSize = 30, MinTextSize = 12, Parent = TitleLabel })
+    Util.Create("UITextSizeConstraint", { MaxTextSize = 26, MinTextSize = 12, Parent = TitleLabel })
     Hyperion._titleLabel = TitleLabel
     if not Hyperion._windowConfigTitle then
         Hyperion._windowConfigTitle = windowConfig.Title
@@ -4363,7 +4363,7 @@ function Hyperion:CreateWindow(config)
         BackgroundTransparency = 0.18,
         AnchorPoint = Vector2.new(1, 0.5),
         Position = UDim2.new(1, -46, 0.5, 0),
-        Size = UDim2.new(0, 200, 0, 32),
+        Size = UDim2.new(0, 200, 0, 30),
         BorderSizePixel = 0,
         ZIndex = 6,
         Parent = Header
@@ -4394,7 +4394,7 @@ function Hyperion:CreateWindow(config)
     local PlayerIcon = Util.Create("ImageLabel", {
         Name = "PlayerIcon",
         BackgroundColor3 = Theme.Surface,
-        Size = UDim2.new(0, 24, 0, 24),
+        Size = UDim2.new(0, 22, 0, 22),
         Position = UDim2.new(0, 4, 0.5, 0),
         AnchorPoint = Vector2.new(0, 0.5),
         Image = thumb,
@@ -4410,12 +4410,12 @@ function Hyperion:CreateWindow(config)
     local UserInfo = Util.Create("TextLabel", {
         Name = "UserInfo",
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 36, 0, 2),
-        Size = UDim2.new(1, -42, 0, 11),
+        Position = UDim2.new(0, 34, 0, 1),
+        Size = UDim2.new(1, -40, 0, 10),
         Text = "User: " .. LocalPlayer.Name,
         TextColor3 = Theme.Text,
         FontFace = Theme.FontSemiBold,
-        TextSize = 11,
+        TextSize = 10,
         TextXAlignment = Enum.TextXAlignment.Left,
         ZIndex = 7,
         Parent = TopRightInfo
@@ -4426,12 +4426,12 @@ function Hyperion:CreateWindow(config)
     local ExecutorInfo = Util.Create("TextLabel", {
         Name = "ExecutorInfo",
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 36, 0, 12),
-        Size = UDim2.new(1, -42, 0, 10),
+        Position = UDim2.new(0, 34, 0, 10),
+        Size = UDim2.new(1, -40, 0, 9),
         Text = "Executor: " .. executorName,
         TextColor3 = Theme.TextDim,
         FontFace = Theme.FontMedium,
-        TextSize = 10,
+        TextSize = 9,
         TextXAlignment = Enum.TextXAlignment.Left,
         ZIndex = 7,
         Parent = TopRightInfo
@@ -4441,12 +4441,12 @@ function Hyperion:CreateWindow(config)
     local ExpiresInfo = Util.Create("TextLabel", {
         Name = "ExpiresInfo",
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 36, 0, 21),
-        Size = UDim2.new(1, -42, 0, 10),
+        Position = UDim2.new(0, 34, 0, 19),
+        Size = UDim2.new(1, -40, 0, 9),
         Text = "Expires: Never",
         TextColor3 = Theme.TextMuted,
         FontFace = Theme.Font,
-        TextSize = 10,
+        TextSize = 9,
         TextXAlignment = Enum.TextXAlignment.Left,
         ZIndex = 7,
         Parent = TopRightInfo
@@ -8208,7 +8208,7 @@ function Hyperion:CreateWindow(config)
         local ActiveBar = Util.Create("Frame", {
             Name = "Bar",
             BackgroundColor3 = Color3.new(1, 1, 1),
-            Size = UDim2.new(0, 3, 0, 0),
+            Size = UDim2.new(0, 2, 0, 0),
             Position = UDim2.new(0, 0, 0.5, 0),
             AnchorPoint = Vector2.new(0, 0.5),
             BorderSizePixel = 0,
@@ -8333,7 +8333,7 @@ function Hyperion:CreateWindow(config)
             BackgroundTransparency = 1,
             AnchorPoint = Vector2.new(0, 0.5),
             Position = UDim2.new(0, 8, 0.5, 0),
-            Size = UDim2.new(1, -294, 0, 32),
+            Size = UDim2.new(1, -294, 0, 30),
             BorderSizePixel = 0,
             ScrollBarThickness = 0,
             ScrollingDirection = Enum.ScrollingDirection.X,
@@ -8372,7 +8372,7 @@ function Hyperion:CreateWindow(config)
                 BorderSizePixel = 0,
                 AnchorPoint = Vector2.new(rightSide and 1 or 0, 0.5),
                 Position = rightSide and UDim2.new(1, -286, 0.5, 0) or UDim2.new(0, 8, 0.5, 0),
-                Size = UDim2.new(0, 44, 0, 32),
+                Size = UDim2.new(0, 44, 0, 30),
                 Visible = false,
                 ZIndex = 8,
                 Parent = Header
@@ -8483,7 +8483,7 @@ function Hyperion:CreateWindow(config)
                     BackgroundColor3 = Theme.SurfaceLight,
                     BackgroundTransparency = 0.12,
                     AutomaticSize = Enum.AutomaticSize.X,
-                    Size = UDim2.new(0, 0, 0, 28),
+                    Size = UDim2.new(0, 0, 0, 26),
                     Text = tostring(groupName),
                     TextColor3 = Theme.Text,
                     FontFace = Theme.FontBold,
@@ -8635,7 +8635,7 @@ function Hyperion:CreateWindow(config)
                 tab.Page.Visible = false
                 Util.TweenFast(tab.Button, {BackgroundColor3 = Theme.Sidebar})
                 Util.TweenFast(tab.Label, {TextColor3 = Theme.TextDim})
-                Util.TweenSmooth(tab.ActiveBar, {Size = UDim2.new(0, 3, 0, 0)})
+                Util.TweenSmooth(tab.ActiveBar, {Size = UDim2.new(0, 2, 0, 0)})
                 if tab.IconLabel then
                     Util.TweenFast(tab.IconLabel, {ImageColor3 = Theme.TextDim})
                 end
@@ -8652,7 +8652,7 @@ function Hyperion:CreateWindow(config)
             end
             Util.TweenFast(TabButton, {BackgroundColor3 = Theme.SidebarActive})
             Util.TweenFast(TabLabel, {TextColor3 = Theme.Text})
-            Util.TweenSmooth(ActiveBar, {Size = UDim2.new(0, 3, 0, 22)})
+            Util.TweenSmooth(ActiveBar, {Size = UDim2.new(0, 2, 1, -4)})
             if IconLabel then
                 Util.TweenFast(IconLabel, {ImageColor3 = Theme.Accent})
             end
@@ -9451,13 +9451,12 @@ function Hyperion:CreateWindow(config)
                         Name = "Accent",
                         BackgroundColor3 = Color3.new(1, 1, 1),
                         BackgroundTransparency = 0.2,
-                        Size = UDim2.new(0, 2, 0.6, 0),
-                        Position = UDim2.new(0, 0, 0.2, 0),
+                        Size = UDim2.new(0, 1, 1, -4),
+                        Position = UDim2.new(0, 0, 0, 2),
                         BorderSizePixel = 0,
                         ZIndex = 3,
                         Parent = Btn
                     })
-                    Util.AddCorner(BtnAccent, UDim.new(1, 0))
                     Util.AccentBarGradient(BtnAccent, Theme)
                 end
 
@@ -9506,11 +9505,7 @@ function Hyperion:CreateWindow(config)
                     else
                         Util.TweenFast(Btn, {BackgroundColor3 = pressed and t.SurfaceActive or (hovered and t.SurfaceHover or t.SurfaceLight)})
                         Util.TweenFast(_btnStroke, {Color = hovered and t.Accent or t.Border, Transparency = hovered and 0.2 or 0.45})
-                        Util.TweenFast(BtnAccent, {
-                            BackgroundTransparency = hovered and 0 or 0.2,
-                            Size = UDim2.new(0, 2, hovered and 0.8 or 0.6, 0),
-                            Position = UDim2.new(0, 0, hovered and 0.1 or 0.2, 0),
-                        })
+                        Util.TweenFast(BtnAccent, {BackgroundTransparency = hovered and 0 or 0.2})
                         if BtnIcon then Util.TweenFast(BtnIcon, {ImageColor3 = hovered and t.Accent or t.TextDim}) end
                     end
                 end
