@@ -4352,18 +4352,20 @@ function Hyperion:CreateWindow(config)
                 WindowObj._isFullscreen = true
                 local fullSize = UDim2.new(0, math.floor(vpSize.X - 20), 0, math.floor(vpSize.Y - 20))
                 WindowObj.CurrentSize = fullSize
-                Util.Tween(MainFrame, 0.3, {
-                    Size = fullSize,
-                    Position = UDim2.new(0.5, 0, 0.5, 0),
-                }, Enum.EasingStyle.Quint)
+                WindowObj:_Reflow(function()
+                    MainFrame.Size = fullSize
+                    MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+                end)
                 Util.TweenFast(FsIcon, { Size = UDim2.new(0, 7, 0, 7) })
             else
                 WindowObj._isFullscreen = false
                 WindowObj.CurrentSize = WindowObj._preFullscreenSize or windowConfig.Size
-                Util.Tween(MainFrame, 0.3, {
-                    Size = WindowObj.CurrentSize,
-                    Position = WindowObj._preFullscreenPos or UDim2.new(0.5, 0, 0.5, 0),
-                }, Enum.EasingStyle.Quint)
+                local restoreSize = WindowObj.CurrentSize
+                local restorePos = WindowObj._preFullscreenPos or UDim2.new(0.5, 0, 0.5, 0)
+                WindowObj:_Reflow(function()
+                    MainFrame.Size = restoreSize
+                    MainFrame.Position = restorePos
+                end)
                 Util.TweenFast(FsIcon, { Size = UDim2.new(0, 10, 0, 10) })
             end
         end)
@@ -7527,6 +7529,29 @@ function Hyperion:CreateWindow(config)
         end
     end
 
+    function WindowObj:_Reflow(apply)
+        self._fadeId = (self._fadeId or 0) + 1
+        local id = self._fadeId
+        Curtain.Visible = true
+        local applied = false
+        local function finish()
+            if not applied then
+                applied = true
+                apply()
+            end
+            if self._fadeId ~= id then return end
+            RunService.Heartbeat:Wait()
+            if self._fadeId ~= id then return end
+            local back = Util.Tween(Curtain, 0.2, { BackgroundTransparency = 1 }, Enum.EasingStyle.Quad)
+            local function done()
+                if self._fadeId == id then Curtain.Visible = false end
+            end
+            if back then back.Completed:Connect(done) else done() end
+        end
+        local tw = Util.Tween(Curtain, 0.1, { BackgroundTransparency = 0 }, Enum.EasingStyle.Quad)
+        if tw then tw.Completed:Connect(finish) else finish() end
+    end
+
     task.defer(function() WindowObj:_Fade(true, 0.45) end)
 
     -- ============================================================
@@ -8885,6 +8910,47 @@ function Hyperion:CreateWindow(config)
                 })
                 Themed(KnobGlow, { Color = function(t) return t.Accent end })
 
+                local FillGlow = Util.Create("ImageLabel", {
+                    Name = "FillGlow",
+                    BackgroundTransparency = 1,
+                    Image = "rbxassetid://6014261993",
+                    ImageColor3 = Theme.Accent,
+                    ImageTransparency = 0.9,
+                    ScaleType = Enum.ScaleType.Slice,
+                    SliceCenter = Rect.new(49, 49, 450, 450),
+                    SliceScale = 0.25,
+                    AnchorPoint = Vector2.new(0.5, 0.5),
+                    ZIndex = 2,
+                    Parent = Track
+                })
+                Themed(FillGlow, { ImageColor3 = function(t) return t.Accent end })
+
+                local KnobHalo = Util.Create("ImageLabel", {
+                    Name = "KnobHalo",
+                    BackgroundTransparency = 1,
+                    Image = "rbxassetid://6014261993",
+                    ImageColor3 = Color3.new(1, 1, 1),
+                    ImageTransparency = 1,
+                    ScaleType = Enum.ScaleType.Slice,
+                    SliceCenter = Rect.new(49, 49, 450, 450),
+                    SliceScale = 0.25,
+                    AnchorPoint = Vector2.new(0.5, 0.5),
+                    Size = UDim2.new(0, 26, 0, 26),
+                    ZIndex = 4,
+                    Parent = Track
+                })
+
+                local function _syncGlow()
+                    local r = Fill.Size.X.Scale
+                    FillGlow.Size = UDim2.new(r, 24, 1, 24)
+                    FillGlow.Position = UDim2.new(r / 2, 0, 0.5, 0)
+                    FillGlow.Visible = r > 0
+                    KnobHalo.Position = KnobObj.Position
+                end
+                Fill:GetPropertyChangedSignal("Size"):Connect(_syncGlow)
+                KnobObj:GetPropertyChangedSignal("Position"):Connect(_syncGlow)
+                _syncGlow()
+
                 -- Hitbox
                 local Hitbox = Util.Create("TextButton", {
                     Name = "Hit",
@@ -8897,6 +8963,18 @@ function Hyperion:CreateWindow(config)
                 })
 
                 local dragging = false
+                local overFrame, overHit = false, false
+
+                local function _glow()
+                    local on = dragging or overFrame or overHit
+                    Util.Tween(FillGlow, 0.2, {ImageTransparency = on and 0.1 or 0.9})
+                    Util.Tween(KnobHalo, 0.2, {ImageTransparency = on and 0.2 or 1})
+                end
+
+                Frame.MouseEnter:Connect(function() overFrame = true; _glow() end)
+                Frame.MouseLeave:Connect(function() overFrame = false; _glow() end)
+                Hitbox.MouseEnter:Connect(function() overHit = true; _glow() end)
+                Hitbox.MouseLeave:Connect(function() overHit = false; _glow() end)
 
                 local function UpdateSlider(input)
                     local pos = math.clamp(
@@ -8918,6 +8996,7 @@ function Hyperion:CreateWindow(config)
                         dragging = true
                         Util.TweenFast(KnobGlow, {Thickness = 3})
                         Util.TweenFast(KnobObj, {Size = UDim2.new(0, 13, 0, 13)})
+                        _glow()
                         UpdateSlider(input)
                     end
                 end)
@@ -8926,6 +9005,7 @@ function Hyperion:CreateWindow(config)
                         dragging = false
                         Util.TweenFast(KnobGlow, {Thickness = 0})
                         Util.TweenFast(KnobObj, {Size = UDim2.new(0, 11, 0, 11)})
+                        _glow()
                     end
                 end)
 
