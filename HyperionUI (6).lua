@@ -1198,11 +1198,43 @@ Hyperion.Themes = {
     },
 }
 
+function Hyperion._LiftText(t)
+    local function lum(c)
+        local function ch(v) return v <= 0.03928 and v / 12.92 or ((v + 0.055) / 1.055) ^ 2.4 end
+        return 0.2126 * ch(c.R) + 0.7152 * ch(c.G) + 0.0722 * ch(c.B)
+    end
+    local function ratio(a, b)
+        local la, lb = lum(a), lum(b)
+        if la < lb then la, lb = lb, la end
+        return (la + 0.05) / (lb + 0.05)
+    end
+    local beds = {}
+    for _, key in ipairs({ "Background", "Surface", "Sidebar", "InputBg" }) do
+        if typeof(t[key]) == "Color3" then beds[#beds + 1] = t[key] end
+    end
+    local toward = t.Text
+    if typeof(toward) ~= "Color3" or #beds == 0 then return end
+    local function lift(key, target)
+        local fg = t[key]
+        if typeof(fg) ~= "Color3" then return end
+        for _ = 1, 16 do
+            local worst = math.huge
+            for i = 1, #beds do worst = math.min(worst, ratio(fg, beds[i])) end
+            if worst >= target then break end
+            fg = fg:Lerp(toward, 0.08)
+        end
+        t[key] = fg
+    end
+    lift("TextMuted", 4.5)
+    lift("TextDim", 5)
+end
+
 for k, v in pairs(Hyperion.Themes.Hyperion) do
     if k ~= "Logo" and k ~= "GradientStops" and k ~= "GradientMid" and k ~= "Animated" and k ~= "StarColor" and k ~= "ParticleStyle" and k ~= "StarColors" and k ~= "TitleGradient" and k ~= "LogoGradient" and k ~= "BackgroundImage" and k ~= "BackgroundTint" and k ~= "TitleText" then
         Hyperion.Theme[k] = v
     end
 end
+Hyperion._LiftText(Hyperion.Theme)
 
 -- Apply a named theme or a custom table of color overrides.
 function Hyperion:SetTheme(nameOrTable)
@@ -1220,6 +1252,7 @@ function Hyperion:SetTheme(nameOrTable)
             Hyperion.Theme[k] = v
         end
     end
+    Hyperion._LiftText(Hyperion.Theme)
     for _, fn in ipairs(Hyperion.ThemeListeners) do
         pcall(fn, Hyperion.Theme)
     end
@@ -4053,7 +4086,7 @@ function Hyperion:CreateWindow(config)
     -- HEADER (48px)
     -- ============================================================
     local HeaderHeight = 72
-    local SidebarWidth = 176
+    local SidebarWidth = 192
     local Header = Util.Create("Frame", {
         Name = "Header",
         BackgroundColor3 = Theme.Surface,
@@ -4084,38 +4117,41 @@ function Hyperion:CreateWindow(config)
     Themed(Header, { BackgroundColor3 = function(t) return t.Surface end })
     Themed(_headerBottomFix, { BackgroundColor3 = function(t) return t.Surface end })
 
-    -- One accent gradient line under the logo and the header, edge to edge
-    local AccentLine = Util.Create("Frame", {
-        Name = "AccentLine",
-        BackgroundColor3 = Color3.new(1, 1, 1),
-        Size = UDim2.new(1, 0, 0, 1),
-        Position = UDim2.new(0, 0, 0, HeaderHeight - 1),
-        BorderSizePixel = 0,
-        ZIndex = 7,
-        Parent = MainFrame
-    })
-    local _accentGradient = Util.Create("UIGradient", {
-        Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Theme.AccentDark),
-            ColorSequenceKeypoint.new(0.5, Theme.Accent),
-            ColorSequenceKeypoint.new(1, Theme.AccentDark),
-        }),
-        Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 0.7),
-            NumberSequenceKeypoint.new(0.5, 0.3),
-            NumberSequenceKeypoint.new(1, 0.7),
-        }),
-        Parent = AccentLine
-    })
-    Themed(_accentGradient, {
-        Color = function(t)
-            return ColorSequence.new({
-                ColorSequenceKeypoint.new(0, t.AccentDark),
-                ColorSequenceKeypoint.new(0.5, t.Accent),
-                ColorSequenceKeypoint.new(1, t.AccentDark),
-            })
-        end
-    })
+    local function _gradLine(name, parent, pos, size, z)
+        local line = Util.Create("Frame", {
+            Name = name,
+            BackgroundColor3 = Color3.new(1, 1, 1),
+            Size = size,
+            Position = pos,
+            BorderSizePixel = 0,
+            ZIndex = z,
+            Parent = parent
+        })
+        local grad = Util.Create("UIGradient", {
+            Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Theme.AccentDark),
+                ColorSequenceKeypoint.new(0.5, Theme.Accent),
+                ColorSequenceKeypoint.new(1, Theme.AccentDark),
+            }),
+            Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0.7),
+                NumberSequenceKeypoint.new(0.5, 0.3),
+                NumberSequenceKeypoint.new(1, 0.7),
+            }),
+            Parent = line
+        })
+        Themed(grad, {
+            Color = function(t)
+                return ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, t.AccentDark),
+                    ColorSequenceKeypoint.new(0.5, t.Accent),
+                    ColorSequenceKeypoint.new(1, t.AccentDark),
+                })
+            end
+        })
+        return line
+    end
+    local AccentLine = _gradLine("AccentLine", Header, UDim2.new(0, 0, 1, -1), UDim2.new(1, 0, 0, 1), 6)
 
     -- Logo + Title container
     local LogoContainer = Util.Create("Frame", {
@@ -4451,6 +4487,8 @@ function Hyperion:CreateWindow(config)
     LogoContainer.ZIndex = 5
 
 
+
+    _gradLine("TopSep", Sidebar, UDim2.new(0, 10, 0, HeaderHeight - 1), UDim2.new(1, -20, 0, 1), 5)
 
     -- Right border line
     local _sidebarBorder = Util.Create("Frame", {
@@ -5031,6 +5069,7 @@ function Hyperion:CreateWindow(config)
         BackgroundColor3 = Theme.Border,
         BackgroundTransparency = 0.3,
         Size     = UDim2.new(1, 0, 0, 1),
+        BorderSizePixel = 0,
         ZIndex   = 32,
         Parent   = CfgScroll,
     })
@@ -7983,11 +8022,11 @@ function Hyperion:CreateWindow(config)
             local SecCap = Util.Create("TextLabel", {
                 Name = "NavSection_" .. tabSection,
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, -12, 0, 24),
+                Size = UDim2.new(1, -12, 0, 26),
                 Text = string.upper(tabSection),
                 TextColor3 = Theme.TextMuted,
                 FontFace = Theme.FontSemiBold,
-                TextSize = 10,
+                TextSize = 11,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 TextYAlignment = Enum.TextYAlignment.Bottom,
                 LayoutOrder = tabOrder * 2 - 1,
@@ -8007,7 +8046,7 @@ function Hyperion:CreateWindow(config)
             Name = "Tab_" .. tabName,
             BackgroundColor3 = Theme.Sidebar,
             BackgroundTransparency = 0,
-            Size = UDim2.new(1, 0, 0, 34),
+            Size = UDim2.new(1, 0, 0, 38),
             Text = "",
             AutoButtonColor = false,
             LayoutOrder = tabOrder * 2,
@@ -8037,7 +8076,7 @@ function Hyperion:CreateWindow(config)
             IconLabel = Util.Create("ImageLabel", {
                 Name = "Icon",
                 BackgroundTransparency = 1,
-                Size = UDim2.new(0, 18, 0, 18),
+                Size = UDim2.new(0, 20, 0, 20),
                 Position = UDim2.new(0, 12, 0.5, 0),
                 AnchorPoint = Vector2.new(0, 0.5),
                 Image = tabIcon,
@@ -8046,7 +8085,7 @@ function Hyperion:CreateWindow(config)
                 Parent = TabButton
             })
             Themed(IconLabel, { ImageColor3 = function(t) return t.TextDim end })
-            iconOffset = 22
+            iconOffset = 26
         end
 
         local TabLabel = Util.Create("TextLabel", {
@@ -8057,7 +8096,7 @@ function Hyperion:CreateWindow(config)
             Text = tabName,
             TextColor3 = Theme.TextDim,
             FontFace = Theme.FontMedium,
-            TextSize = 13,
+            TextSize = 14,
             TextXAlignment = Enum.TextXAlignment.Left,
             TextTruncate = Enum.TextTruncate.AtEnd,
             ZIndex = 4,
@@ -8085,7 +8124,7 @@ function Hyperion:CreateWindow(config)
         local ScrollThumb = Util.Create("Frame", {
             Name = "ScrollThumb",
             BackgroundColor3 = Theme.Accent,
-            BackgroundTransparency = 0.45,
+            BackgroundTransparency = 1,
             Size = UDim2.new(0, 4, 0, 40),
             Position = UDim2.new(1, -8, 0, 4),
             BorderSizePixel = 0,
@@ -8114,11 +8153,28 @@ function Hyperion:CreateWindow(config)
             ScrollThumb.Position = UDim2.new(1, -8, 0, 4 + math.floor(scrollPct * trackH))
         end
 
-        TabPage:GetPropertyChangedSignal("CanvasPosition"):Connect(UpdateScrollThumb)
+        local thumbToken = 0
+        local function WakeThumb()
+            thumbToken = thumbToken + 1
+            local mine = thumbToken
+            Util.Tween(ScrollThumb, 0.15, {BackgroundTransparency = 0.45})
+            task.delay(1.1, function()
+                if thumbToken == mine then
+                    Util.Tween(ScrollThumb, 0.4, {BackgroundTransparency = 1})
+                end
+            end)
+        end
+
+        TabPage:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+            UpdateScrollThumb()
+            WakeThumb()
+        end)
         TabPage:GetPropertyChangedSignal("AbsoluteCanvasSize"):Connect(UpdateScrollThumb)
+        TabPage.MouseEnter:Connect(WakeThumb)
         TabPage:GetPropertyChangedSignal("Visible"):Connect(function()
             if TabPage.Visible then
                 task.defer(UpdateScrollThumb)
+                task.defer(WakeThumb)
             else
                 ScrollThumb.Visible = false
             end
@@ -8129,6 +8185,7 @@ function Hyperion:CreateWindow(config)
             BackgroundColor3 = Theme.Surface,
             Position = UDim2.new(0, 0, 0, 0),
             Size = UDim2.new(1, 0, 0, 40),
+            BorderSizePixel = 0,
             Visible = false,
             ZIndex = 3,
             Parent = TabPage
