@@ -2391,8 +2391,10 @@ function Util.MakeDraggable(btn, opts)
     opts = opts or {}
     local threshold = opts.Threshold or 6
     local onClick = opts.OnClick
-    local pressed, moved, active, startPos, startAbs = false, false, nil, nil, nil
-    local cur, target, glide
+    local rate = opts.Rate or 28
+    local pressed, moved, active, startPos = false, false, nil, nil
+    local cx, cy, tx, ty, ox, oy, lx, ly, hx, hy = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    local base, glide
 
     local function stopGlide()
         if glide then glide:Disconnect(); glide = nil end
@@ -2400,13 +2402,14 @@ function Util.MakeDraggable(btn, opts)
     local function startGlide()
         if glide then return end
         glide = RunService.RenderStepped:Connect(function(dt)
-            if not target then stopGlide(); return end
-            cur = cur + (target - cur) * (1 - math.exp(-16 * dt))
-            if not pressed and (target - cur).Magnitude < 0.5 then
-                cur = target
+            local a = 1 - math.exp(-rate * dt)
+            cx = cx + (tx - cx) * a
+            cy = cy + (ty - cy) * a
+            if not pressed and math.abs(tx - cx) < 0.5 and math.abs(ty - cy) < 0.5 then
+                cx, cy = tx, ty
                 stopGlide()
             end
-            btn.Position = UDim2.fromOffset(cur.X, cur.Y)
+            btn.Position = UDim2.new(base.X.Scale, cx, base.Y.Scale, cy)
         end)
     end
 
@@ -2414,7 +2417,6 @@ function Util.MakeDraggable(btn, opts)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             pressed, moved, active = true, false, input
             startPos = input.Position
-            startAbs = btn.AbsolutePosition
         end
     end)
     Util.Connect(UserInputService.InputChanged, function(input)
@@ -2422,19 +2424,23 @@ function Util.MakeDraggable(btn, opts)
         local kind = input.UserInputType
         if not (kind == Enum.UserInputType.MouseMovement or (kind == Enum.UserInputType.Touch and input == active)) then return end
         local d = input.Position - startPos
-        if not moved and d.Magnitude < threshold then return end
         if not moved then
+            if d.Magnitude < threshold then return end
             moved = true
-            if btn.AnchorPoint.X ~= 0 or btn.AnchorPoint.Y ~= 0 then btn.AnchorPoint = Vector2.new(0, 0) end
-            cur = btn.AbsolutePosition
+            base = btn.Position
+            ox, oy = base.X.Offset, base.Y.Offset
+            cx, cy = ox, oy
+            local abs, size = btn.AbsolutePosition, btn.AbsoluteSize
+            local gui = btn:FindFirstAncestorWhichIsA("LayerCollector")
+            local cam = workspace.CurrentCamera
+            local origin = gui and gui.AbsolutePosition or Vector2.new(0, 0)
+            local extent = gui and gui.AbsoluteSize or (cam and cam.ViewportSize or Vector2.new(1920, 1080))
+            lx, ly = origin.X - abs.X, origin.Y - abs.Y
+            hx = math.max(lx, origin.X + extent.X - size.X - abs.X)
+            hy = math.max(ly, origin.Y + extent.Y - size.Y - abs.Y)
         end
-        local cam = workspace.CurrentCamera
-        local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
-        local size = btn.AbsoluteSize
-        target = Vector2.new(
-            math.clamp(startAbs.X + d.X, 0, math.max(0, vp.X - size.X)),
-            math.clamp(startAbs.Y + d.Y, 0, math.max(0, vp.Y - size.Y))
-        )
+        tx = ox + math.clamp(d.X, lx, hx)
+        ty = oy + math.clamp(d.Y, ly, hy)
         startGlide()
     end)
     Util.Connect(UserInputService.InputEnded, function(input)
@@ -8333,7 +8339,7 @@ function Hyperion:CreateWindow(config)
             BackgroundTransparency = 1,
             AnchorPoint = Vector2.new(0, 0.5),
             Position = UDim2.new(0, 8, 0.5, 0),
-            Size = UDim2.new(1, -294, 0, 30),
+            Size = UDim2.new(1, -294, 0, 32),
             BorderSizePixel = 0,
             ScrollBarThickness = 0,
             ScrollingDirection = Enum.ScrollingDirection.X,
@@ -8372,7 +8378,7 @@ function Hyperion:CreateWindow(config)
                 BorderSizePixel = 0,
                 AnchorPoint = Vector2.new(rightSide and 1 or 0, 0.5),
                 Position = rightSide and UDim2.new(1, -286, 0.5, 0) or UDim2.new(0, 8, 0.5, 0),
-                Size = UDim2.new(0, 44, 0, 30),
+                Size = UDim2.new(0, 44, 0, 32),
                 Visible = false,
                 ZIndex = 8,
                 Parent = Header
@@ -8483,7 +8489,7 @@ function Hyperion:CreateWindow(config)
                     BackgroundColor3 = Theme.SurfaceLight,
                     BackgroundTransparency = 0.12,
                     AutomaticSize = Enum.AutomaticSize.X,
-                    Size = UDim2.new(0, 0, 0, 26),
+                    Size = UDim2.new(0, 0, 0, 28),
                     Text = tostring(groupName),
                     TextColor3 = Theme.Text,
                     FontFace = Theme.FontBold,
@@ -9451,7 +9457,7 @@ function Hyperion:CreateWindow(config)
                         Name = "Accent",
                         BackgroundColor3 = Color3.new(1, 1, 1),
                         BackgroundTransparency = 0.2,
-                        Size = UDim2.new(0, 1, 1, -4),
+                        Size = UDim2.new(0, 2, 1, -4),
                         Position = UDim2.new(0, 0, 0, 2),
                         BorderSizePixel = 0,
                         ZIndex = 3,
