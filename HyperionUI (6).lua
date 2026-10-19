@@ -4007,7 +4007,7 @@ function Hyperion:CreateWindow(config)
     -- HEADER (48px)
     -- ============================================================
     local HeaderHeight = 56
-    local SidebarWidth = 160
+    local SidebarWidth = 176
     local Header = Util.Create("Frame", {
         Name = "Header",
         BackgroundColor3 = Theme.Surface,
@@ -4130,7 +4130,7 @@ function Hyperion:CreateWindow(config)
     local TitleLabel = Util.Create("TextLabel", {
         Name = "Title",
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -(hasLogo and 62 or 0), 1, 0),
+        Size = hasLogo and UDim2.new(0, 78, 1, 0) or UDim2.new(1, 0, 1, 0),
         Position = UDim2.new(0, hasLogo and 62 or 0, 0, 0),
         Text = windowConfig.Title,
         TextColor3 = Color3.new(1, 1, 1),
@@ -8928,23 +8928,33 @@ function Hyperion:CreateWindow(config)
                     Parent = Track
                 })
 
-                local _glowLayers, _haloLayers = {}, {}
-                for i, pad in ipairs({ 2, 4, 6 }) do
-                    local layer = Util.Create("Frame", {
-                        BackgroundColor3 = Theme.Accent,
-                        BackgroundTransparency = 1,
-                        BorderSizePixel = 0,
-                        AnchorPoint = Vector2.new(0.5, 0.5),
-                        Position = UDim2.new(0.5, 0, 0.5, 0),
-                        Size = UDim2.new(1, pad * 2, 1, pad * 2),
-                        ZIndex = 2,
-                        Parent = GlowHolder
+                local function _glowSeq(t)
+                    local white = Color3.new(1, 1, 1)
+                    return ColorSequence.new({
+                        ColorSequenceKeypoint.new(0, t.AccentDark:Lerp(white, 0.45)),
+                        ColorSequenceKeypoint.new(0.5, t.Accent:Lerp(white, 0.45)),
+                        ColorSequenceKeypoint.new(1, t.AccentLight:Lerp(white, 0.45)),
                     })
-                    Util.AddCorner(layer, UDim.new(1, 0))
-                    Themed(layer, { BackgroundColor3 = function(t) return t.Accent end })
-                    _glowLayers[i] = layer
                 end
-                for i, d in ipairs({ 17, 23 }) do
+                local BarGlowImg = Util.Create("ImageLabel", {
+                    Name = "Glow",
+                    BackgroundTransparency = 1,
+                    Image = "rbxassetid://1316045217",
+                    ImageColor3 = Color3.new(1, 1, 1),
+                    ImageTransparency = 1,
+                    ScaleType = Enum.ScaleType.Slice,
+                    SliceCenter = Rect.new(10, 10, 118, 118),
+                    SliceScale = 0.7,
+                    AnchorPoint = Vector2.new(0.5, 0.5),
+                    Position = UDim2.new(0.5, 0, 0.5, 0),
+                    Size = UDim2.new(1, 14, 1, 14),
+                    ZIndex = 2,
+                    Parent = GlowHolder
+                })
+                Themed(Util.Create("UIGradient", { Color = _glowSeq(Theme), Parent = BarGlowImg }), { Color = _glowSeq })
+
+                local _haloLayers = {}
+                for i, d in ipairs({ 15, 18, 21, 24, 27 }) do
                     local ring = Util.Create("Frame", {
                         BackgroundColor3 = Color3.new(1, 1, 1),
                         BackgroundTransparency = 1,
@@ -8981,12 +8991,10 @@ function Hyperion:CreateWindow(config)
                 local dragging = false
                 local overFrame, overHit = false, false
 
-                local _fillAlpha, _haloAlpha = { 0.8, 0.88, 0.94 }, { 0.82, 0.93 }
+                local _haloAlpha = { 0.78, 0.84, 0.89, 0.93, 0.97 }
                 local function _glow()
                     local on = dragging or overFrame or overHit
-                    for i = 1, #_glowLayers do
-                        Util.Tween(_glowLayers[i], 0.2, {BackgroundTransparency = on and _fillAlpha[i] or 1})
-                    end
+                    Util.Tween(BarGlowImg, 0.2, {ImageTransparency = on and 0.22 or 1})
                     for i = 1, #_haloLayers do
                         Util.Tween(_haloLayers[i], 0.2, {BackgroundTransparency = on and _haloAlpha[i] or 1})
                     end
