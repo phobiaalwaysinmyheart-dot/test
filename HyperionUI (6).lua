@@ -8680,6 +8680,8 @@ function Hyperion:CreateWindow(config)
                 local callback = cfg.Callback or function() end
                 local flag     = cfg.Flag
                 local value    = default
+                local style    = cfg.Style or Hyperion.ToggleStyle
+                local isBox    = style == "Checkbox" or style == 1
 
                 if flag then
                     Hyperion.Flags[flag] = value
@@ -8716,13 +8718,13 @@ function Hyperion:CreateWindow(config)
                 local Track = Util.Create("Frame", {
                     Name = "Track",
                     BackgroundColor3 = value and Theme.Accent or Theme.ToggleOff,
-                    Size = UDim2.new(0, 34, 0, 18),
+                    Size = isBox and UDim2.new(0, 20, 0, 20) or UDim2.new(0, 34, 0, 18),
                     Position = UDim2.new(1, 0, 0.5, 0),
                     AnchorPoint = Vector2.new(1, 0.5),
                     ZIndex = 3,
                     Parent = Frame
                 })
-                Util.AddCorner(Track, UDim.new(1, 0))
+                Util.AddCorner(Track, isBox and UDim.new(0, 5) or UDim.new(1, 0))
                 Themed(Track, { BackgroundColor3 = function(t) return value and t.Accent or t.ToggleOff end })
 
                 -- Accent gradient across the track while active; disabled when
@@ -8736,23 +8738,40 @@ function Hyperion:CreateWindow(config)
 
                 -- Glow behind track when active
                 local TrackGlow = Util.Create("UIStroke", {
-                    Color = Theme.AccentGlow,
-                    Thickness = value and 1 or 0,
-                    Transparency = 0.6,
+                    Color = (isBox and not value) and Theme.TextMuted or Theme.AccentGlow,
+                    Thickness = (isBox or value) and 1 or 0,
+                    Transparency = isBox and (value and 0.5 or 0.35) or 0.6,
                     Parent = Track
                 })
-                Themed(TrackGlow, { Color = function(t) return t.AccentGlow end })
+                Themed(TrackGlow, { Color = function(t) return (isBox and not value) and t.TextMuted or t.AccentGlow end })
 
-                local Knob = Util.Create("Frame", {
-                    Name = "Knob",
-                    BackgroundColor3 = Color3.new(1, 1, 1),
-                    Size = UDim2.new(0, 12, 0, 12),
-                    Position = value and UDim2.new(1, -3, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
-                    AnchorPoint = value and Vector2.new(1, 0.5) or Vector2.new(0, 0.5),
-                    ZIndex = 4,
-                    Parent = Track
-                })
-                Util.AddCorner(Knob, UDim.new(1, 0))
+                local Knob, Tick
+                if isBox then
+                    Tick = Util.Create("ImageLabel", {
+                        Name = "Tick",
+                        BackgroundTransparency = 1,
+                        Image = "rbxassetid://10709790644",
+                        ImageColor3 = Color3.new(1, 1, 1),
+                        ImageTransparency = value and 0 or 1,
+                        ScaleType = Enum.ScaleType.Fit,
+                        AnchorPoint = Vector2.new(0.5, 0.5),
+                        Position = UDim2.new(0.5, 0, 0.5, 0),
+                        Size = value and UDim2.new(0, 14, 0, 14) or UDim2.new(0, 8, 0, 8),
+                        ZIndex = 4,
+                        Parent = Track
+                    })
+                else
+                    Knob = Util.Create("Frame", {
+                        Name = "Knob",
+                        BackgroundColor3 = Color3.new(1, 1, 1),
+                        Size = UDim2.new(0, 12, 0, 12),
+                        Position = value and UDim2.new(1, -3, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
+                        AnchorPoint = value and Vector2.new(1, 0.5) or Vector2.new(0, 0.5),
+                        ZIndex = 4,
+                        Parent = Track
+                    })
+                    Util.AddCorner(Knob, UDim.new(1, 0))
+                end
 
                 local Hitbox = Util.Create("TextButton", {
                     Name = "Hit",
@@ -8769,7 +8788,7 @@ function Hyperion:CreateWindow(config)
                 -- toggle renders exactly as before. ZIndex 6 keeps them above the
                 -- full-row hitbox so their own clicks land.
                 local _setToggle
-                local accOffset = -48
+                local accOffset = isBox and -34 or -48
                 if type(cfg.Color) == "table" then
                     local ccfg = cfg.Color
                     local ccol = ccfg.Default or Color3.fromRGB(255, 255, 255)
@@ -8860,11 +8879,20 @@ function Hyperion:CreateWindow(config)
                 local function UpdateVisual(state)
                     TrackGrad.Enabled = state
                     Util.TweenSmooth(Track, {BackgroundColor3 = state and Hyperion.Theme.Accent or Hyperion.Theme.ToggleOff})
-                    Util.TweenSmooth(TrackGlow, {Thickness = state and 1 or 0})
-                    Util.TweenSmooth(Knob, {
-                        Position = state and UDim2.new(1, -3, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
-                        AnchorPoint = state and Vector2.new(1, 0.5) or Vector2.new(0, 0.5),
-                    })
+                    if isBox then
+                        Util.TweenSmooth(TrackGlow, {
+                            Color = state and Hyperion.Theme.AccentGlow or Hyperion.Theme.TextMuted,
+                            Transparency = state and 0.5 or 0.35,
+                        })
+                        Util.TweenSmooth(Tick, {ImageTransparency = state and 0 or 1})
+                        Util.TweenPop(Tick, {Size = state and UDim2.new(0, 14, 0, 14) or UDim2.new(0, 8, 0, 8)})
+                    else
+                        Util.TweenSmooth(TrackGlow, {Thickness = state and 1 or 0})
+                        Util.TweenSmooth(Knob, {
+                            Position = state and UDim2.new(1, -3, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
+                            AnchorPoint = state and Vector2.new(1, 0.5) or Vector2.new(0, 0.5),
+                        })
+                    end
                 end
 
                 _setToggle = function(v)
@@ -8895,9 +8923,11 @@ function Hyperion:CreateWindow(config)
                 -- Hover effect on row
                 Hitbox.MouseEnter:Connect(function()
                     Util.TweenFast(Frame, {BackgroundTransparency = 0.5})
+                    if isBox then Util.TweenFast(TrackGlow, {Transparency = 0.05}) end
                 end)
                 Hitbox.MouseLeave:Connect(function()
                     Util.TweenFast(Frame, {BackgroundTransparency = 1})
+                    if isBox then Util.TweenFast(TrackGlow, {Transparency = value and 0.5 or 0.35}) end
                 end)
 
                 local API = {}
