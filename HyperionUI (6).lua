@@ -4167,7 +4167,7 @@ function Hyperion:CreateWindow(config)
     -- ============================================================
     -- HEADER (48px)
     -- ============================================================
-    local HeaderHeight = 36
+    local HeaderHeight = 40
     local SidebarWidth = 176
     local Header = Util.Create("Frame", {
         Name = "Header",
@@ -4369,7 +4369,7 @@ function Hyperion:CreateWindow(config)
         BackgroundTransparency = 0.18,
         AnchorPoint = Vector2.new(1, 0.5),
         Position = UDim2.new(1, -46, 0.5, 0),
-        Size = UDim2.new(0, 200, 0, 30),
+        Size = UDim2.new(0, 200, 0, 32),
         BorderSizePixel = 0,
         ZIndex = 6,
         Parent = Header
@@ -4400,7 +4400,7 @@ function Hyperion:CreateWindow(config)
     local PlayerIcon = Util.Create("ImageLabel", {
         Name = "PlayerIcon",
         BackgroundColor3 = Theme.Surface,
-        Size = UDim2.new(0, 22, 0, 22),
+        Size = UDim2.new(0, 24, 0, 24),
         Position = UDim2.new(0, 4, 0.5, 0),
         AnchorPoint = Vector2.new(0, 0.5),
         Image = thumb,
@@ -4416,12 +4416,12 @@ function Hyperion:CreateWindow(config)
     local UserInfo = Util.Create("TextLabel", {
         Name = "UserInfo",
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 34, 0, 1),
-        Size = UDim2.new(1, -40, 0, 10),
+        Position = UDim2.new(0, 36, 0, 2),
+        Size = UDim2.new(1, -42, 0, 11),
         Text = "User: " .. LocalPlayer.Name,
         TextColor3 = Theme.Text,
         FontFace = Theme.FontSemiBold,
-        TextSize = 10,
+        TextSize = 11,
         TextXAlignment = Enum.TextXAlignment.Left,
         ZIndex = 7,
         Parent = TopRightInfo
@@ -4432,12 +4432,12 @@ function Hyperion:CreateWindow(config)
     local ExecutorInfo = Util.Create("TextLabel", {
         Name = "ExecutorInfo",
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 34, 0, 10),
-        Size = UDim2.new(1, -40, 0, 9),
+        Position = UDim2.new(0, 36, 0, 12),
+        Size = UDim2.new(1, -42, 0, 10),
         Text = "Executor: " .. executorName,
         TextColor3 = Theme.TextDim,
         FontFace = Theme.FontMedium,
-        TextSize = 9,
+        TextSize = 10,
         TextXAlignment = Enum.TextXAlignment.Left,
         ZIndex = 7,
         Parent = TopRightInfo
@@ -4447,12 +4447,12 @@ function Hyperion:CreateWindow(config)
     local ExpiresInfo = Util.Create("TextLabel", {
         Name = "ExpiresInfo",
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 34, 0, 19),
-        Size = UDim2.new(1, -40, 0, 9),
+        Position = UDim2.new(0, 36, 0, 21),
+        Size = UDim2.new(1, -42, 0, 10),
         Text = "Expires: Never",
         TextColor3 = Theme.TextMuted,
         FontFace = Theme.Font,
-        TextSize = 9,
+        TextSize = 10,
         TextXAlignment = Enum.TextXAlignment.Left,
         ZIndex = 7,
         Parent = TopRightInfo
