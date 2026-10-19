@@ -4007,7 +4007,7 @@ function Hyperion:CreateWindow(config)
     -- HEADER (48px)
     -- ============================================================
     local HeaderHeight = 56
-    local SidebarWidth = 196
+    local SidebarWidth = 160
     local Header = Util.Create("Frame", {
         Name = "Header",
         BackgroundColor3 = Theme.Surface,
@@ -4136,12 +4136,14 @@ function Hyperion:CreateWindow(config)
         TextColor3 = Color3.new(1, 1, 1),
         FontFace = Theme.FontBold,
         TextSize = 26,
+        TextScaled = true,
         TextTruncate = Enum.TextTruncate.AtEnd,
         TextXAlignment = Enum.TextXAlignment.Left,
         TextYAlignment = Enum.TextYAlignment.Center,
         ZIndex = 6,
         Parent = LogoContainer
     })
+    Util.Create("UITextSizeConstraint", { MaxTextSize = 26, MinTextSize = 12, Parent = TitleLabel })
     Hyperion._titleLabel = TitleLabel
     if not Hyperion._windowConfigTitle then
         Hyperion._windowConfigTitle = windowConfig.Title
@@ -8910,42 +8912,56 @@ function Hyperion:CreateWindow(config)
                 })
                 Themed(KnobGlow, { Color = function(t) return t.Accent end })
 
-                local FillGlow = Util.Create("ImageLabel", {
+                local GlowHolder = Util.Create("Frame", {
                     Name = "FillGlow",
                     BackgroundTransparency = 1,
-                    Image = "rbxassetid://6014261993",
-                    ImageColor3 = Theme.Accent,
-                    ImageTransparency = 0.9,
-                    ScaleType = Enum.ScaleType.Slice,
-                    SliceCenter = Rect.new(49, 49, 450, 450),
-                    SliceScale = 0.25,
-                    AnchorPoint = Vector2.new(0.5, 0.5),
+                    Size = UDim2.new(ratio, 0, 1, 0),
                     ZIndex = 2,
                     Parent = Track
                 })
-                Themed(FillGlow, { ImageColor3 = function(t) return t.Accent end })
-
-                local KnobHalo = Util.Create("ImageLabel", {
+                local HaloHolder = Util.Create("Frame", {
                     Name = "KnobHalo",
                     BackgroundTransparency = 1,
-                    Image = "rbxassetid://6014261993",
-                    ImageColor3 = Color3.new(1, 1, 1),
-                    ImageTransparency = 1,
-                    ScaleType = Enum.ScaleType.Slice,
-                    SliceCenter = Rect.new(49, 49, 450, 450),
-                    SliceScale = 0.25,
-                    AnchorPoint = Vector2.new(0.5, 0.5),
-                    Size = UDim2.new(0, 26, 0, 26),
+                    Size = UDim2.new(0, 0, 0, 0),
+                    Position = UDim2.new(ratio, 0, 0.5, 0),
                     ZIndex = 4,
                     Parent = Track
                 })
 
+                local _glowLayers, _haloLayers = {}, {}
+                for i, pad in ipairs({ 2, 4, 6 }) do
+                    local layer = Util.Create("Frame", {
+                        BackgroundColor3 = Theme.Accent,
+                        BackgroundTransparency = 1,
+                        BorderSizePixel = 0,
+                        AnchorPoint = Vector2.new(0.5, 0.5),
+                        Position = UDim2.new(0.5, 0, 0.5, 0),
+                        Size = UDim2.new(1, pad * 2, 1, pad * 2),
+                        ZIndex = 2,
+                        Parent = GlowHolder
+                    })
+                    Util.AddCorner(layer, UDim.new(1, 0))
+                    Themed(layer, { BackgroundColor3 = function(t) return t.Accent end })
+                    _glowLayers[i] = layer
+                end
+                for i, d in ipairs({ 17, 23 }) do
+                    local ring = Util.Create("Frame", {
+                        BackgroundColor3 = Color3.new(1, 1, 1),
+                        BackgroundTransparency = 1,
+                        BorderSizePixel = 0,
+                        AnchorPoint = Vector2.new(0.5, 0.5),
+                        Size = UDim2.new(0, d, 0, d),
+                        ZIndex = 4,
+                        Parent = HaloHolder
+                    })
+                    Util.AddCorner(ring, UDim.new(1, 0))
+                    _haloLayers[i] = ring
+                end
+
                 local function _syncGlow()
-                    local r = Fill.Size.X.Scale
-                    FillGlow.Size = UDim2.new(r, 24, 1, 24)
-                    FillGlow.Position = UDim2.new(r / 2, 0, 0.5, 0)
-                    FillGlow.Visible = r > 0
-                    KnobHalo.Position = KnobObj.Position
+                    GlowHolder.Size = Fill.Size
+                    GlowHolder.Visible = Fill.Size.X.Scale > 0
+                    HaloHolder.Position = KnobObj.Position
                 end
                 Fill:GetPropertyChangedSignal("Size"):Connect(_syncGlow)
                 KnobObj:GetPropertyChangedSignal("Position"):Connect(_syncGlow)
@@ -8965,10 +8981,15 @@ function Hyperion:CreateWindow(config)
                 local dragging = false
                 local overFrame, overHit = false, false
 
+                local _fillAlpha, _haloAlpha = { 0.8, 0.88, 0.94 }, { 0.82, 0.93 }
                 local function _glow()
                     local on = dragging or overFrame or overHit
-                    Util.Tween(FillGlow, 0.2, {ImageTransparency = on and 0.1 or 0.9})
-                    Util.Tween(KnobHalo, 0.2, {ImageTransparency = on and 0.2 or 1})
+                    for i = 1, #_glowLayers do
+                        Util.Tween(_glowLayers[i], 0.2, {BackgroundTransparency = on and _fillAlpha[i] or 1})
+                    end
+                    for i = 1, #_haloLayers do
+                        Util.Tween(_haloLayers[i], 0.2, {BackgroundTransparency = on and _haloAlpha[i] or 1})
+                    end
                 end
 
                 Frame.MouseEnter:Connect(function() overFrame = true; _glow() end)
