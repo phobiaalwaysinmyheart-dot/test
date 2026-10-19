@@ -8680,7 +8680,7 @@ function Hyperion:CreateWindow(config)
                 local callback = cfg.Callback or function() end
                 local flag     = cfg.Flag
                 local value    = default
-                local style    = cfg.Style or Hyperion.ToggleStyle
+                local style    = cfg.Style or Hyperion.ToggleStyle or "Checkbox"
                 local isBox    = style == "Checkbox" or style == 1
 
                 if flag then
@@ -8795,7 +8795,7 @@ function Hyperion:CreateWindow(config)
                     if ccfg.Flag then Hyperion.Flags[ccfg.Flag] = ccol end
                     local Sw = Util.Create("TextButton", {
                         Name = "Swatch", BackgroundColor3 = ccol, Text = "",
-                        Size = UDim2.fromOffset(22, 22),
+                        Size = UDim2.fromOffset(40, 20),
                         Position = UDim2.new(1, accOffset, 0.5, 0),
                         AnchorPoint = Vector2.new(1, 0.5),
                         AutoButtonColor = false, ZIndex = 6, Parent = Frame,
@@ -8816,7 +8816,7 @@ function Hyperion:CreateWindow(config)
                         function cAPI:Get() return Sw.BackgroundColor3 end
                         Hyperion.FlagAPIs[ccfg.Flag] = cAPI
                     end
-                    accOffset = accOffset - 28
+                    accOffset = accOffset - 46
                 end
                 if type(cfg.Keybind) == "table" then
                     local kcfg = cfg.Keybind
@@ -10113,7 +10113,7 @@ function Hyperion:CreateWindow(config)
                 local CpLabel = Util.Create("TextLabel", {
                     Name = "Label",
                     BackgroundTransparency = 1,
-                    Size = UDim2.new(1, -104, 1, 0),
+                    Size = UDim2.new(1, -122, 1, 0),
                     Text = name,
                     TextColor3 = Theme.Text,
                     FontFace = Theme.Font,
@@ -10129,7 +10129,7 @@ function Hyperion:CreateWindow(config)
                     Name = "HexTag",
                     BackgroundTransparency = 1,
                     Size = UDim2.new(0, 64, 1, 0),
-                    Position = UDim2.new(1, -32, 0.5, 0),
+                    Position = UDim2.new(1, -50, 0.5, 0),
                     AnchorPoint = Vector2.new(1, 0.5),
                     Text = "",
                     TextColor3 = Theme.TextMuted,
@@ -10144,7 +10144,7 @@ function Hyperion:CreateWindow(config)
                 local Preview = Util.Create("Frame", {
                     Name = "Preview",
                     BackgroundColor3 = color,
-                    Size = UDim2.new(0, 26, 0, 26),
+                    Size = UDim2.new(0, 44, 0, 22),
                     Position = UDim2.new(1, 0, 0.5, 0),
                     AnchorPoint = Vector2.new(1, 0.5),
                     BorderSizePixel = 0,
@@ -10166,7 +10166,7 @@ function Hyperion:CreateWindow(config)
                 local PreviewBtn = Util.Create("TextButton", {
                     Name = "Hit",
                     BackgroundTransparency = 1,
-                    Size = UDim2.new(0, 26, 0, 26),
+                    Size = UDim2.new(0, 44, 0, 22),
                     Position = UDim2.new(1, 0, 0.5, 0),
                     AnchorPoint = Vector2.new(1, 0.5),
                     Text = "",
