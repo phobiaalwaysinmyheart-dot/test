@@ -2392,6 +2392,24 @@ function Util.MakeDraggable(btn, opts)
     local threshold = opts.Threshold or 6
     local onClick = opts.OnClick
     local pressed, moved, active, startPos, startAbs = false, false, nil, nil, nil
+    local cur, target, glide
+
+    local function stopGlide()
+        if glide then glide:Disconnect(); glide = nil end
+    end
+    local function startGlide()
+        if glide then return end
+        glide = RunService.RenderStepped:Connect(function(dt)
+            if not target then stopGlide(); return end
+            cur = cur + (target - cur) * (1 - math.exp(-16 * dt))
+            if not pressed and (target - cur).Magnitude < 0.5 then
+                cur = target
+                stopGlide()
+            end
+            btn.Position = UDim2.fromOffset(cur.X, cur.Y)
+        end)
+    end
+
     btn.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             pressed, moved, active = true, false, input
@@ -2405,15 +2423,19 @@ function Util.MakeDraggable(btn, opts)
         if not (kind == Enum.UserInputType.MouseMovement or (kind == Enum.UserInputType.Touch and input == active)) then return end
         local d = input.Position - startPos
         if not moved and d.Magnitude < threshold then return end
-        moved = true
-        if btn.AnchorPoint.X ~= 0 or btn.AnchorPoint.Y ~= 0 then btn.AnchorPoint = Vector2.new(0, 0) end
+        if not moved then
+            moved = true
+            if btn.AnchorPoint.X ~= 0 or btn.AnchorPoint.Y ~= 0 then btn.AnchorPoint = Vector2.new(0, 0) end
+            cur = btn.AbsolutePosition
+        end
         local cam = workspace.CurrentCamera
         local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
         local size = btn.AbsoluteSize
-        btn.Position = UDim2.fromOffset(
+        target = Vector2.new(
             math.clamp(startAbs.X + d.X, 0, math.max(0, vp.X - size.X)),
             math.clamp(startAbs.Y + d.Y, 0, math.max(0, vp.Y - size.Y))
         )
+        startGlide()
     end)
     Util.Connect(UserInputService.InputEnded, function(input)
         if not pressed then return end
@@ -2426,6 +2448,29 @@ function Util.MakeDraggable(btn, opts)
     end)
 end
 
+function Util.AccentBarGradient(bar, theme)
+    local function seq(t)
+        return ColorSequence.new({
+            ColorSequenceKeypoint.new(0, t.AccentDark),
+            ColorSequenceKeypoint.new(0.5, t.Accent),
+            ColorSequenceKeypoint.new(1, t.AccentDark),
+        })
+    end
+    local grad = Util.Create("UIGradient", {
+        Color = seq(theme),
+        Rotation = 90,
+        Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0.6),
+            NumberSequenceKeypoint.new(0.5, 0),
+            NumberSequenceKeypoint.new(1, 0.6),
+        }),
+        Parent = bar,
+    })
+    Hyperion:OnThemeChanged(function(t)
+        if grad.Parent then grad.Color = seq(t) end
+    end)
+    return grad
+end
 function Util.B64Decode(s)
     local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     local lookup = {}
@@ -4116,7 +4161,7 @@ function Hyperion:CreateWindow(config)
     -- ============================================================
     -- HEADER (48px)
     -- ============================================================
-    local HeaderHeight = 44
+    local HeaderHeight = 40
     local SidebarWidth = 176
     local Header = Util.Create("Frame", {
         Name = "Header",
@@ -4318,7 +4363,7 @@ function Hyperion:CreateWindow(config)
         BackgroundTransparency = 0.18,
         AnchorPoint = Vector2.new(1, 0.5),
         Position = UDim2.new(1, -46, 0.5, 0),
-        Size = UDim2.new(0, 200, 0, 36),
+        Size = UDim2.new(0, 200, 0, 32),
         BorderSizePixel = 0,
         ZIndex = 6,
         Parent = Header
@@ -4349,8 +4394,8 @@ function Hyperion:CreateWindow(config)
     local PlayerIcon = Util.Create("ImageLabel", {
         Name = "PlayerIcon",
         BackgroundColor3 = Theme.Surface,
-        Size = UDim2.new(0, 26, 0, 26),
-        Position = UDim2.new(0, 5, 0.5, 0),
+        Size = UDim2.new(0, 24, 0, 24),
+        Position = UDim2.new(0, 4, 0.5, 0),
         AnchorPoint = Vector2.new(0, 0.5),
         Image = thumb,
         ScaleType = Enum.ScaleType.Crop,
@@ -4365,8 +4410,8 @@ function Hyperion:CreateWindow(config)
     local UserInfo = Util.Create("TextLabel", {
         Name = "UserInfo",
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 38, 0, 3),
-        Size = UDim2.new(1, -44, 0, 12),
+        Position = UDim2.new(0, 36, 0, 2),
+        Size = UDim2.new(1, -42, 0, 11),
         Text = "User: " .. LocalPlayer.Name,
         TextColor3 = Theme.Text,
         FontFace = Theme.FontSemiBold,
@@ -4381,8 +4426,8 @@ function Hyperion:CreateWindow(config)
     local ExecutorInfo = Util.Create("TextLabel", {
         Name = "ExecutorInfo",
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 38, 0, 14),
-        Size = UDim2.new(1, -44, 0, 11),
+        Position = UDim2.new(0, 36, 0, 12),
+        Size = UDim2.new(1, -42, 0, 10),
         Text = "Executor: " .. executorName,
         TextColor3 = Theme.TextDim,
         FontFace = Theme.FontMedium,
@@ -4396,8 +4441,8 @@ function Hyperion:CreateWindow(config)
     local ExpiresInfo = Util.Create("TextLabel", {
         Name = "ExpiresInfo",
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 38, 0, 24),
-        Size = UDim2.new(1, -44, 0, 11),
+        Position = UDim2.new(0, 36, 0, 21),
+        Size = UDim2.new(1, -42, 0, 10),
         Text = "Expires: Never",
         TextColor3 = Theme.TextMuted,
         FontFace = Theme.Font,
@@ -8051,6 +8096,31 @@ function Hyperion:CreateWindow(config)
     end
 
     -- ============================================================
+    function WindowObj._SetNavCollapsed(entry, collapsed)
+        if entry.Collapsed == collapsed then return end
+        entry.Collapsed = collapsed
+        entry.Token = (entry.Token or 0) + 1
+        local token = entry.Token
+        Util.TweenSmooth(entry.Chevron, {Rotation = collapsed and -90 or 0})
+        local count = #entry.Tabs
+        for i = 1, count do
+            local btn = entry.Tabs[i]
+            task.delay((collapsed and (count - i) or (i - 1)) * 0.025, function()
+                if entry.Token ~= token then return end
+                if collapsed then
+                    local tw = Util.Tween(btn, 0.18, {Size = UDim2.new(1, 0, 0, 0)}, Enum.EasingStyle.Quint)
+                    local function hide()
+                        if entry.Token == token then btn.Visible = false end
+                    end
+                    if tw then tw.Completed:Connect(hide) else hide() end
+                else
+                    btn.Visible = true
+                    Util.Tween(btn, 0.18, {Size = UDim2.new(1, 0, 0, 34)}, Enum.EasingStyle.Quint)
+                end
+            end)
+        end
+    end
+
     function WindowObj:AddTab(tabCfg)
         tabCfg = tabCfg or {}
         local tabName  = tabCfg.Name or "Tab"
@@ -8060,7 +8130,7 @@ function Hyperion:CreateWindow(config)
         local tabSection = tabCfg.Section
         if tabSection and tabSection ~= WindowObj._lastTabSection then
             WindowObj._lastTabSection = tabSection
-            local SecCap = Util.Create("TextLabel", {
+            local SecCap = Util.Create("TextButton", {
                 Name = "NavSection_" .. tabSection,
                 BackgroundTransparency = 1,
                 Size = UDim2.new(1, -12, 0, 24),
@@ -8070,12 +8140,39 @@ function Hyperion:CreateWindow(config)
                 TextSize = 10,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 TextYAlignment = Enum.TextYAlignment.Bottom,
+                AutoButtonColor = false,
                 LayoutOrder = tabOrder * 2 - 1,
                 ZIndex = 3,
                 Parent = TabContainer
             })
             Util.AddPadding(SecCap, 0, 0, 4, 4)
             Themed(SecCap, { TextColor3 = function(t) return t.TextMuted end })
+            local SecChevron = Util.Create("ImageLabel", {
+                Name = "Chevron",
+                BackgroundTransparency = 1,
+                Image = Hyperion.Lucide.ChevronDown,
+                ImageColor3 = Theme.TextMuted,
+                ScaleType = Enum.ScaleType.Fit,
+                AnchorPoint = Vector2.new(1, 0.5),
+                Position = UDim2.new(1, -8, 0, 18),
+                Size = UDim2.new(0, 10, 0, 10),
+                ZIndex = 4,
+                Parent = SecCap
+            })
+            Themed(SecChevron, { ImageColor3 = function(t) return t.TextMuted end })
+            local navEntry = { Cap = SecCap, Chevron = SecChevron, Tabs = {}, Collapsed = false }
+            WindowObj._navCurrent = navEntry
+            SecCap.MouseEnter:Connect(function()
+                Util.TweenFast(SecCap, {TextColor3 = Hyperion.Theme.Text})
+                Util.TweenFast(SecChevron, {ImageColor3 = Hyperion.Theme.Text})
+            end)
+            SecCap.MouseLeave:Connect(function()
+                Util.TweenFast(SecCap, {TextColor3 = Hyperion.Theme.TextMuted})
+                Util.TweenFast(SecChevron, {ImageColor3 = Hyperion.Theme.TextMuted})
+            end)
+            SecCap.MouseButton1Click:Connect(function()
+                WindowObj._SetNavCollapsed(navEntry, not navEntry.Collapsed)
+            end)
         end
 
         local TabObj = {}
@@ -8090,6 +8187,7 @@ function Hyperion:CreateWindow(config)
             Size = UDim2.new(1, 0, 0, 34),
             Text = "",
             AutoButtonColor = false,
+            ClipsDescendants = true,
             LayoutOrder = tabOrder * 2,
             ZIndex = 3,
             Parent = TabContainer
@@ -8097,10 +8195,19 @@ function Hyperion:CreateWindow(config)
         Util.AddCorner(TabButton, Theme.CornerSmall)
         Themed(TabButton, { BackgroundColor3 = function(t) return t.Sidebar end })
 
+        TabObj._nav = WindowObj._navCurrent
+        if TabObj._nav then
+            TabObj._nav.Tabs[#TabObj._nav.Tabs + 1] = TabButton
+            if TabObj._nav.Collapsed then
+                TabButton.Size = UDim2.new(1, 0, 0, 0)
+                TabButton.Visible = false
+            end
+        end
+
         -- Active indicator bar (left edge)
         local ActiveBar = Util.Create("Frame", {
             Name = "Bar",
-            BackgroundColor3 = Theme.Accent,
+            BackgroundColor3 = Color3.new(1, 1, 1),
             Size = UDim2.new(0, 3, 0, 0),
             Position = UDim2.new(0, 0, 0.5, 0),
             AnchorPoint = Vector2.new(0, 0.5),
@@ -8109,7 +8216,7 @@ function Hyperion:CreateWindow(config)
             Parent = TabButton
         })
         Util.AddCorner(ActiveBar, UDim.new(0, 2))
-        Themed(ActiveBar, { BackgroundColor3 = function(t) return t.Accent end })
+        Util.AccentBarGradient(ActiveBar, Theme)
 
         local iconOffset = 0
         local IconLabel = nil
@@ -8523,6 +8630,7 @@ function Hyperion:CreateWindow(config)
 
         -- Tab switching
         local function ActivateTab()
+            if TabObj._nav and TabObj._nav.Collapsed then WindowObj._SetNavCollapsed(TabObj._nav, false) end
             for _, tab in ipairs(WindowObj.Tabs) do
                 tab.Page.Visible = false
                 Util.TweenFast(tab.Button, {BackgroundColor3 = Theme.Sidebar})
@@ -9341,8 +9449,8 @@ function Hyperion:CreateWindow(config)
                     Themed(Btn, { BackgroundColor3 = function(t) return t.SurfaceLight end })
                     BtnAccent = Util.Create("Frame", {
                         Name = "Accent",
-                        BackgroundColor3 = Theme.Accent,
-                        BackgroundTransparency = 0.55,
+                        BackgroundColor3 = Color3.new(1, 1, 1),
+                        BackgroundTransparency = 0.2,
                         Size = UDim2.new(0, 2, 0.6, 0),
                         Position = UDim2.new(0, 0, 0.2, 0),
                         BorderSizePixel = 0,
@@ -9350,7 +9458,7 @@ function Hyperion:CreateWindow(config)
                         Parent = Btn
                     })
                     Util.AddCorner(BtnAccent, UDim.new(1, 0))
-                    Themed(BtnAccent, { BackgroundColor3 = function(t) return t.Accent end })
+                    Util.AccentBarGradient(BtnAccent, Theme)
                 end
 
                 local xOffset = 10
@@ -9399,7 +9507,7 @@ function Hyperion:CreateWindow(config)
                         Util.TweenFast(Btn, {BackgroundColor3 = pressed and t.SurfaceActive or (hovered and t.SurfaceHover or t.SurfaceLight)})
                         Util.TweenFast(_btnStroke, {Color = hovered and t.Accent or t.Border, Transparency = hovered and 0.2 or 0.45})
                         Util.TweenFast(BtnAccent, {
-                            BackgroundTransparency = hovered and 0.1 or 0.55,
+                            BackgroundTransparency = hovered and 0 or 0.2,
                             Size = UDim2.new(0, 2, hovered and 0.8 or 0.6, 0),
                             Position = UDim2.new(0, 0, hovered and 0.1 or 0.2, 0),
                         })
