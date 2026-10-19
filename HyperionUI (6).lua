@@ -8217,6 +8217,58 @@ function Hyperion:CreateWindow(config)
             GroupBar.CanvasPosition = Vector2.new(math.clamp(GroupBar.CanvasPosition.X - input.Position.Z * 60, 0, maxX), 0)
         end)
 
+        local function _edgeFade(name, rightSide)
+            local fade = Util.Create("Frame", {
+                Name = name,
+                BackgroundColor3 = Theme.Sidebar,
+                BorderSizePixel = 0,
+                AnchorPoint = Vector2.new(rightSide and 1 or 0, 0.5),
+                Position = rightSide and UDim2.new(1, -286, 0.5, 0) or UDim2.new(0, 8, 0.5, 0),
+                Size = UDim2.new(0, 44, 0, 32),
+                Visible = false,
+                ZIndex = 8,
+                Parent = Header
+            })
+            Themed(fade, { BackgroundColor3 = function(t) return t.Sidebar end })
+            Util.Create("UIGradient", {
+                Transparency = NumberSequence.new(rightSide
+                    and { NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.6, 0.15), NumberSequenceKeypoint.new(1, 0) }
+                    or { NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.4, 0.15), NumberSequenceKeypoint.new(1, 1) }),
+                Parent = fade
+            })
+            return fade
+        end
+        local LeftFade, RightFade = _edgeFade("GroupFadeL", false), _edgeFade("GroupFadeR", true)
+
+        local function UpdateEdges()
+            local maxX = math.max(0, GroupBar.AbsoluteCanvasSize.X - GroupBar.AbsoluteSize.X)
+            local x = GroupBar.CanvasPosition.X
+            LeftFade.Visible = GroupBar.Visible and x > 1
+            RightFade.Visible = GroupBar.Visible and x < maxX - 1
+        end
+        for _, prop in ipairs({ "CanvasPosition", "AbsoluteCanvasSize", "AbsoluteSize", "Visible" }) do
+            GroupBar:GetPropertyChangedSignal(prop):Connect(UpdateEdges)
+        end
+
+        local function RevealPill(btn)
+            if not btn or not GroupBar.Visible then return end
+            local view = GroupBar.AbsoluteSize.X
+            local cur = GroupBar.CanvasPosition.X
+            local left = btn.AbsolutePosition.X - GroupBar.AbsolutePosition.X + cur
+            local right = left + btn.AbsoluteSize.X
+            local target = cur
+            if left < cur + 46 then
+                target = left - 46
+            elseif right > cur + view - 46 then
+                target = right - view + 46
+            end
+            local maxX = math.max(0, GroupBar.AbsoluteCanvasSize.X - view)
+            target = math.clamp(target, 0, maxX)
+            if math.abs(target - cur) > 1 then
+                Util.Tween(GroupBar, 0.25, {CanvasPosition = Vector2.new(target, 0)}, Enum.EasingStyle.Quint)
+            end
+        end
+
         local GroupPages = Util.Create("Frame", {
             Name = "GroupPages",
             BackgroundTransparency = 1,
@@ -8423,6 +8475,7 @@ function Hyperion:CreateWindow(config)
             end
 
             groupData.Page.Visible = true
+            if groupData.Button then task.delay(0.06, RevealPill, groupData.Button) end
         end
 
         TabObj.ActivateGroup = ActivateGroup
