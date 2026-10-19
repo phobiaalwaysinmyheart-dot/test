@@ -4085,11 +4085,11 @@ function Hyperion:CreateWindow(config)
     -- ============================================================
     -- HEADER (48px)
     -- ============================================================
-    local HeaderHeight = 72
-    local SidebarWidth = 192
+    local HeaderHeight = 48
+    local SidebarWidth = 176
     local Header = Util.Create("Frame", {
         Name = "Header",
-        BackgroundColor3 = Theme.Surface,
+        BackgroundColor3 = Theme.Sidebar,
         Size = UDim2.new(1, -SidebarWidth, 0, HeaderHeight),
         Position = UDim2.new(0, SidebarWidth, 0, 0),
         BorderSizePixel = 0,
@@ -4099,7 +4099,7 @@ function Hyperion:CreateWindow(config)
     Util.AddCorner(Header, Theme.CornerLarge)
     local _headerBottomFix = Util.Create("Frame", {
         Name = "BottomFix",
-        BackgroundColor3 = Theme.Surface,
+        BackgroundColor3 = Theme.Sidebar,
         Size = UDim2.new(1, 0, 0, 12),
         Position = UDim2.new(0, 0, 1, -12),
         BorderSizePixel = 0,
@@ -4108,14 +4108,14 @@ function Hyperion:CreateWindow(config)
     })
     Themed(Util.Create("Frame", {
         Name = "LeftFix",
-        BackgroundColor3 = Theme.Surface,
+        BackgroundColor3 = Theme.Sidebar,
         Size = UDim2.new(0, 14, 1, 0),
         BorderSizePixel = 0,
         ZIndex = 5,
         Parent = Header
-    }), { BackgroundColor3 = function(t) return t.Surface end })
-    Themed(Header, { BackgroundColor3 = function(t) return t.Surface end })
-    Themed(_headerBottomFix, { BackgroundColor3 = function(t) return t.Surface end })
+    }), { BackgroundColor3 = function(t) return t.Sidebar end })
+    Themed(Header, { BackgroundColor3 = function(t) return t.Sidebar end })
+    Themed(_headerBottomFix, { BackgroundColor3 = function(t) return t.Sidebar end })
 
     local function _gradLine(name, parent, pos, size, z)
         local line = Util.Create("Frame", {
@@ -4495,8 +4495,8 @@ function Hyperion:CreateWindow(config)
         Name = "Border",
         BackgroundColor3 = Theme.Border,
         BackgroundTransparency = 0.4,
-        Size = UDim2.new(0, 1, 1, 0),
-        Position = UDim2.new(1, 0, 0, 0),
+        Size = UDim2.new(0, 1, 1, -HeaderHeight),
+        Position = UDim2.new(1, 0, 0, HeaderHeight),
         BorderSizePixel = 0,
         ZIndex = 4,
         Parent = Sidebar
@@ -8022,11 +8022,11 @@ function Hyperion:CreateWindow(config)
             local SecCap = Util.Create("TextLabel", {
                 Name = "NavSection_" .. tabSection,
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, -12, 0, 26),
+                Size = UDim2.new(1, -12, 0, 24),
                 Text = string.upper(tabSection),
                 TextColor3 = Theme.TextMuted,
                 FontFace = Theme.FontSemiBold,
-                TextSize = 11,
+                TextSize = 10,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 TextYAlignment = Enum.TextYAlignment.Bottom,
                 LayoutOrder = tabOrder * 2 - 1,
@@ -8046,7 +8046,7 @@ function Hyperion:CreateWindow(config)
             Name = "Tab_" .. tabName,
             BackgroundColor3 = Theme.Sidebar,
             BackgroundTransparency = 0,
-            Size = UDim2.new(1, 0, 0, 38),
+            Size = UDim2.new(1, 0, 0, 34),
             Text = "",
             AutoButtonColor = false,
             LayoutOrder = tabOrder * 2,
@@ -8076,7 +8076,7 @@ function Hyperion:CreateWindow(config)
             IconLabel = Util.Create("ImageLabel", {
                 Name = "Icon",
                 BackgroundTransparency = 1,
-                Size = UDim2.new(0, 20, 0, 20),
+                Size = UDim2.new(0, 18, 0, 18),
                 Position = UDim2.new(0, 12, 0.5, 0),
                 AnchorPoint = Vector2.new(0, 0.5),
                 Image = tabIcon,
@@ -8085,7 +8085,7 @@ function Hyperion:CreateWindow(config)
                 Parent = TabButton
             })
             Themed(IconLabel, { ImageColor3 = function(t) return t.TextDim end })
-            iconOffset = 26
+            iconOffset = 22
         end
 
         local TabLabel = Util.Create("TextLabel", {
@@ -8096,7 +8096,7 @@ function Hyperion:CreateWindow(config)
             Text = tabName,
             TextColor3 = Theme.TextDim,
             FontFace = Theme.FontMedium,
-            TextSize = 14,
+            TextSize = 13,
             TextXAlignment = Enum.TextXAlignment.Left,
             TextTruncate = Enum.TextTruncate.AtEnd,
             ZIndex = 4,
@@ -8182,35 +8182,18 @@ function Hyperion:CreateWindow(config)
 
         local GroupBar = Util.Create("Frame", {
             Name = "GroupBar",
-            BackgroundColor3 = Theme.Surface,
+            BackgroundTransparency = 1,
             Position = UDim2.new(0, 0, 0, 0),
-            Size = UDim2.new(1, 0, 0, 40),
+            Size = UDim2.new(1, 0, 0, 38),
             BorderSizePixel = 0,
             Visible = false,
             ZIndex = 3,
             Parent = TabPage
         })
-        Themed(GroupBar, { BackgroundColor3 = function(t) return t.Surface end })
-
-        local GroupBarLine = Util.Create("Frame", {
-            Name = "GroupBarLine",
-            BackgroundColor3 = Theme.Border,
-            BackgroundTransparency = 0.5,
-            BorderSizePixel = 0,
-            Position = UDim2.new(0, 0, 0, 39),
-            Size = UDim2.new(1, 0, 0, 1),
-            Visible = false,
-            ZIndex = 4,
-            Parent = TabPage
-        })
-        Themed(GroupBarLine, { BackgroundColor3 = function(t) return t.Border end })
-        GroupBar:GetPropertyChangedSignal("Visible"):Connect(function()
-            GroupBarLine.Visible = GroupBar.Visible
-        end)
 
         local GroupList = Util.AddList(GroupBar, Enum.FillDirection.Horizontal, 8)
         GroupList.VerticalAlignment = Enum.VerticalAlignment.Center
-        Util.AddPadding(GroupBar, 6, 10, 6, 20)
+        Util.AddPadding(GroupBar, 5, 10, 5, 10)
 
         local GroupPages = Util.Create("Frame", {
             Name = "GroupPages",
@@ -8228,7 +8211,7 @@ function Hyperion:CreateWindow(config)
 
         local function UpdateGroupPagesPosition()
             if GroupBar.Visible then
-                GroupPages.Position = UDim2.new(0, 10, 0, 52)
+                GroupPages.Position = UDim2.new(0, 10, 0, 48)
             else
                 GroupPages.Position = UDim2.new(0, 10, 0, 0)
             end
