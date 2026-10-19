@@ -320,7 +320,6 @@ function Hyperion:PreloadAssets(extra)
             if type(id) == "string" then list[#list + 1] = id end
         end
         for _, id in ipairs({
-            "rbxassetid://6014261993", -- window drop shadow
             "rbxassetid://1316045217", -- soft glow
             "rbxassetid://4155801252", -- saturation/value picker
             "rbxassetid://10747384394", -- close (x)
@@ -4004,33 +4003,11 @@ function Hyperion:CreateWindow(config)
         end
     end
 
-    -- Layered drop shadow: umbra (tight/dark) -> penumbra (mid) -> antumbra (wide/faint).
-    -- Three passes at different spreads read as real depth; one flat pass reads as a halo.
-    local function _shadowLayer(name, spread, transparency, z)
-        return Util.Create("ImageLabel", {
-            Name = name,
-            BackgroundTransparency = 1,
-            Size = UDim2.new(1, spread, 1, spread),
-            Position = UDim2.new(0.5, 0, 0.5, 2 + spread * 0.05),
-            AnchorPoint = Vector2.new(0.5, 0.5),
-            Image = "rbxassetid://6014261993",
-            ImageColor3 = Color3.fromRGB(0, 0, 0),
-            ImageTransparency = transparency,
-            ScaleType = Enum.ScaleType.Slice,
-            SliceCenter = Rect.new(49, 49, 450, 450),
-            ZIndex = z,
-            Parent = MainFrame
-        })
-    end
-    _shadowLayer("ShadowUmbra",   24, 0.62, -3)
-    _shadowLayer("ShadowAntumbra", 96, 0.90, -1)
-    local Shadow = _shadowLayer("ShadowPenumbra", 56, 0.74, -2)
-
     -- ============================================================
     -- HEADER (48px)
     -- ============================================================
     local HeaderHeight = 56
-    local SidebarWidth = 210
+    local SidebarWidth = 196
     local Header = Util.Create("Frame", {
         Name = "Header",
         BackgroundColor3 = Theme.Surface,
@@ -4098,8 +4075,8 @@ function Hyperion:CreateWindow(config)
     local LogoContainer = Util.Create("Frame", {
         Name = "LogoContainer",
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -30, 0, HeaderHeight),
-        Position = UDim2.new(0, 15, 0, 0),
+        Size = UDim2.new(1, -20, 0, HeaderHeight),
+        Position = UDim2.new(0, 10, 0, 0),
         ZIndex = 6,
         Parent = Header
     })
@@ -4108,7 +4085,7 @@ function Hyperion:CreateWindow(config)
     local LogoImage = Util.Create("ImageLabel", {
         Name = "Logo",
         BackgroundTransparency = 1,
-        Size = UDim2.new(0, 48, 0, 48),
+        Size = UDim2.new(0, 54, 0, 54),
         Position = UDim2.new(0, 0, 0.5, 0),
         AnchorPoint = Vector2.new(0, 0.5),
         Image = "",
@@ -4153,12 +4130,12 @@ function Hyperion:CreateWindow(config)
     local TitleLabel = Util.Create("TextLabel", {
         Name = "Title",
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -(hasLogo and 56 or 0), 1, 0),
-        Position = UDim2.new(0, hasLogo and 56 or 0, 0, 0),
+        Size = UDim2.new(1, -(hasLogo and 62 or 0), 1, 0),
+        Position = UDim2.new(0, hasLogo and 62 or 0, 0, 0),
         Text = windowConfig.Title,
         TextColor3 = Color3.new(1, 1, 1),
         FontFace = Theme.FontBold,
-        TextSize = 24,
+        TextSize = 26,
         TextTruncate = Enum.TextTruncate.AtEnd,
         TextXAlignment = Enum.TextXAlignment.Left,
         TextYAlignment = Enum.TextYAlignment.Center,
@@ -7444,7 +7421,7 @@ function Hyperion:CreateWindow(config)
     end
 
     -- ============================================================
-    -- DRAGGING (with viewport bounds clamping)
+    -- DRAGGING
     -- ============================================================
     ;(function()
     local Dragging, DragStart, StartPos = false, Vector3.new(), UDim2.new()
@@ -7457,7 +7434,7 @@ function Hyperion:CreateWindow(config)
             StartPos = MainFrame.Position
         end
     end)
-    Header.InputEnded:Connect(function(input)
+    Util.Connect(UserInputService.InputEnded, function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             Dragging = false
         end
@@ -7466,21 +7443,10 @@ function Hyperion:CreateWindow(config)
     Util.Connect(UserInputService.InputChanged, function(input)
         if Dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - DragStart
-            local viewportSize = workspace.CurrentCamera.ViewportSize
-            local winSize = MainFrame.AbsoluteSize
-
-            local newX = StartPos.X.Offset + delta.X
-            local newY = StartPos.Y.Offset + delta.Y
-
-            -- Clamp so window stays at least partially on screen
-            local halfW = winSize.X * 0.5
-            local halfH = winSize.Y * 0.5
-            newX = math.clamp(newX, -halfW + 60, viewportSize.X - halfW - 60)
-            newY = math.clamp(newY, -halfH + 30, viewportSize.Y - halfH - 30)
-
-            -- Store the target; a RenderStepped loop eases the frame toward it
-            -- so the window trails the cursor smoothly instead of snapping.
-            _dragTarget = UDim2.new(StartPos.X.Scale, newX, StartPos.Y.Scale, newY)
+            _dragTarget = UDim2.new(
+                StartPos.X.Scale, StartPos.X.Offset + delta.X,
+                StartPos.Y.Scale, StartPos.Y.Offset + delta.Y
+            )
         end
     end)
 
@@ -7517,19 +7483,51 @@ function Hyperion:CreateWindow(config)
     end)
 
     -- ============================================================
-    -- OPEN ANIMATION
+    -- OPEN / CLOSE
     -- ============================================================
-    MainFrame.BackgroundTransparency = 1
-    MainFrame.Size = UDim2.new(
-        0, WindowObj.CurrentSize.X.Offset * 0.92,
-        0, WindowObj.CurrentSize.Y.Offset * 0.92
-    )
-    task.defer(function()
-        Util.Tween(MainFrame, 0.5, {
-            BackgroundTransparency = 0,
-            Size = WindowObj.CurrentSize
-        }, Enum.EasingStyle.Quint)
-    end)
+    local Curtain = Util.Create("Frame", {
+        Name = "Curtain",
+        BackgroundColor3 = Theme.Background,
+        BackgroundTransparency = 0,
+        BorderSizePixel = 0,
+        Size = UDim2.new(1, 0, 1, 0),
+        ZIndex = 1000,
+        Parent = MainFrame,
+    })
+    Util.AddCorner(Curtain, Theme.CornerLarge)
+    Themed(Curtain, { BackgroundColor3 = function(t) return t.Background end })
+
+    function WindowObj:_Fade(show, duration)
+        self._fadeId = (self._fadeId or 0) + 1
+        local id = self._fadeId
+        MainFrame.Visible = true
+        Curtain.Visible = true
+        local tw = Util.Tween(Curtain, duration or (show and 0.24 or 0.16), {
+            BackgroundTransparency = show and 1 or 0,
+        }, Enum.EasingStyle.Quad)
+        local function finish()
+            if self._fadeId ~= id then return end
+            if show then Curtain.Visible = false else MainFrame.Visible = false end
+        end
+        if tw then tw.Completed:Connect(finish) else finish() end
+    end
+
+    function WindowObj:_Rescue()
+        local cam = workspace.CurrentCamera
+        local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
+        local pos, size = MainFrame.Position, WindowObj.CurrentSize
+        local cx = pos.X.Scale * vp.X + pos.X.Offset
+        local cy = pos.Y.Scale * vp.Y + pos.Y.Offset
+        local halfW = (size.X.Offset + size.X.Scale * vp.X) * 0.5
+        local halfH = (size.Y.Offset + size.Y.Scale * vp.Y) * 0.5
+        local overlapW = math.min(cx + halfW, vp.X) - math.max(cx - halfW, 0)
+        local overlapH = math.min(cy + halfH, vp.Y) - math.max(cy - halfH, 0)
+        if overlapW < 24 or overlapH < 24 then
+            MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+        end
+    end
+
+    task.defer(function() WindowObj:_Fade(true, 0.45) end)
 
     -- ============================================================
     -- WINDOW API
@@ -7573,43 +7571,22 @@ function Hyperion:CreateWindow(config)
         WindowObj.Visible = not WindowObj.Visible
         if WindowObj.Visible then
             ScreenGui.Enabled = true
-            MainFrame.Visible = true
-            -- If was fullscreen, restore before showing
             if WindowObj._isFullscreen then
                 WindowObj._isFullscreen = false
                 WindowObj.CurrentSize = WindowObj._preFullscreenSize or windowConfig.Size
+                MainFrame.Size = WindowObj.CurrentSize
+                MainFrame.Position = WindowObj._preFullscreenPos or UDim2.new(0.5, 0, 0.5, 0)
             end
-            MainFrame.Size = UDim2.new(
-                0, math.floor(WindowObj.CurrentSize.X.Offset * 0.97),
-                0, math.floor(WindowObj.CurrentSize.Y.Offset * 0.97)
-            )
-            MainFrame.BackgroundTransparency = 0.25
-            MainFrame.Position = UDim2.new(0.5, 0, 0.5, 8)
-            Util.Tween(MainFrame, 0.28, {
-                BackgroundTransparency = 0,
-                Size = WindowObj.CurrentSize,
-                Position = UDim2.new(0.5, 0, 0.5, 0)
-            }, Enum.EasingStyle.Quint)
+            WindowObj:_Rescue()
+            WindowObj:_Fade(true)
             if MobileToggleButton then
                 Util.TweenFast(MobileToggleButton, {BackgroundColor3 = Hyperion.Theme.Surface})
             end
         else
-            Util.Tween(MainFrame, 0.22, {
-                BackgroundTransparency = 0.4,
-                Size = UDim2.new(
-                    0, math.floor(WindowObj.CurrentSize.X.Offset * 0.985),
-                    0, math.floor(WindowObj.CurrentSize.Y.Offset * 0.985)
-                ),
-                Position = UDim2.new(0.5, 0, 0.5, 6)
-            }, Enum.EasingStyle.Quint)
+            WindowObj:_Fade(false)
             if MobileToggleButton then
                 Util.TweenFast(MobileToggleButton, {BackgroundColor3 = Hyperion.Theme.SidebarActive})
             end
-            task.delay(0.22, function()
-                if not WindowObj.Visible then
-                    MainFrame.Visible = false
-                end
-            end)
         end
     end
 
@@ -8605,6 +8582,7 @@ function Hyperion:CreateWindow(config)
                 -- one row instead of three. Both are optional; omit them and the
                 -- toggle renders exactly as before. ZIndex 6 keeps them above the
                 -- full-row hitbox so their own clicks land.
+                local _setToggle
                 local accOffset = -48
                 if type(cfg.Color) == "table" then
                     local ccfg = cfg.Color
@@ -8638,6 +8616,10 @@ function Hyperion:CreateWindow(config)
                 if type(cfg.Keybind) == "table" then
                     local kcfg = cfg.Keybind
                     local key = kcfg.Default
+                    local holdMode = kcfg.HoldToInteract or false
+                    local syncState = kcfg.SyncToggleState
+                    if syncState == nil then syncState = true end
+                    local held = false
                     if kcfg.Flag then Hyperion.Flags[kcfg.Flag] = key end
                     local Chip = Util.Create("TextButton", {
                         Name = "KeyChip", BackgroundColor3 = Theme.SurfaceActive,
@@ -8658,14 +8640,32 @@ function Hyperion:CreateWindow(config)
                         Chip.TextColor3 = Hyperion.Theme.Accent
                     end)
                     UserInputService.InputBegan:Connect(function(input, gp)
-                        if not listening or gp then return end
-                        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-                        listening = false
-                        key = input.KeyCode
-                        Chip.Text = key.Name
-                        Chip.TextColor3 = Hyperion.Theme.TextDim
-                        if kcfg.Flag then Hyperion.Flags[kcfg.Flag] = key end
-                        if kcfg.Callback then task.spawn(kcfg.Callback, key) end
+                        if listening then
+                            if gp then return end
+                            if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+                            listening = false
+                            key = input.KeyCode
+                            Chip.Text = key.Name
+                            Chip.TextColor3 = Hyperion.Theme.TextDim
+                            if kcfg.Flag then Hyperion.Flags[kcfg.Flag] = key end
+                            if kcfg.Callback then task.spawn(kcfg.Callback, key) end
+                            return
+                        end
+                        if gp or typeof(key) ~= "EnumItem" or input.KeyCode ~= key then return end
+                        if holdMode then
+                            held = true
+                            if syncState and _setToggle then _setToggle(true) end
+                        elseif syncState and _setToggle then
+                            _setToggle(not value)
+                        end
+                        if kcfg.Pressed then task.spawn(kcfg.Pressed, true) end
+                    end)
+                    UserInputService.InputEnded:Connect(function(input)
+                        if not holdMode or not held then return end
+                        if typeof(key) ~= "EnumItem" or input.KeyCode ~= key then return end
+                        held = false
+                        if syncState and _setToggle then _setToggle(false) end
+                        if kcfg.Pressed then task.spawn(kcfg.Pressed, false) end
                     end)
                     accOffset = accOffset - 48
                 end
@@ -8679,6 +8679,14 @@ function Hyperion:CreateWindow(config)
                         Position = state and UDim2.new(1, -3, 0.5, 0) or UDim2.new(0, 3, 0.5, 0),
                         AnchorPoint = state and Vector2.new(1, 0.5) or Vector2.new(0, 0.5),
                     })
+                end
+
+                _setToggle = function(v)
+                    if value == v then return end
+                    value = v
+                    if flag then Hyperion.Flags[flag] = v end
+                    UpdateVisual(v)
+                    task.spawn(callback, v)
                 end
 
                 -- Register callback for config loading
