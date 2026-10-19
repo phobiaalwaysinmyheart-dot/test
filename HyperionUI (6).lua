@@ -2349,6 +2349,52 @@ function Util.TweenSmooth(obj, props)
     return Util.Tween(obj, 0.28, props, Enum.EasingStyle.Quint)
 end
 
+Util._glowData = {
+    bar  = "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAHgSURBVHhe7Zs9SkNBFEYTEpWA+AMiSLCyErS2srLSxgXY6RrS6wJcguCqXIH7OHLCm8fLC4jtON+DrwmZ4Z6TO5Pm3Qkw+SVTYNZlXllK3TKMufpsfdDFhTvALrBXeWSQRaYx55YAbWnPRQtgHzgEjiqNtcsgi0yybXTEGF5TWnPRMXAKnAHLSmPtMsgik2wy9hKGArTjFw6Ak26DC+ASuAKuK4s1W7sMssgkm4yybgjwfNgiWvKL593iG+AOuAceKos1W7sMssgkm4yyru+EIsC28JzYKtpywS3wCDwBz8BLZbFma5dBFplkk1FWmdcCPA/l1/e82DJac6GbrIBX4K2yWLO1yyCLTLLJWLpgWtrfc+GN6aWhKVtHe27wDnwAn5XFmq1dBllkkk1GWWWeDQX4t2GLeHl4fjSnRTf6Ar4rizVbuwyyyCSbjLL2AsrtXwR4g3qJeI5sJW26YW2PNVu7DLLIJNtQwDwCIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACxrtX8ETAXwU0/7J086/LNz8wYZoemSnHoOmhqeG/QZNjc+UuaHpwskjQTpOjs8M0Ozw9zr8fn/8B6BirCIdnTmgAAAAASUVORK5CYII=",
+    knob = "iVBORw0KGgoAAAANSUhEUgAAABsAAAAbCAYAAACN1PRVAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAHFSURBVEhLxdY9yhRBEMbxVwXBL1AMRARFjDUyEfEGIhgbCm9s7BUEMwOv4BlMPIGJJ/AGnuAvP5gZxt5dZMEdG4qmq+p5qququ2fOqrOtZEdxQC5UF1dyaVizj5gd2VEcCHK5ulJdq65XN6bZmp79r0F3FCuZgyC8Vd2p7lX3qwfTbE3Pzm8OOnIdDDZnY8c3q7vVo+px9bR6Vj2fZmt6dn784fZmOQYiHK9Wt6cMnlQvqlfVm+ptdT7N1vTs/PjDwe9kuC+QnQE8nHb+ciJ+X32oPlWfp9manp0ffzj4OcO9waSt5kphh4Cvq3fVx+pL9a36Xv2YZmt6dn784eDx4FvKOWalyWqvJHaKQAZfq5/tH/Ts/PjDwePBt2Q3ZuVUabYeKI0dI/o1RhgGOz/+cPB48C3Zjb1yjJ0uTdcLJTqU0Tj48YeDx4Nv6d1YQvdGzZ0yzdeTYwZ/OHg8+JZSroN5EVxU90cp9MAhOGbwh4PHgw/vH8G8dZ4gp8iFdY8cb6fumMEfDh4PPrz4/09mm/dss9O46T1bl/LkL8g6u03exnXvTv7qrwNu8j0jm36pZwE4+T/IWjb7u9oXdJaT/Df+U/kNIP5JJE+SCZIAAAAASUVORK5CYII=",
+}
+
+function Util.B64Decode(s)
+    local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    local lookup = {}
+    for i = 1, 64 do
+        lookup[string.byte(alphabet, i)] = i - 1
+    end
+    local pad = 0
+    if string.sub(s, -2) == "==" then pad = 2 elseif string.sub(s, -1) == "=" then pad = 1 end
+    local out, n = {}, 0
+    for i = 1, #s, 4 do
+        local a, b, c, d = string.byte(s, i, i + 3)
+        local v = lookup[a] * 262144 + lookup[b] * 4096 + (lookup[c] or 0) * 64 + (lookup[d] or 0)
+        n = n + 1
+        out[n] = string.char(math.floor(v / 65536) % 256, math.floor(v / 256) % 256, v % 256)
+    end
+    local str = table.concat(out)
+    if pad > 0 then str = string.sub(str, 1, #str - pad) end
+    return str
+end
+
+function Util.GlowAssets()
+    if Util._glowAssets ~= nil then return Util._glowAssets or nil end
+    local built = false
+    if writefile and getcustomasset then
+        local ok, res = pcall(function()
+            local r = {}
+            for name, data in pairs(Util._glowData) do
+                local file = "hyperion_glow_" .. name .. "_v1.png"
+                if not (isfile and isfile(file)) then
+                    writefile(file, Util.B64Decode(data))
+                end
+                r[name] = getcustomasset(file)
+            end
+            return r
+        end)
+        if ok and res then built = res end
+    end
+    Util._glowAssets = built
+    return built or nil
+end
+
 -- Overshoot ("pop") for things that appear: cards, notifications, badges.
 function Util.TweenPop(obj, props, duration)
     return Util.Tween(obj, duration or 0.22, props, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
@@ -4006,7 +4052,7 @@ function Hyperion:CreateWindow(config)
     -- ============================================================
     -- HEADER (48px)
     -- ============================================================
-    local HeaderHeight = 56
+    local HeaderHeight = 64
     local SidebarWidth = 176
     local Header = Util.Create("Frame", {
         Name = "Header",
@@ -4075,8 +4121,8 @@ function Hyperion:CreateWindow(config)
     local LogoContainer = Util.Create("Frame", {
         Name = "LogoContainer",
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -20, 0, HeaderHeight),
-        Position = UDim2.new(0, 10, 0, 0),
+        Size = UDim2.new(1, -8, 0, HeaderHeight),
+        Position = UDim2.new(0, 4, 0, 0),
         ZIndex = 6,
         Parent = Header
     })
@@ -4085,7 +4131,7 @@ function Hyperion:CreateWindow(config)
     local LogoImage = Util.Create("ImageLabel", {
         Name = "Logo",
         BackgroundTransparency = 1,
-        Size = UDim2.new(0, 54, 0, 54),
+        Size = UDim2.new(0, 62, 0, 62),
         Position = UDim2.new(0, 0, 0.5, 0),
         AnchorPoint = Vector2.new(0, 0.5),
         Image = "",
@@ -4130,8 +4176,8 @@ function Hyperion:CreateWindow(config)
     local TitleLabel = Util.Create("TextLabel", {
         Name = "Title",
         BackgroundTransparency = 1,
-        Size = hasLogo and UDim2.new(0, 78, 1, 0) or UDim2.new(1, 0, 1, 0),
-        Position = UDim2.new(0, hasLogo and 62 or 0, 0, 0),
+        Size = UDim2.new(1, -(hasLogo and 68 or 0), 1, 0),
+        Position = UDim2.new(0, hasLogo and 64 or 0, 0, 0),
         Text = windowConfig.Title,
         TextColor3 = Color3.new(1, 1, 1),
         FontFace = Theme.FontBold,
@@ -4143,7 +4189,7 @@ function Hyperion:CreateWindow(config)
         ZIndex = 6,
         Parent = LogoContainer
     })
-    Util.Create("UITextSizeConstraint", { MaxTextSize = 26, MinTextSize = 12, Parent = TitleLabel })
+    Util.Create("UITextSizeConstraint", { MaxTextSize = 30, MinTextSize = 12, Parent = TitleLabel })
     Hyperion._titleLabel = TitleLabel
     if not Hyperion._windowConfigTitle then
         Hyperion._windowConfigTitle = windowConfig.Title
@@ -7580,8 +7626,8 @@ function Hyperion:CreateWindow(config)
 
         LogoImage.Image = assetId
         LogoImage.Visible = true
-        TitleLabel.Position = UDim2.new(0, 72, 0, 0)
-        TitleLabel.Size = UDim2.new(1, -72, 1, 0)
+        TitleLabel.Position = UDim2.new(0, 64, 0, 0)
+        TitleLabel.Size = UDim2.new(1, -68, 1, 0)
         SubtitleLabel.Position = UDim2.new(0, 46, 0, 0)
         SubtitleLabel.Size = UDim2.new(0, 1, 0, 1)
     end
@@ -8929,43 +8975,41 @@ function Hyperion:CreateWindow(config)
                 })
 
                 local function _glowSeq(t)
-                    local white = Color3.new(1, 1, 1)
                     return ColorSequence.new({
-                        ColorSequenceKeypoint.new(0, t.AccentDark:Lerp(white, 0.45)),
-                        ColorSequenceKeypoint.new(0.5, t.Accent:Lerp(white, 0.45)),
-                        ColorSequenceKeypoint.new(1, t.AccentLight:Lerp(white, 0.45)),
+                        ColorSequenceKeypoint.new(0, t.AccentDark),
+                        ColorSequenceKeypoint.new(0.5, t.Accent),
+                        ColorSequenceKeypoint.new(1, t.AccentLight),
                     })
                 end
-                local BarGlowImg = Util.Create("ImageLabel", {
-                    Name = "Glow",
-                    BackgroundTransparency = 1,
-                    Image = "rbxassetid://1316045217",
-                    ImageColor3 = Color3.new(1, 1, 1),
-                    ImageTransparency = 1,
-                    ScaleType = Enum.ScaleType.Slice,
-                    SliceCenter = Rect.new(10, 10, 118, 118),
-                    SliceScale = 0.7,
-                    AnchorPoint = Vector2.new(0.5, 0.5),
-                    Position = UDim2.new(0.5, 0, 0.5, 0),
-                    Size = UDim2.new(1, 14, 1, 14),
-                    ZIndex = 2,
-                    Parent = GlowHolder
-                })
-                Themed(Util.Create("UIGradient", { Color = _glowSeq(Theme), Parent = BarGlowImg }), { Color = _glowSeq })
-
-                local _haloLayers = {}
-                for i, d in ipairs({ 15, 18, 21, 24, 27 }) do
-                    local ring = Util.Create("Frame", {
-                        BackgroundColor3 = Color3.new(1, 1, 1),
+                local _ga = Util.GlowAssets()
+                local BarGlowImg, KnobGlowImg
+                if _ga then
+                    BarGlowImg = Util.Create("ImageLabel", {
+                        Name = "Glow",
                         BackgroundTransparency = 1,
-                        BorderSizePixel = 0,
+                        Image = _ga.bar,
+                        ImageColor3 = Color3.new(1, 1, 1),
+                        ImageTransparency = 0.95,
+                        ScaleType = Enum.ScaleType.Slice,
+                        SliceCenter = Rect.new(10, 10, 54, 54),
                         AnchorPoint = Vector2.new(0.5, 0.5),
-                        Size = UDim2.new(0, d, 0, d),
+                        Position = UDim2.new(0.5, 0, 0.5, 0),
+                        Size = UDim2.new(1, 20, 1, 20),
+                        ZIndex = 2,
+                        Parent = GlowHolder
+                    })
+                    Themed(Util.Create("UIGradient", { Color = _glowSeq(Theme), Parent = BarGlowImg }), { Color = _glowSeq })
+                    KnobGlowImg = Util.Create("ImageLabel", {
+                        Name = "Glow",
+                        BackgroundTransparency = 1,
+                        Image = _ga.knob,
+                        ImageColor3 = Color3.new(1, 1, 1),
+                        ImageTransparency = 1,
+                        AnchorPoint = Vector2.new(0.5, 0.5),
+                        Size = UDim2.new(0, 27, 0, 27),
                         ZIndex = 4,
                         Parent = HaloHolder
                     })
-                    Util.AddCorner(ring, UDim.new(1, 0))
-                    _haloLayers[i] = ring
                 end
 
                 local function _syncGlow()
@@ -8991,13 +9035,10 @@ function Hyperion:CreateWindow(config)
                 local dragging = false
                 local overFrame, overHit = false, false
 
-                local _haloAlpha = { 0.78, 0.84, 0.89, 0.93, 0.97 }
                 local function _glow()
                     local on = dragging or overFrame or overHit
-                    Util.Tween(BarGlowImg, 0.2, {ImageTransparency = on and 0.22 or 1})
-                    for i = 1, #_haloLayers do
-                        Util.Tween(_haloLayers[i], 0.2, {BackgroundTransparency = on and _haloAlpha[i] or 1})
-                    end
+                    if BarGlowImg then Util.Tween(BarGlowImg, 0.2, {ImageTransparency = on and 0.5 or 0.95}) end
+                    if KnobGlowImg then Util.Tween(KnobGlowImg, 0.2, {ImageTransparency = on and 0.55 or 1}) end
                 end
 
                 Frame.MouseEnter:Connect(function() overFrame = true; _glow() end)
