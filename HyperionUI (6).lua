@@ -8180,25 +8180,47 @@ function Hyperion:CreateWindow(config)
             end
         end)
 
-        local GroupBar = Util.Create("Frame", {
+        local GroupBar = Util.Create("ScrollingFrame", {
             Name = "GroupBar",
             BackgroundTransparency = 1,
-            Position = UDim2.new(0, 0, 0, 0),
-            Size = UDim2.new(1, 0, 0, 38),
+            AnchorPoint = Vector2.new(0, 0.5),
+            Position = UDim2.new(0, 8, 0.5, 0),
+            Size = UDim2.new(1, -294, 0, 32),
             BorderSizePixel = 0,
+            ScrollBarThickness = 0,
+            ScrollingDirection = Enum.ScrollingDirection.X,
+            AutomaticCanvasSize = Enum.AutomaticSize.X,
+            CanvasSize = UDim2.new(0, 0, 0, 0),
+            ClipsDescendants = true,
+            Active = false,
             Visible = false,
-            ZIndex = 3,
-            Parent = TabPage
+            ZIndex = 7,
+            Parent = Header
         })
 
         local GroupList = Util.AddList(GroupBar, Enum.FillDirection.Horizontal, 8)
         GroupList.VerticalAlignment = Enum.VerticalAlignment.Center
-        Util.AddPadding(GroupBar, 5, 10, 5, 10)
+        Util.AddPadding(GroupBar, 2, 2, 2, 2)
+
+        local hasGroupBar = false
+        local function SyncGroupBar()
+            GroupBar.Visible = hasGroupBar and WindowObj.ActiveTab == TabObj
+        end
+        TabObj._SyncBar = SyncGroupBar
+
+        Util.Connect(UserInputService.InputChanged, function(input)
+            if input.UserInputType ~= Enum.UserInputType.MouseWheel or not GroupBar.Visible then return end
+            local m = UserInputService:GetMouseLocation()
+            local ap, as = GroupBar.AbsolutePosition, GroupBar.AbsoluteSize
+            if m.X < ap.X or m.X > ap.X + as.X or m.Y < ap.Y or m.Y > ap.Y + as.Y then return end
+            local maxX = math.max(0, GroupBar.AbsoluteCanvasSize.X - as.X)
+            GroupBar.CanvasPosition = Vector2.new(math.clamp(GroupBar.CanvasPosition.X - input.Position.Z * 60, 0, maxX), 0)
+        end)
 
         local GroupPages = Util.Create("Frame", {
             Name = "GroupPages",
             BackgroundTransparency = 1,
-            Position = UDim2.new(0, 10, 0, 0),
+            Position = UDim2.new(0, 10, 0, 10),
             Size = UDim2.new(1, -22, 0, 0),
             AutomaticSize = Enum.AutomaticSize.Y,
             ZIndex = 2,
@@ -8208,14 +8230,6 @@ function Hyperion:CreateWindow(config)
         TabObj.Groups = {}
         TabObj.GroupOrder = {}
         TabObj.ActiveGroup = nil
-
-        local function UpdateGroupPagesPosition()
-            if GroupBar.Visible then
-                GroupPages.Position = UDim2.new(0, 10, 0, 48)
-            else
-                GroupPages.Position = UDim2.new(0, 10, 0, 0)
-            end
-        end
 
         local function CreateGroup(groupName)
             local GroupPage = Util.Create("Frame", {
@@ -8261,8 +8275,8 @@ function Hyperion:CreateWindow(config)
 
             local GroupButton = nil
             if groupName ~= "__default" then
-                GroupBar.Visible = true
-                UpdateGroupPagesPosition()
+                hasGroupBar = true
+                SyncGroupBar()
 
                 GroupButton = Util.Create("TextButton", {
                     Name = "GroupBtn_" .. tostring(groupName),
@@ -8441,6 +8455,9 @@ function Hyperion:CreateWindow(config)
                 Util.TweenFast(IconLabel, {ImageColor3 = Theme.Accent})
             end
             WindowObj.ActiveTab = TabObj
+            for _, tab in ipairs(WindowObj.Tabs) do
+                if tab.Object._SyncBar then tab.Object._SyncBar() end
+            end
         end
         TabObj.Activate = ActivateTab
 
