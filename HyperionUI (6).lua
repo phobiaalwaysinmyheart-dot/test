@@ -2387,6 +2387,44 @@ Util._glowData = {
     knob = "iVBORw0KGgoAAAANSUhEUgAAABsAAAAbCAYAAACN1PRVAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAHFSURBVEhLxdY9yhRBEMbxVwXBL1AMRARFjDUyEfEGIhgbCm9s7BUEMwOv4BlMPIGJJ/AGnuAvP5gZxt5dZMEdG4qmq+p5qququ2fOqrOtZEdxQC5UF1dyaVizj5gd2VEcCHK5ulJdq65XN6bZmp79r0F3FCuZgyC8Vd2p7lX3qwfTbE3Pzm8OOnIdDDZnY8c3q7vVo+px9bR6Vj2fZmt6dn784fZmOQYiHK9Wt6cMnlQvqlfVm+ptdT7N1vTs/PjDwe9kuC+QnQE8nHb+ciJ+X32oPlWfp9manp0ffzj4OcO9waSt5kphh4Cvq3fVx+pL9a36Xv2YZmt6dn784eDx4FvKOWalyWqvJHaKQAZfq5/tH/Ts/PjDwePBt2Q3ZuVUabYeKI0dI/o1RhgGOz/+cPB48C3Zjb1yjJ0uTdcLJTqU0Tj48YeDx4Nv6d1YQvdGzZ0yzdeTYwZ/OHg8+JZSroN5EVxU90cp9MAhOGbwh4PHgw/vH8G8dZ4gp8iFdY8cb6fumMEfDh4PPrz4/09mm/dss9O46T1bl/LkL8g6u03exnXvTv7qrwNu8j0jm36pZwE4+T/IWjb7u9oXdJaT/Df+U/kNIP5JJE+SCZIAAAAASUVORK5CYII=",
 }
 
+function Util.MakeDraggable(btn, opts)
+    opts = opts or {}
+    local threshold = opts.Threshold or 6
+    local onClick = opts.OnClick
+    local pressed, moved, active, startPos, startAbs = false, false, nil, nil, nil
+    btn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            pressed, moved, active = true, false, input
+            startPos = input.Position
+            startAbs = btn.AbsolutePosition
+        end
+    end)
+    Util.Connect(UserInputService.InputChanged, function(input)
+        if not pressed then return end
+        local kind = input.UserInputType
+        if not (kind == Enum.UserInputType.MouseMovement or (kind == Enum.UserInputType.Touch and input == active)) then return end
+        local d = input.Position - startPos
+        if not moved and d.Magnitude < threshold then return end
+        moved = true
+        local cam = workspace.CurrentCamera
+        local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
+        local size = btn.AbsoluteSize
+        btn.Position = UDim2.fromOffset(
+            math.clamp(startAbs.X + d.X, 0, math.max(0, vp.X - size.X)),
+            math.clamp(startAbs.Y + d.Y, 0, math.max(0, vp.Y - size.Y))
+        )
+    end)
+    Util.Connect(UserInputService.InputEnded, function(input)
+        if not pressed then return end
+        local kind = input.UserInputType
+        if kind == Enum.UserInputType.MouseButton1 or (kind == Enum.UserInputType.Touch and input == active) then
+            local wasMoved = moved
+            pressed, moved, active = false, false, nil
+            if not wasMoved and onClick then onClick() end
+        end
+    end)
+end
+
 function Util.B64Decode(s)
     local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     local lookup = {}
@@ -3478,41 +3516,33 @@ function Hyperion:CreateWindow(config)
     ScreenGui.Parent = CoreGui
 
     local IsMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-    local MobileToggleButton = Util.Create("TextButton", {
+    local MobileToggleButton = Util.Create("ImageButton", {
         Name = "MobileToggleButton",
-        BackgroundColor3 = Theme.Surface,
-        BackgroundTransparency = 0.08,
-        Size = UDim2.new(0, 46, 0, 46),
-        Position = UDim2.new(0, 14, 1, -60),
+        BackgroundTransparency = 1,
+        Size = UDim2.new(0, 60, 0, 60),
+        Position = UDim2.new(0, 14, 1, -74),
         BorderSizePixel = 0,
-        Text = "H",
-        TextColor3 = Theme.Text,
-        FontFace = Theme.FontBold,
-        TextSize = 16,
+        Image = "",
+        ImageColor3 = Theme.Accent,
+        ScaleType = Enum.ScaleType.Fit,
         AutoButtonColor = false,
         Visible = true,
         ZIndex = 150,
         Parent = ScreenGui
     })
-    Util.AddCorner(MobileToggleButton, UDim.new(1, 0))
-    local _mobileStroke = Util.AddStroke(MobileToggleButton, Theme.BorderLight, 1, 0.1)
-    Themed(MobileToggleButton, {
-        BackgroundColor3 = function(t) return t.Surface end,
-        TextColor3 = function(t) return t.Text end,
-    })
-    Themed(_mobileStroke, { Color = function(t) return t.BorderLight end })
-
-    local MobileAccent = Util.Create("Frame", {
-        BackgroundColor3 = Theme.Accent,
-        BackgroundTransparency = 0.15,
-        Size = UDim2.new(0, 14, 0, 3),
-        Position = UDim2.new(0.5, -7, 1, -9),
-        BorderSizePixel = 0,
+    local MobileFallback = Util.Create("TextLabel", {
+        Name = "Fallback",
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 1, 0),
+        Text = string.upper(string.sub(windowConfig.Title or "H", 1, 1)),
+        TextColor3 = Theme.Accent,
+        FontFace = Theme.FontBold,
+        TextSize = 30,
+        Visible = false,
         ZIndex = 151,
         Parent = MobileToggleButton
     })
-    Util.AddCorner(MobileAccent, UDim.new(1, 0))
-    Themed(MobileAccent, { BackgroundColor3 = function(t) return t.Accent end })
+    Themed(MobileFallback, { TextColor3 = function(t) return t.Accent end })
 
     -- Notifications
     Hyperion:_InitNotifications(ScreenGui)
@@ -4201,6 +4231,20 @@ function Hyperion:CreateWindow(config)
             LogoImage.ImageColor3 = themeObj.Accent
         end
         LogoImage.Visible = (activeLogo ~= nil and activeLogo ~= "")
+
+        local mobileGrad = MobileToggleButton:FindFirstChildWhichIsA("UIGradient")
+        if mobileGrad then mobileGrad:Destroy() end
+        if themeObj.LogoGradient then
+            local mg = Instance.new("UIGradient")
+            mg.Color = ColorSequence.new(themeObj.LogoGradient)
+            mg.Rotation = 90
+            mg.Parent = MobileToggleButton
+            MobileToggleButton.ImageColor3 = Color3.new(1, 1, 1)
+        else
+            MobileToggleButton.ImageColor3 = themeObj.Accent
+        end
+        MobileToggleButton.Image = LogoImage.Image
+        MobileFallback.Visible = not LogoImage.Visible
     end
 
     Hyperion:OnThemeChanged(function(t)
@@ -4208,6 +4252,11 @@ function Hyperion:CreateWindow(config)
     end)
 
     ApplyWindowLogo(Theme)
+
+    LogoImage:GetPropertyChangedSignal("Image"):Connect(function()
+        MobileToggleButton.Image = LogoImage.Image
+        MobileFallback.Visible = LogoImage.Image == ""
+    end)
 
     local TitleLabel = Util.Create("TextLabel", {
         Name = "Title",
@@ -7680,22 +7729,12 @@ function Hyperion:CreateWindow(config)
             end
             WindowObj:_Rescue()
             WindowObj:_Fade(true)
-            if MobileToggleButton then
-                Util.TweenFast(MobileToggleButton, {BackgroundColor3 = Hyperion.Theme.Surface})
-            end
         else
             WindowObj:_Fade(false)
-            if MobileToggleButton then
-                Util.TweenFast(MobileToggleButton, {BackgroundColor3 = Hyperion.Theme.SidebarActive})
-            end
         end
     end
 
-    if MobileToggleButton then
-        MobileToggleButton.MouseButton1Click:Connect(function()
-            WindowObj:Toggle()
-        end)
-    end
+    Util.MakeDraggable(MobileToggleButton, { OnClick = function() WindowObj:Toggle() end })
 
     function WindowObj:Destroy()
         Hyperion.Unloaded = true
@@ -8781,7 +8820,7 @@ function Hyperion:CreateWindow(config)
                     if ccfg.Flag then Hyperion.Flags[ccfg.Flag] = ccol end
                     local Sw = Util.Create("TextButton", {
                         Name = "Swatch", BackgroundColor3 = ccol, Text = "",
-                        Size = UDim2.fromOffset(40, 20),
+                        Size = UDim2.fromOffset(40, 14),
                         Position = UDim2.new(1, accOffset, 0.5, 0),
                         AnchorPoint = Vector2.new(1, 0.5),
                         AutoButtonColor = false, ZIndex = 6, Parent = Frame,
@@ -10128,7 +10167,7 @@ function Hyperion:CreateWindow(config)
                 local Preview = Util.Create("Frame", {
                     Name = "Preview",
                     BackgroundColor3 = color,
-                    Size = UDim2.new(0, 44, 0, 22),
+                    Size = UDim2.new(0, 44, 0, 16),
                     Position = UDim2.new(1, 0, 0.5, 0),
                     AnchorPoint = Vector2.new(1, 0.5),
                     BorderSizePixel = 0,
@@ -10150,7 +10189,7 @@ function Hyperion:CreateWindow(config)
                 local PreviewBtn = Util.Create("TextButton", {
                     Name = "Hit",
                     BackgroundTransparency = 1,
-                    Size = UDim2.new(0, 44, 0, 22),
+                    Size = UDim2.new(0, 44, 0, 16),
                     Position = UDim2.new(1, 0, 0.5, 0),
                     AnchorPoint = Vector2.new(1, 0.5),
                     Text = "",
