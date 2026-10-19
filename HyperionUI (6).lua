@@ -8745,22 +8745,8 @@ function Hyperion:CreateWindow(config)
                 })
                 Themed(TrackGlow, { Color = function(t) return (isBox and not value) and t.TextMuted or t.AccentGlow end })
 
-                local Knob, Tick
-                if isBox then
-                    Tick = Util.Create("ImageLabel", {
-                        Name = "Tick",
-                        BackgroundTransparency = 1,
-                        Image = "rbxassetid://10709790644",
-                        ImageColor3 = Color3.new(1, 1, 1),
-                        ImageTransparency = value and 0 or 1,
-                        ScaleType = Enum.ScaleType.Fit,
-                        AnchorPoint = Vector2.new(0.5, 0.5),
-                        Position = UDim2.new(0.5, 0, 0.5, 0),
-                        Size = value and UDim2.new(0, 14, 0, 14) or UDim2.new(0, 8, 0, 8),
-                        ZIndex = 4,
-                        Parent = Track
-                    })
-                else
+                local Knob
+                if not isBox then
                     Knob = Util.Create("Frame", {
                         Name = "Knob",
                         BackgroundColor3 = Color3.new(1, 1, 1),
@@ -8795,7 +8781,7 @@ function Hyperion:CreateWindow(config)
                     if ccfg.Flag then Hyperion.Flags[ccfg.Flag] = ccol end
                     local Sw = Util.Create("TextButton", {
                         Name = "Swatch", BackgroundColor3 = ccol, Text = "",
-                        Size = UDim2.fromOffset(40, 20),
+                        Size = UDim2.fromOffset(22, 22),
                         Position = UDim2.new(1, accOffset, 0.5, 0),
                         AnchorPoint = Vector2.new(1, 0.5),
                         AutoButtonColor = false, ZIndex = 6, Parent = Frame,
@@ -8816,7 +8802,7 @@ function Hyperion:CreateWindow(config)
                         function cAPI:Get() return Sw.BackgroundColor3 end
                         Hyperion.FlagAPIs[ccfg.Flag] = cAPI
                     end
-                    accOffset = accOffset - 46
+                    accOffset = accOffset - 28
                 end
                 if type(cfg.Keybind) == "table" then
                     local kcfg = cfg.Keybind
@@ -8884,8 +8870,6 @@ function Hyperion:CreateWindow(config)
                             Color = state and Hyperion.Theme.AccentGlow or Hyperion.Theme.TextMuted,
                             Transparency = state and 0.5 or 0.35,
                         })
-                        Util.TweenSmooth(Tick, {ImageTransparency = state and 0 or 1})
-                        Util.TweenPop(Tick, {Size = state and UDim2.new(0, 14, 0, 14) or UDim2.new(0, 8, 0, 8)})
                     else
                         Util.TweenSmooth(TrackGlow, {Thickness = state and 1 or 0})
                         Util.TweenSmooth(Knob, {
@@ -10113,7 +10097,7 @@ function Hyperion:CreateWindow(config)
                 local CpLabel = Util.Create("TextLabel", {
                     Name = "Label",
                     BackgroundTransparency = 1,
-                    Size = UDim2.new(1, -122, 1, 0),
+                    Size = UDim2.new(1, -104, 1, 0),
                     Text = name,
                     TextColor3 = Theme.Text,
                     FontFace = Theme.Font,
@@ -10129,7 +10113,7 @@ function Hyperion:CreateWindow(config)
                     Name = "HexTag",
                     BackgroundTransparency = 1,
                     Size = UDim2.new(0, 64, 1, 0),
-                    Position = UDim2.new(1, -50, 0.5, 0),
+                    Position = UDim2.new(1, -32, 0.5, 0),
                     AnchorPoint = Vector2.new(1, 0.5),
                     Text = "",
                     TextColor3 = Theme.TextMuted,
@@ -10144,7 +10128,7 @@ function Hyperion:CreateWindow(config)
                 local Preview = Util.Create("Frame", {
                     Name = "Preview",
                     BackgroundColor3 = color,
-                    Size = UDim2.new(0, 44, 0, 22),
+                    Size = UDim2.new(0, 26, 0, 26),
                     Position = UDim2.new(1, 0, 0.5, 0),
                     AnchorPoint = Vector2.new(1, 0.5),
                     BorderSizePixel = 0,
@@ -10166,7 +10150,7 @@ function Hyperion:CreateWindow(config)
                 local PreviewBtn = Util.Create("TextButton", {
                     Name = "Hit",
                     BackgroundTransparency = 1,
-                    Size = UDim2.new(0, 44, 0, 22),
+                    Size = UDim2.new(0, 26, 0, 26),
                     Position = UDim2.new(1, 0, 0.5, 0),
                     AnchorPoint = Vector2.new(1, 0.5),
                     Text = "",
