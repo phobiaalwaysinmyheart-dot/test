@@ -2406,6 +2406,7 @@ function Util.MakeDraggable(btn, opts)
         local d = input.Position - startPos
         if not moved and d.Magnitude < threshold then return end
         moved = true
+        if btn.AnchorPoint.X ~= 0 or btn.AnchorPoint.Y ~= 0 then btn.AnchorPoint = Vector2.new(0, 0) end
         local cam = workspace.CurrentCamera
         local vp = cam and cam.ViewportSize or Vector2.new(1920, 1080)
         local size = btn.AbsoluteSize
@@ -6444,6 +6445,7 @@ function Hyperion:CreateWindow(config)
         Parent = ScreenGui,
     })
     Util.AddCorner(KbHud, Theme.CornerLarge)
+    Util.MakeDraggable(KbHud)
     local _kbHudStroke = Util.AddStroke(KbHud, Theme.BorderLight, 1, 0.15)
     Themed(KbHud, { BackgroundColor3 = function(t) return t.Sidebar end })
     Themed(_kbHudStroke, { Color = function(t) return t.BorderLight end })
@@ -9304,93 +9306,120 @@ function Hyperion:CreateWindow(config)
                 local name     = cfg.Name or "Button"
                 local callback = cfg.Callback or function() end
                 local icon     = cfg.Icon or nil
+                local primary  = cfg.Style == "Primary"
+                local hovered, pressed = false, false
+
+                local function fillSeq(t, lift)
+                    local white = Color3.new(1, 1, 1)
+                    return ColorSequence.new({
+                        ColorSequenceKeypoint.new(0, t.AccentDark:Lerp(white, lift)),
+                        ColorSequenceKeypoint.new(0.5, t.Accent:Lerp(white, lift)),
+                        ColorSequenceKeypoint.new(1, t.AccentLight:Lerp(white, lift)),
+                    })
+                end
 
                 local Btn = Util.Create("TextButton", {
                     Name = "Btn_" .. name,
-                    BackgroundColor3 = Theme.SurfaceLight,
-                    Size = UDim2.new(1, 0, 0, 30),
+                    BackgroundColor3 = primary and Color3.new(1, 1, 1) or Theme.SurfaceLight,
+                    Size = UDim2.new(1, 0, 0, primary and 32 or 30),
                     Text = "",
                     AutoButtonColor = false,
+                    ClipsDescendants = true,
                     ZIndex = 2,
                     Parent = Elements
                 })
                 _regSearch(name, Btn, "Button", cfg)
                 Util.AddCorner(Btn, Theme.CornerSmall)
-                local _btnStroke = Util.AddStroke(Btn, Theme.Border, 1, 0.45)
-                Themed(Btn, { BackgroundColor3 = function(t) return t.SurfaceLight end })
-                Themed(_btnStroke, { Color = function(t) return t.Border end })
+                local _btnStroke = Util.AddStroke(Btn, primary and Theme.AccentLight or Theme.Border, 1, primary and 0.5 or 0.45)
+                Themed(_btnStroke, { Color = function(t) return primary and t.AccentLight or t.Border end })
 
-                -- Left accent bar
-                local BtnAccent = Util.Create("Frame", {
-                    Name = "Accent",
-                    BackgroundColor3 = Theme.Accent,
-                    BackgroundTransparency = 0.55,
-                    Size = UDim2.new(0, 2, 0.6, 0),
-                    Position = UDim2.new(0, 0, 0.2, 0),
-                    BorderSizePixel = 0,
-                    ZIndex = 3,
-                    Parent = Btn
-                })
-                Util.AddCorner(BtnAccent, UDim.new(1, 0))
-                Themed(BtnAccent, { BackgroundColor3 = function(t) return t.Accent end })
+                local BtnGrad, BtnAccent
+                if primary then
+                    BtnGrad = Util.Create("UIGradient", { Color = fillSeq(Theme, 0), Parent = Btn })
+                    Themed(BtnGrad, { Color = function(t) return fillSeq(t, pressed and 0.22 or (hovered and 0.1 or 0)) end })
+                else
+                    Themed(Btn, { BackgroundColor3 = function(t) return t.SurfaceLight end })
+                    BtnAccent = Util.Create("Frame", {
+                        Name = "Accent",
+                        BackgroundColor3 = Theme.Accent,
+                        BackgroundTransparency = 0.55,
+                        Size = UDim2.new(0, 2, 0.6, 0),
+                        Position = UDim2.new(0, 0, 0.2, 0),
+                        BorderSizePixel = 0,
+                        ZIndex = 3,
+                        Parent = Btn
+                    })
+                    Util.AddCorner(BtnAccent, UDim.new(1, 0))
+                    Themed(BtnAccent, { BackgroundColor3 = function(t) return t.Accent end })
+                end
 
                 local xOffset = 10
+                local BtnIcon
                 if icon then
-                    local BtnIcon = Util.Create("ImageLabel", {
+                    BtnIcon = Util.Create("ImageLabel", {
                         Name = "Icon",
                         BackgroundTransparency = 1,
                         Size = UDim2.new(0, 14, 0, 14),
                         Position = UDim2.new(0, 10, 0.5, 0),
                         AnchorPoint = Vector2.new(0, 0.5),
                         Image = icon,
-                        ImageColor3 = Theme.TextDim,
+                        ImageColor3 = primary and Color3.new(1, 1, 1) or Theme.TextDim,
                         ZIndex = 3,
                         Parent = Btn
                     })
-                    Themed(BtnIcon, { ImageColor3 = function(t) return t.TextDim end })
+                    if not primary then
+                        Themed(BtnIcon, { ImageColor3 = function(t) return hovered and t.Accent or t.TextDim end })
+                    end
                     xOffset = 28
                 end
 
                 local BtnLabel = Util.Create("TextLabel", {
                     Name = "Lbl",
                     BackgroundTransparency = 1,
-                    Size = UDim2.new(1, -(xOffset + 8), 1, 0),
-                    Position = UDim2.new(0, xOffset, 0, 0),
+                    Size = primary and UDim2.new(1, 0, 1, 0) or UDim2.new(1, -(xOffset + 8), 1, 0),
+                    Position = primary and UDim2.new(0, 0, 0, 0) or UDim2.new(0, xOffset, 0, 0),
                     Text = name,
-                    TextColor3 = Theme.Text,
-                    FontFace = Theme.FontMedium,
+                    TextColor3 = primary and Color3.new(1, 1, 1) or Theme.Text,
+                    FontFace = primary and Theme.FontBold or Theme.FontMedium,
                     TextSize = 13,
-                    TextXAlignment = Enum.TextXAlignment.Left,
+                    TextXAlignment = primary and Enum.TextXAlignment.Center or Enum.TextXAlignment.Left,
                     ZIndex = 3,
                     Parent = Btn
                 })
-                Themed(BtnLabel, { TextColor3 = function(t) return t.Text end })
+                if not primary then
+                    Themed(BtnLabel, { TextColor3 = function(t) return t.Text end })
+                end
 
-                Btn.MouseEnter:Connect(function()
-                    Util.TweenFast(Btn, {BackgroundColor3 = Hyperion.Theme.SurfaceHover})
-                    Util.TweenFast(BtnAccent, {BackgroundTransparency = 0.2})
-                end)
-                Btn.MouseLeave:Connect(function()
-                    Util.TweenFast(Btn, {BackgroundColor3 = Hyperion.Theme.SurfaceLight})
-                    Util.TweenFast(BtnAccent, {BackgroundTransparency = 0.55})
-                end)
+                local function paint()
+                    local t = Hyperion.Theme
+                    if primary then
+                        BtnGrad.Color = fillSeq(t, pressed and 0.22 or (hovered and 0.1 or 0))
+                        Util.TweenFast(_btnStroke, {Transparency = hovered and 0.1 or 0.5})
+                    else
+                        Util.TweenFast(Btn, {BackgroundColor3 = pressed and t.SurfaceActive or (hovered and t.SurfaceHover or t.SurfaceLight)})
+                        Util.TweenFast(_btnStroke, {Color = hovered and t.Accent or t.Border, Transparency = hovered and 0.2 or 0.45})
+                        Util.TweenFast(BtnAccent, {
+                            BackgroundTransparency = hovered and 0.1 or 0.55,
+                            Size = UDim2.new(0, 2, hovered and 0.8 or 0.6, 0),
+                            Position = UDim2.new(0, 0, hovered and 0.1 or 0.2, 0),
+                        })
+                        if BtnIcon then Util.TweenFast(BtnIcon, {ImageColor3 = hovered and t.Accent or t.TextDim}) end
+                    end
+                end
+
+                Btn.MouseEnter:Connect(function() hovered = true; paint() end)
+                Btn.MouseLeave:Connect(function() hovered, pressed = false, false; paint() end)
+                Btn.MouseButton1Down:Connect(function() pressed = true; paint() end)
+                Btn.MouseButton1Up:Connect(function() pressed = false; paint() end)
                 Btn.MouseButton1Click:Connect(function()
-                    Util.Ripple(Btn, Hyperion.Theme.Accent)
-                    Util.TweenFast(Btn, {BackgroundColor3 = Hyperion.Theme.AccentDark})
-                    task.delay(0.12, function()
-                        Util.TweenFast(Btn, {BackgroundColor3 = Hyperion.Theme.SurfaceLight})
-                    end)
+                    Util.Ripple(Btn, primary and Color3.new(1, 1, 1) or Hyperion.Theme.Accent)
                     task.spawn(callback)
                 end)
 
                 local API = {}
-                function API:SetLabel(t)
-                    local lbl = Btn:FindFirstChild("Lbl")
-                    if lbl then lbl.Text = t end
-                end
+                function API:SetLabel(text) BtnLabel.Text = text end
                 return API
             end
-
             -- ==============================================
             -- DROPDOWN
             -- ==============================================
@@ -10136,7 +10165,7 @@ function Hyperion:CreateWindow(config)
                 local CpLabel = Util.Create("TextLabel", {
                     Name = "Label",
                     BackgroundTransparency = 1,
-                    Size = UDim2.new(1, -122, 1, 0),
+                    Size = UDim2.new(1, -58, 1, 0),
                     Text = name,
                     TextColor3 = Theme.Text,
                     FontFace = Theme.Font,
@@ -10147,22 +10176,6 @@ function Hyperion:CreateWindow(config)
                     Parent = Frame
                 })
                 Themed(CpLabel, { TextColor3 = function(t) return t.Text end })
-
-                local HexTag = Util.Create("TextLabel", {
-                    Name = "HexTag",
-                    BackgroundTransparency = 1,
-                    Size = UDim2.new(0, 64, 1, 0),
-                    Position = UDim2.new(1, -50, 0.5, 0),
-                    AnchorPoint = Vector2.new(1, 0.5),
-                    Text = "",
-                    TextColor3 = Theme.TextMuted,
-                    FontFace = Theme.Font,
-                    TextSize = 11,
-                    TextXAlignment = Enum.TextXAlignment.Right,
-                    ZIndex = 2,
-                    Parent = Frame
-                })
-                Themed(HexTag, { TextColor3 = function(t) return t.TextMuted end })
 
                 local Preview = Util.Create("Frame", {
                     Name = "Preview",
@@ -10200,10 +10213,6 @@ function Hyperion:CreateWindow(config)
 
                 local function Paint()
                     Preview.BackgroundColor3 = color
-                    HexTag.Text = string.format("#%02X%02X%02X",
-                        math.floor(color.R * 255 + 0.5),
-                        math.floor(color.G * 255 + 0.5),
-                        math.floor(color.B * 255 + 0.5))
                 end
                 Paint()
 
