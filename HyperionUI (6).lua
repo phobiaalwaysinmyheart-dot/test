@@ -3373,7 +3373,7 @@ function Hyperion:CreateWindow(config)
     local windowConfig = {
         Title    = config.Title or "Hyperion",
         Logo     = config.Logo or "rbxassetid://134963728913547",
-        Size     = config.Size or UDim2.new(0, 880, 0, 555),
+        Size     = config.Size or UDim2.new(0, 930, 0, 555),
         Keybind  = config.Keybind or Enum.KeyCode.RightControl,
         Theme    = config.Theme or {},
         -- Key system
@@ -4052,7 +4052,7 @@ function Hyperion:CreateWindow(config)
     -- ============================================================
     -- HEADER (48px)
     -- ============================================================
-    local HeaderHeight = 64
+    local HeaderHeight = 72
     local SidebarWidth = 176
     local Header = Util.Create("Frame", {
         Name = "Header",
@@ -4084,15 +4084,15 @@ function Hyperion:CreateWindow(config)
     Themed(Header, { BackgroundColor3 = function(t) return t.Surface end })
     Themed(_headerBottomFix, { BackgroundColor3 = function(t) return t.Surface end })
 
-    -- Accent gradient line at bottom of header
+    -- One accent gradient line under the logo and the header, edge to edge
     local AccentLine = Util.Create("Frame", {
         Name = "AccentLine",
         BackgroundColor3 = Color3.new(1, 1, 1),
         Size = UDim2.new(1, 0, 0, 1),
-        Position = UDim2.new(0, 0, 1, -1),
+        Position = UDim2.new(0, 0, 0, HeaderHeight - 1),
         BorderSizePixel = 0,
-        ZIndex = 6,
-        Parent = Header
+        ZIndex = 7,
+        Parent = MainFrame
     })
     local _accentGradient = Util.Create("UIGradient", {
         Color = ColorSequence.new({
@@ -4131,8 +4131,8 @@ function Hyperion:CreateWindow(config)
     local LogoImage = Util.Create("ImageLabel", {
         Name = "Logo",
         BackgroundTransparency = 1,
-        Size = UDim2.new(0, 80, 0, 80),
-        Position = UDim2.new(0, 0, 0.5, 4),
+        Size = UDim2.new(0, 66, 0, 66),
+        Position = UDim2.new(0, 0, 0.5, 3),
         AnchorPoint = Vector2.new(0, 0.5),
         Image = "",
         ImageColor3 = Theme.Accent,
@@ -4176,8 +4176,8 @@ function Hyperion:CreateWindow(config)
     local TitleLabel = Util.Create("TextLabel", {
         Name = "Title",
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -(hasLogo and 78 or 0), 1, 0),
-        Position = UDim2.new(0, hasLogo and 74 or 0, 0, 0),
+        Size = UDim2.new(1, -(hasLogo and 68 or 0), 1, 0),
+        Position = UDim2.new(0, hasLogo and 64 or 0, 0, 0),
         Text = windowConfig.Title,
         TextColor3 = Color3.new(1, 1, 1),
         FontFace = Theme.FontBold,
@@ -4451,17 +4451,6 @@ function Hyperion:CreateWindow(config)
     LogoContainer.ZIndex = 5
 
 
-
-    Themed(Util.Create("Frame", {
-        Name = "TopSep",
-        BackgroundColor3 = Theme.Border,
-        BackgroundTransparency = 0.55,
-        Size = UDim2.new(1, -20, 0, 1),
-        Position = UDim2.new(0, 10, 0, HeaderHeight - 1),
-        BorderSizePixel = 0,
-        ZIndex = 5,
-        Parent = Sidebar
-    }), { BackgroundColor3 = function(t) return t.Border end })
 
     -- Right border line
     local _sidebarBorder = Util.Create("Frame", {
@@ -7330,8 +7319,8 @@ function Hyperion:CreateWindow(config)
     local ContentArea = Util.Create("Frame", {
         Name = "Content",
         BackgroundTransparency = 1,
-        Size = UDim2.new(1, -(SidebarWidth + 10), 1, -HeaderHeight),
-        Position = UDim2.new(0, SidebarWidth + 10, 0, HeaderHeight),
+        Size = UDim2.new(1, -SidebarWidth, 1, -HeaderHeight),
+        Position = UDim2.new(0, SidebarWidth, 0, HeaderHeight),
         ClipsDescendants = false,
         ZIndex = 2,
         Parent = MainFrame
@@ -7626,8 +7615,8 @@ function Hyperion:CreateWindow(config)
 
         LogoImage.Image = assetId
         LogoImage.Visible = true
-        TitleLabel.Position = UDim2.new(0, 74, 0, 0)
-        TitleLabel.Size = UDim2.new(1, -78, 1, 0)
+        TitleLabel.Position = UDim2.new(0, 64, 0, 0)
+        TitleLabel.Size = UDim2.new(1, -68, 1, 0)
         SubtitleLabel.Position = UDim2.new(0, 46, 0, 0)
         SubtitleLabel.Size = UDim2.new(0, 1, 0, 1)
     end
@@ -8080,7 +8069,7 @@ function Hyperion:CreateWindow(config)
         local TabPage = Util.Create("ScrollingFrame", {
             Name = "Page_" .. tabName,
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, -12, 1, 0),  -- gutter on the right for the custom scrollbar
+            Size = UDim2.new(1, 0, 1, 0),
             ScrollBarThickness = 0,
             ScrollingDirection = Enum.ScrollingDirection.Y,
             AutomaticCanvasSize = Enum.AutomaticSize.Y,
@@ -8139,25 +8128,38 @@ function Hyperion:CreateWindow(config)
             Name = "GroupBar",
             BackgroundColor3 = Theme.Surface,
             Position = UDim2.new(0, 0, 0, 0),
-            Size = UDim2.new(1, 12, 0, 40),
+            Size = UDim2.new(1, 0, 0, 40),
             Visible = false,
             ZIndex = 3,
             Parent = TabPage
         })
-        Util.AddCorner(GroupBar, Theme.CornerSmall)
-        local GroupBarStroke = Util.AddStroke(GroupBar, Theme.Border, 1, 0.6)
         Themed(GroupBar, { BackgroundColor3 = function(t) return t.Surface end })
-        Themed(GroupBarStroke, { Color = function(t) return t.Border end })
+
+        local GroupBarLine = Util.Create("Frame", {
+            Name = "GroupBarLine",
+            BackgroundColor3 = Theme.Border,
+            BackgroundTransparency = 0.5,
+            BorderSizePixel = 0,
+            Position = UDim2.new(0, 0, 0, 39),
+            Size = UDim2.new(1, 0, 0, 1),
+            Visible = false,
+            ZIndex = 4,
+            Parent = TabPage
+        })
+        Themed(GroupBarLine, { BackgroundColor3 = function(t) return t.Border end })
+        GroupBar:GetPropertyChangedSignal("Visible"):Connect(function()
+            GroupBarLine.Visible = GroupBar.Visible
+        end)
 
         local GroupList = Util.AddList(GroupBar, Enum.FillDirection.Horizontal, 8)
         GroupList.VerticalAlignment = Enum.VerticalAlignment.Center
-        Util.AddPadding(GroupBar, 6, 10, 6, 10)
+        Util.AddPadding(GroupBar, 6, 10, 6, 20)
 
         local GroupPages = Util.Create("Frame", {
             Name = "GroupPages",
             BackgroundTransparency = 1,
-            Position = UDim2.new(0, 0, 0, 0),
-            Size = UDim2.new(1, 0, 0, 0),
+            Position = UDim2.new(0, 10, 0, 0),
+            Size = UDim2.new(1, -22, 0, 0),
             AutomaticSize = Enum.AutomaticSize.Y,
             ZIndex = 2,
             Parent = TabPage
@@ -8169,9 +8171,9 @@ function Hyperion:CreateWindow(config)
 
         local function UpdateGroupPagesPosition()
             if GroupBar.Visible then
-                GroupPages.Position = UDim2.new(0, 0, 0, 52)
+                GroupPages.Position = UDim2.new(0, 10, 0, 52)
             else
-                GroupPages.Position = UDim2.new(0, 0, 0, 0)
+                GroupPages.Position = UDim2.new(0, 10, 0, 0)
             end
         end
 
