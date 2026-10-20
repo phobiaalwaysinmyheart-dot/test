@@ -2950,6 +2950,582 @@ function Util.AttachColorSwatch(swatch, getColor, setColor, opts)
     Util._cpSwatches[swatch] = toggle
 end
 
+Util._pvBones = {
+    R15 = {
+        { "Head", "UpperTorso" }, { "UpperTorso", "LowerTorso" },
+        { "UpperTorso", "LeftUpperArm" }, { "LeftUpperArm", "LeftLowerArm" }, { "LeftLowerArm", "LeftHand" },
+        { "UpperTorso", "RightUpperArm" }, { "RightUpperArm", "RightLowerArm" }, { "RightLowerArm", "RightHand" },
+        { "LowerTorso", "LeftUpperLeg" }, { "LeftUpperLeg", "LeftLowerLeg" }, { "LeftLowerLeg", "LeftFoot" },
+        { "LowerTorso", "RightUpperLeg" }, { "RightUpperLeg", "RightLowerLeg" }, { "RightLowerLeg", "RightFoot" },
+    },
+    R6 = {
+        { "Head", "Torso" }, { "Torso", "Left Arm" }, { "Torso", "Right Arm" },
+        { "Torso", "Left Leg" }, { "Torso", "Right Leg" },
+    },
+}
+
+function Util._pvProject(cf, fov, w, h, p)
+    local rel = cf:PointToObjectSpace(p)
+    local depth = -rel.Z
+    if depth < 0.05 then return nil end
+    local k = 1 / (depth * math.tan(math.rad(fov) * 0.5))
+    return Vector2.new((rel.X * k * (h / w) * 0.5 + 0.5) * w, (0.5 - rel.Y * k * 0.5) * h), depth
+end
+
+function Util._pvDummy()
+    local model = Instance.new("Model")
+    model.Name = "Dummy"
+    local skin, shirt, pants = Color3.fromRGB(234, 184, 146), Color3.fromRGB(58, 110, 190), Color3.fromRGB(44, 46, 56)
+    local function part(name, sx, sy, sz, x, y, col, ball)
+        local p = Instance.new("Part")
+        p.Name = name
+        p.Size = Vector3.new(sx, sy, sz)
+        p.Position = Vector3.new(x, y, 0)
+        p.Color = col
+        p.Anchored = true
+        p.CanCollide = false
+        p.Material = Enum.Material.SmoothPlastic
+        if ball then p.Shape = Enum.PartType.Ball end
+        p.Parent = model
+        return p
+    end
+    part("Head", 1.2, 1.2, 1.2, 0, 2.3, skin, true)
+    part("UpperTorso", 2, 1.6, 1, 0, 0.9, shirt)
+    local root = part("LowerTorso", 2, 0.4, 1, 0, -0.1, pants)
+    for _, side in ipairs({ { "Left", -1.5, -0.5 }, { "Right", 1.5, 0.5 } }) do
+        part(side[1] .. "UpperArm", 1, 1.1, 1, side[2], 1.15, shirt)
+        part(side[1] .. "LowerArm", 1, 1, 1, side[2], 0.1, shirt)
+        part(side[1] .. "Hand", 1, 0.3, 1, side[2], -0.55, skin)
+        part(side[1] .. "UpperLeg", 1, 1.2, 1, side[3], -0.9, pants)
+        part(side[1] .. "LowerLeg", 1, 1.2, 1, side[3], -2.1, pants)
+        part(side[1] .. "Foot", 1, 0.3, 1, side[3], -2.85, pants)
+    end
+    model.PrimaryPart = root
+    return model
+end
+
+function Util._pvCloneCharacter()
+    local char = LocalPlayer.Character
+    if not char then return nil end
+    local ok, clone = pcall(function()
+        local prev = char.Archivable
+        char.Archivable = true
+        local c = char:Clone()
+        char.Archivable = prev
+        return c
+    end)
+    if not ok or not clone then return nil end
+    for _, d in ipairs(clone:GetDescendants()) do
+        if d:IsA("LuaSourceContainer") or d:IsA("Sound") or d:IsA("Humanoid") or d:IsA("BillboardGui") or d:IsA("Highlight") or d:IsA("ForceField") then
+            d:Destroy()
+        elseif d:IsA("BasePart") then
+            d.Anchored = true
+            d.CanCollide = false
+        end
+    end
+    return clone
+end
+
+function Util._pvBounds(model)
+    local top, bot, sx, sz, n = -math.huge, math.huge, 0, 0, 0
+    for _, ch in ipairs(model:GetChildren()) do
+        if ch:IsA("BasePart") and ch.Name ~= "HumanoidRootPart" then
+            local p, s = ch.Position, ch.Size
+            top = math.max(top, p.Y + s.Y / 2)
+            bot = math.min(bot, p.Y - s.Y / 2)
+            sx, sz, n = sx + p.X, sz + p.Z, n + 1
+        end
+    end
+    if n == 0 then return 2.9, -3, 0, 0 end
+    return top, bot, sx / n, sz / n
+end
+
+function Util.BuildPreview(parent, cfg)
+    cfg = cfg or {}
+    local ui = {}
+    local api = { Kind = "preview" }
+    local T0 = Hyperion.Theme
+    local fov = 50
+    local yaw, pitch, dist, baseDist = math.pi, 0.08, 9, 9
+    local center, topPt, botPt = Vector3.new(0, 0, 0), Vector3.new(0, 3, 0), Vector3.new(0, -3, 0)
+    local dragging, lastPos, autoRotate = false, nil, cfg.AutoRotate ~= false
+    local visible, nextVis, nextText, rotAngle = false, 0, 0, -45
+    local model, isR15, boneParts, bodyParts, chamsOn
+    local sample = { hp = 1 }
+    local conns = {}
+    local alive = true
+
+    local function getSrc()
+        if cfg.Get then return cfg.Get() end
+        return cfg.Source
+    end
+
+    ui.holder = Util.Create("Frame", {
+        Name = "Preview",
+        BackgroundColor3 = T0.Background,
+        Size = UDim2.new(1, 0, 0, cfg.Height or 270),
+        ClipsDescendants = true,
+        ZIndex = 2,
+        Parent = parent,
+    })
+    Util.AddCorner(ui.holder, T0.CornerSmall)
+    ui.stroke = Util.AddStroke(ui.holder, T0.BorderLight, 1, 0.3)
+    ui.bgGrad = Util.Create("UIGradient", {
+        Color = ColorSequence.new(T0.Surface:Lerp(T0.Background, 0.35), T0.Background),
+        Rotation = 90,
+        Parent = ui.holder,
+    })
+
+    ui.vp = Util.Create("ViewportFrame", {
+        Name = "Viewport",
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 1, 0),
+        Ambient = Color3.fromRGB(190, 190, 205),
+        LightColor = Color3.fromRGB(255, 255, 255),
+        LightDirection = Vector3.new(-0.4, -1, -0.6),
+        ZIndex = 2,
+        Parent = ui.holder,
+    })
+    ui.cam = Util.Create("Camera", { FieldOfView = fov, Parent = ui.vp })
+    ui.vp.CurrentCamera = ui.cam
+
+    ui.ov = Util.Create("Frame", {
+        Name = "Overlay",
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 1, 0),
+        ClipsDescendants = true,
+        ZIndex = 3,
+        Parent = ui.holder,
+    })
+
+    local function line(z)
+        return Util.Create("Frame", {
+            BackgroundColor3 = Color3.new(1, 1, 1),
+            BorderSizePixel = 0,
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Visible = false,
+            ZIndex = z,
+            Parent = ui.ov,
+        })
+    end
+    ui.skel = {}
+    for i = 1, 14 do ui.skel[i] = line(4) end
+    ui.tracer = line(4)
+
+    ui.box = Util.Create("Frame", {
+        Name = "Box",
+        BackgroundColor3 = Color3.new(0, 0, 0),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        Visible = false,
+        ZIndex = 5,
+        Parent = ui.ov,
+    })
+    ui.fillGrad = Util.Create("UIGradient", { Enabled = false, Parent = ui.box })
+    ui.outline = Util.Create("UIStroke", {
+        Color = Color3.new(1, 1, 1),
+        Enabled = false,
+        LineJoinMode = Enum.LineJoinMode.Miter,
+        Parent = ui.box,
+    })
+    ui.outlineGrad = Util.Create("UIGradient", { Enabled = false, Parent = ui.outline })
+
+    local anchors = {
+        Vector2.new(0, 0), Vector2.new(0, 0), Vector2.new(1, 0), Vector2.new(0, 0),
+        Vector2.new(0, 1), Vector2.new(0, 1), Vector2.new(1, 1), Vector2.new(1, 1),
+    }
+    ui.corners = {}
+    for i = 1, 8 do
+        ui.corners[i] = Util.Create("Frame", {
+            BackgroundColor3 = Color3.new(1, 1, 1),
+            BorderSizePixel = 0,
+            AnchorPoint = anchors[i],
+            Visible = false,
+            ZIndex = 6,
+            Parent = ui.ov,
+        })
+    end
+
+    ui.hbBack = Util.Create("Frame", {
+        BackgroundColor3 = Color3.new(0, 0, 0),
+        BorderSizePixel = 0,
+        Visible = false,
+        ZIndex = 5,
+        Parent = ui.ov,
+    })
+    ui.hb = Util.Create("Frame", {
+        BackgroundColor3 = Color3.new(1, 1, 1),
+        BorderSizePixel = 0,
+        Visible = false,
+        ZIndex = 6,
+        Parent = ui.ov,
+    })
+    ui.hbGrad = Util.Create("UIGradient", { Rotation = -90, Parent = ui.hb })
+
+    local function label(z)
+        return Util.Create("TextLabel", {
+            BackgroundTransparency = 1,
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Size = UDim2.fromOffset(160, 20),
+            Font = Enum.Font.Code,
+            TextSize = 11,
+            TextColor3 = Color3.new(1, 1, 1),
+            TextStrokeTransparency = 0,
+            TextStrokeColor3 = Color3.new(0, 0, 0),
+            RichText = true,
+            Text = "",
+            Visible = false,
+            ZIndex = z,
+            Parent = ui.ov,
+        })
+    end
+    ui.name = label(7)
+    ui.distLbl = label(7)
+
+    ui.hint = Util.Create("TextLabel", {
+        Name = "Hint",
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 8, 1, -18),
+        Size = UDim2.new(1, -16, 0, 14),
+        Text = "Drag to rotate",
+        TextColor3 = T0.TextMuted,
+        TextTransparency = 0.35,
+        FontFace = T0.Font,
+        TextSize = 10,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex = 8,
+        Parent = ui.holder,
+    })
+
+    ui.area = Util.Create("TextButton", {
+        Name = "Area",
+        BackgroundTransparency = 1,
+        Text = "",
+        AutoButtonColor = false,
+        Size = UDim2.new(1, 0, 1, 0),
+        ZIndex = 9,
+        Parent = ui.holder,
+    })
+
+    local unTheme = Hyperion:OnThemeChanged(function(t)
+        if not ui.holder.Parent then return end
+        ui.holder.BackgroundColor3 = t.Background
+        ui.stroke.Color = t.BorderLight
+        ui.bgGrad.Color = ColorSequence.new(t.Surface:Lerp(t.Background, 0.35), t.Background)
+        ui.hint.TextColor3 = t.TextMuted
+    end)
+
+    local function setChams(on)
+        if on == chamsOn or not bodyParts then return end
+        chamsOn = on
+        for _, rec in ipairs(bodyParts) do
+            local o = rec.obj
+            if rec.kind == "part" then
+                o.Material = on and Enum.Material.SmoothPlastic or rec.mat
+                if rec.tex ~= nil then o.TextureID = on and "" or rec.tex end
+                if not on then o.Color = rec.col end
+            elseif rec.kind == "mesh" then
+                o.TextureId = on and "" or rec.tex
+            elseif rec.kind == "decal" then
+                o.Transparency = on and 1 or rec.tr
+            elseif rec.kind == "surface" then
+                if on then o.Parent = nil else o.Parent = rec.parent end
+            end
+        end
+    end
+
+    local function indexModel()
+        boneParts, bodyParts, chamsOn = {}, {}, false
+        isR15 = model:FindFirstChild("UpperTorso") ~= nil
+        local bones = isR15 and Util._pvBones.R15 or Util._pvBones.R6
+        for i, pair in ipairs(bones) do
+            local a, b = model:FindFirstChild(pair[1]), model:FindFirstChild(pair[2])
+            if a and b and a:IsA("BasePart") and b:IsA("BasePart") then boneParts[#boneParts + 1] = { a, b } end
+        end
+        for _, d in ipairs(model:GetDescendants()) do
+            if d:IsA("BasePart") then
+                local rec = { kind = "part", obj = d, mat = d.Material, col = d.Color }
+                if d:IsA("MeshPart") then rec.tex = d.TextureID end
+                bodyParts[#bodyParts + 1] = rec
+            elseif d:IsA("SpecialMesh") then
+                bodyParts[#bodyParts + 1] = { kind = "mesh", obj = d, tex = d.TextureId }
+            elseif d:IsA("Decal") then
+                bodyParts[#bodyParts + 1] = { kind = "decal", obj = d, tr = d.Transparency }
+            elseif d:IsA("SurfaceAppearance") then
+                bodyParts[#bodyParts + 1] = { kind = "surface", obj = d, parent = d.Parent }
+            end
+        end
+    end
+
+    local function setModel(m)
+        if not alive then return end
+        if model then
+            setChams(false)
+            model:Destroy()
+            model = nil
+        end
+        if not m then m = Util._pvDummy() end
+        model = m
+        if model.PrimaryPart then model:PivotTo(CFrame.new(0, 0, 0)) end
+        model.Parent = ui.vp
+        local top, bot, cx, cz = Util._pvBounds(model)
+        center = Vector3.new(cx, (top + bot) / 2, cz)
+        topPt, botPt = Vector3.new(cx, top, cz), Vector3.new(cx, bot, cz)
+        baseDist = (top - bot) / (2 * 0.7 * math.tan(math.rad(fov) * 0.5))
+        dist = baseDist
+        indexModel()
+    end
+
+    local function loadCharacter()
+        if not alive then return end
+        setModel(Util._pvCloneCharacter())
+    end
+
+    local function isShown()
+        local a = ui.holder
+        while a do
+            if a:IsA("GuiObject") and not a.Visible then return false end
+            if a:IsA("ScreenGui") then return a.Enabled end
+            a = a.Parent
+        end
+        return false
+    end
+
+    local function put(o, k, v)
+        if o[k] ~= v then o[k] = v end
+    end
+
+    local seqLast = {}
+    local function setSeq(grad, a, b)
+        local l = seqLast[grad]
+        if l and l[1] == a and l[2] == b then return end
+        seqLast[grad] = { a, b }
+        grad.Color = ColorSequence.new(a, b)
+    end
+
+    local cornerX = { 0, 0, 1, 1, 0, 0, 1, 1 }
+    local cornerY = { 0, 0, 0, 0, 1, 1, 1, 1 }
+    local cornerWide = { true, false, true, false, false, true, false, true }
+    local function seg(f, a, b, thick)
+        local d = b - a
+        f.Size = UDim2.fromOffset(d.Magnitude, thick)
+        f.Position = UDim2.fromOffset((a.X + b.X) / 2, (a.Y + b.Y) / 2)
+        f.Rotation = math.deg(math.atan2(d.Y, d.X))
+    end
+
+    local function hideAll()
+        ui.box.Visible = false
+        ui.hb.Visible, ui.hbBack.Visible = false, false
+        ui.name.Visible, ui.distLbl.Visible, ui.tracer.Visible = false, false, false
+        for i = 1, 8 do ui.corners[i].Visible = false end
+        for i = 1, 14 do ui.skel[i].Visible = false end
+    end
+
+    local function draw(src, dt, now)
+        local d = src.Drawing
+        local size = ui.ov.AbsoluteSize
+        local w, h = size.X, size.Y
+        if w < 8 or h < 8 then return end
+
+        local rb = src.Rainbow and Color3.fromHSV((now * (src.RainbowSpeed or 1)) % 1, 1, 1) or nil
+        local off = Vector3.new(math.sin(yaw) * math.cos(pitch), math.sin(pitch), math.cos(yaw) * math.cos(pitch)) * dist
+        local cf = CFrame.lookAt(center + off, center)
+        ui.cam.CFrame = cf
+
+        local pTop = Util._pvProject(cf, fov, w, h, topPt)
+        local pBot = Util._pvProject(cf, fov, w, h, botPt)
+        if not (pTop and pBot) then
+            hideAll()
+            return
+        end
+        local bh = math.max(math.abs(pBot.Y - pTop.Y) * 1.06, 12)
+        local bw = bh * 2 / 3
+        local bx, by = (pTop.X + pBot.X) / 2 - bw / 2, (pTop.Y + pBot.Y) / 2 - bh / 2
+
+        local boxes = d.Boxes
+        local fullOn, filledOn, cornerOn = boxes.Full.Enabled, boxes.Filled.Enabled, boxes.Corner.Enabled
+        ui.box.Position = UDim2.fromOffset(bx, by)
+        ui.box.Size = UDim2.fromOffset(bw, bh)
+        put(ui.box, "Visible", fullOn or filledOn)
+        if filledOn then
+            put(ui.box, "BackgroundColor3", rb or boxes.Filled.RGB)
+            put(ui.box, "BackgroundTransparency", boxes.Filled.Transparency)
+            put(ui.fillGrad, "Enabled", (not rb) and boxes.GradientFill == true)
+            setSeq(ui.fillGrad, boxes.GradientFillRGB1, boxes.GradientFillRGB2)
+        else
+            put(ui.box, "BackgroundTransparency", 1)
+            put(ui.fillGrad, "Enabled", false)
+        end
+        put(ui.outline, "Enabled", fullOn)
+        put(ui.outline, "Color", rb or boxes.Full.RGB)
+        put(ui.outlineGrad, "Enabled", (not rb) and boxes.Gradient == true)
+        setSeq(ui.outlineGrad, boxes.GradientRGB1, boxes.GradientRGB2)
+        rotAngle = rotAngle + dt * (boxes.RotationSpeed or 0) * math.cos(math.pi / 4 * now - math.pi / 2)
+        local rot = boxes.Animate and rotAngle or -45
+        ui.fillGrad.Rotation = rot
+        ui.outlineGrad.Rotation = rot
+
+        local cc = rb or boxes.Corner.RGB
+        local cLen, cTall = UDim2.fromOffset(bw / 5, 1), UDim2.fromOffset(1, bh / 5)
+        for i = 1, 8 do
+            local c = ui.corners[i]
+            put(c, "Visible", cornerOn)
+            if cornerOn then
+                c.Position = UDim2.fromOffset(bx + bw * cornerX[i] - (i == 4 and 1 or 0), by + bh * cornerY[i])
+                c.Size = cornerWide[i] and cLen or cTall
+                put(c, "BackgroundColor3", cc)
+            end
+        end
+
+        local hbd = d.Healthbar
+        sample.hp = 0.12 + 0.88 * (0.5 + 0.5 * math.sin(now * 0.8))
+        put(ui.hb, "Visible", hbd.Enabled)
+        put(ui.hbBack, "Visible", hbd.Enabled)
+        if hbd.Enabled then
+            local width = hbd.Width or 3
+            ui.hbBack.Position = UDim2.fromOffset(bx - 6, by)
+            ui.hbBack.Size = UDim2.fromOffset(width, bh)
+            ui.hb.Position = UDim2.fromOffset(bx - 6, by + bh * (1 - sample.hp))
+            ui.hb.Size = UDim2.fromOffset(width, bh * sample.hp)
+            put(ui.hbGrad, "Enabled", hbd.Gradient == true)
+            put(ui.hbGrad, "Color", hbd.GradientSequence)
+        end
+
+        local dd, nd = d.Distances, d.Names
+        if now >= nextText then
+            nextText = now + 0.1
+            local text = ""
+            if nd.Enabled then
+                text = string.format('(<font color="rgb(255,0,0)">E</font>) %s', LocalPlayer.Name)
+            end
+            if dd.Enabled and dd.Position == "Text" then
+                text = text ~= "" and (text .. " [42]") or "[42]"
+            end
+            if hbd.HealthText and hbd.Enabled then
+                local hc = hbd.HealthTextRGB
+                text = text .. string.format('<font color="rgb(%d,%d,%d)"> [%d%%]</font>', hc.R * 255, hc.G * 255, hc.B * 255, math.floor(sample.hp * 100))
+            end
+            put(ui.name, "Text", text)
+            put(ui.name, "Visible", text ~= "")
+        end
+        local fs = src.FontSize or 11
+        put(ui.name, "TextSize", fs)
+        put(ui.name, "TextColor3", rb or nd.RGB)
+        ui.name.Position = UDim2.fromOffset(bx + bw / 2, by - 9)
+        local bottom = dd.Enabled and dd.Position == "Bottom"
+        put(ui.distLbl, "Visible", bottom)
+        if bottom then
+            put(ui.distLbl, "TextSize", fs)
+            put(ui.distLbl, "Text", "42 meters")
+            put(ui.distLbl, "TextColor3", rb or dd.RGB)
+            ui.distLbl.Position = UDim2.fromOffset(bx + bw / 2, by + bh + 7)
+        end
+
+        local sk = d.Skeleton
+        for i = 1, 14 do
+            local f, pair = ui.skel[i], boneParts and boneParts[i]
+            local drawn = false
+            if sk.Enabled and pair then
+                local a = Util._pvProject(cf, fov, w, h, pair[1].Position)
+                local b = Util._pvProject(cf, fov, w, h, pair[2].Position)
+                if a and b then
+                    seg(f, a, b, sk.Thickness or 1)
+                    put(f, "BackgroundColor3", rb or sk.RGB)
+                    drawn = true
+                end
+            end
+            put(f, "Visible", drawn)
+        end
+
+        local tr = d.Tracers
+        put(ui.tracer, "Visible", tr.Enabled)
+        if tr.Enabled then
+            local origin
+            if tr.Origin == "Bottom" then
+                origin = Vector2.new(w / 2, h)
+            elseif tr.Origin == "Center" then
+                origin = Vector2.new(w / 2, h / 2)
+            else
+                local m = UserInputService:GetMouseLocation() - ui.ov.AbsolutePosition
+                origin = (m.X >= 0 and m.X <= w and m.Y >= 0 and m.Y <= h) and m or Vector2.new(w / 2, h)
+            end
+            seg(ui.tracer, origin, Vector2.new(bx + bw / 2, by + bh / 2), tr.Thickness or 1)
+            put(ui.tracer, "BackgroundColor3", rb or tr.RGB)
+        end
+
+        local ch = d.Chams
+        setChams(ch.Enabled == true)
+        if ch.Enabled and bodyParts then
+            local blend = 0.5
+            if ch.Thermal then
+                local b = math.atan(math.sin(now * 2)) * 2 / math.pi
+                blend = 1 - math.clamp((ch.Fill_Transparency or 0) * b * 0.01, 0, 1)
+            end
+            local fill = rb or ch.FillRGB
+            for _, rec in ipairs(bodyParts) do
+                if rec.kind == "part" then rec.obj.Color = rec.col:Lerp(fill, blend) end
+            end
+        end
+    end
+
+    local function step(dt)
+        local now = os.clock()
+        if now >= nextVis then
+            nextVis = now + 0.15
+            visible = isShown()
+        end
+        if not visible then return end
+        if autoRotate and not dragging then yaw = yaw + dt * 0.6 end
+        local src = getSrc()
+        if not src or not src.Drawing then return end
+        draw(src, dt, now)
+    end
+
+    conns[#conns + 1] = RunService.RenderStepped:Connect(step)
+
+    ui.area.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            dragging, lastPos = true, i.Position
+        end
+    end)
+    conns[#conns + 1] = UserInputService.InputChanged:Connect(function(i)
+        if not dragging then return end
+        if i.UserInputType ~= Enum.UserInputType.MouseMovement and i.UserInputType ~= Enum.UserInputType.Touch then return end
+        local d = i.Position - lastPos
+        lastPos = i.Position
+        yaw = yaw - d.X * 0.012
+        pitch = math.clamp(pitch + d.Y * 0.008, -0.6, 0.9)
+    end)
+    conns[#conns + 1] = UserInputService.InputEnded:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    conns[#conns + 1] = LocalPlayer.CharacterAdded:Connect(function()
+        task.delay(1.5, loadCharacter)
+    end)
+
+    function api:Destroy()
+        if not alive then return end
+        alive = false
+        for _, c in ipairs(conns) do c:Disconnect() end
+        unTheme()
+        ui.holder:Destroy()
+    end
+    function api:Refresh() loadCharacter() end
+    function api:SetModel(m) setModel(m) end
+    function api:SetAutoRotate(v) autoRotate = v == true end
+    api.Frame = ui.holder
+
+    ui.holder.AncestryChanged:Connect(function()
+        if alive and not ui.holder:IsDescendantOf(game) then api:Destroy() end
+    end)
+
+    loadCharacter()
+    return api
+end
+
 function Util.AttachTooltip(obj, text)
     if not obj or type(text) ~= "string" or text == "" then return end
     local hovering = false
@@ -8950,6 +9526,32 @@ function Hyperion:CreateWindow(config)
                 })
                 Themed(TrackGlow, { Color = function(t) return (isBox and not value) and t.TextMuted or t.AccentGlow end })
 
+                local _ga = Util.GlowAssets()
+                local TrackHalo
+                if _ga then
+                    TrackHalo = Util.Create("ImageLabel", {
+                        Name = "Halo",
+                        BackgroundTransparency = 1,
+                        Image = _ga.bar,
+                        ImageColor3 = Theme.Accent,
+                        ImageTransparency = value and 0.88 or 1,
+                        ScaleType = Enum.ScaleType.Slice,
+                        SliceCenter = Rect.new(10, 10, 54, 54),
+                        AnchorPoint = Vector2.new(1, 0.5),
+                        Position = UDim2.new(1, 8, 0.5, 0),
+                        Size = isBox and UDim2.new(0, 36, 0, 36) or UDim2.new(0, 50, 0, 34),
+                        ZIndex = 2,
+                        Parent = Frame
+                    })
+                    Themed(TrackHalo, { ImageColor3 = function(t) return t.Accent end })
+                end
+                local hovering = false
+                local function _halo(state)
+                    if not TrackHalo then return end
+                    local t = state and (hovering and 0.74 or 0.88) or (hovering and 0.92 or 1)
+                    Util.Tween(TrackHalo, 0.2, {ImageTransparency = t})
+                end
+
                 local Knob
                 if not isBox then
                     Knob = Util.Create("Frame", {
@@ -9069,6 +9671,7 @@ function Hyperion:CreateWindow(config)
 
                 local function UpdateVisual(state)
                     TrackGrad.Enabled = state
+                    _halo(state)
                     Util.TweenSmooth(Track, {BackgroundColor3 = state and Hyperion.Theme.Accent or Hyperion.Theme.ToggleOff})
                     if isBox then
                         Util.TweenSmooth(TrackGlow, {
@@ -9111,10 +9714,14 @@ function Hyperion:CreateWindow(config)
 
                 -- Hover effect on row
                 Hitbox.MouseEnter:Connect(function()
+                    hovering = true
+                    _halo(value)
                     Util.TweenFast(Frame, {BackgroundTransparency = 0.5})
                     if isBox then Util.TweenFast(TrackGlow, {Transparency = 0.05}) end
                 end)
                 Hitbox.MouseLeave:Connect(function()
+                    hovering = false
+                    _halo(value)
                     Util.TweenFast(Frame, {BackgroundTransparency = 1})
                     if isBox then Util.TweenFast(TrackGlow, {Transparency = value and 0.5 or 0.35}) end
                 end)
@@ -9321,7 +9928,7 @@ function Hyperion:CreateWindow(config)
                         BackgroundTransparency = 1,
                         Image = _ga.bar,
                         ImageColor3 = Color3.new(1, 1, 1),
-                        ImageTransparency = 0.95,
+                        ImageTransparency = 0.97,
                         ScaleType = Enum.ScaleType.Slice,
                         SliceCenter = Rect.new(10, 10, 54, 54),
                         AnchorPoint = Vector2.new(0.5, 0.5),
@@ -9369,8 +9976,8 @@ function Hyperion:CreateWindow(config)
 
                 local function _glow()
                     local on = dragging or overFrame or overHit
-                    if BarGlowImg then Util.Tween(BarGlowImg, 0.2, {ImageTransparency = on and 0.5 or 0.95}) end
-                    if KnobGlowImg then Util.Tween(KnobGlowImg, 0.2, {ImageTransparency = on and 0.55 or 1}) end
+                    if BarGlowImg then Util.Tween(BarGlowImg, 0.2, {ImageTransparency = on and 0.66 or 0.97}) end
+                    if KnobGlowImg then Util.Tween(KnobGlowImg, 0.2, {ImageTransparency = on and 0.72 or 1}) end
                 end
 
                 Frame.MouseEnter:Connect(function() overFrame = true; _glow() end)
@@ -10467,6 +11074,10 @@ function Hyperion:CreateWindow(config)
                     Themed(st, { Color = function(t) return t.BorderLight end })
                 end
                 return Canvas
+            end
+
+            function SectionObj:AddPreview(cfg)
+                return Util.BuildPreview(Elements, cfg)
             end
 
             -- ==============================================
