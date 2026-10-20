@@ -2385,6 +2385,7 @@ end
 Util._glowData = {
     bar  = "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAHgSURBVHhe7Zs9SkNBFEYTEpWA+AMiSLCyErS2srLSxgXY6RrS6wJcguCqXIH7OHLCm8fLC4jtON+DrwmZ4Z6TO5Pm3Qkw+SVTYNZlXllK3TKMufpsfdDFhTvALrBXeWSQRaYx55YAbWnPRQtgHzgEjiqNtcsgi0yybXTEGF5TWnPRMXAKnAHLSmPtMsgik2wy9hKGArTjFw6Ak26DC+ASuAKuK4s1W7sMssgkm4yybgjwfNgiWvKL593iG+AOuAceKos1W7sMssgkm4yyru+EIsC28JzYKtpywS3wCDwBz8BLZbFma5dBFplkk1FWmdcCPA/l1/e82DJac6GbrIBX4K2yWLO1yyCLTLLJWLpgWtrfc+GN6aWhKVtHe27wDnwAn5XFmq1dBllkkk1GWWWeDQX4t2GLeHl4fjSnRTf6Ar4rizVbuwyyyCSbjLL2AsrtXwR4g3qJeI5sJW26YW2PNVu7DLLIJNtQwDwCIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACIiACxrtX8ETAXwU0/7J086/LNz8wYZoemSnHoOmhqeG/QZNjc+UuaHpwskjQTpOjs8M0Ozw9zr8fn/8B6BirCIdnTmgAAAAASUVORK5CYII=",
     knob = "iVBORw0KGgoAAAANSUhEUgAAABsAAAAbCAYAAACN1PRVAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAHFSURBVEhLxdY9yhRBEMbxVwXBL1AMRARFjDUyEfEGIhgbCm9s7BUEMwOv4BlMPIGJJ/AGnuAvP5gZxt5dZMEdG4qmq+p5qququ2fOqrOtZEdxQC5UF1dyaVizj5gd2VEcCHK5ulJdq65XN6bZmp79r0F3FCuZgyC8Vd2p7lX3qwfTbE3Pzm8OOnIdDDZnY8c3q7vVo+px9bR6Vj2fZmt6dn784fZmOQYiHK9Wt6cMnlQvqlfVm+ptdT7N1vTs/PjDwe9kuC+QnQE8nHb+ciJ+X32oPlWfp9manp0ffzj4OcO9waSt5kphh4Cvq3fVx+pL9a36Xv2YZmt6dn784eDx4FvKOWalyWqvJHaKQAZfq5/tH/Ts/PjDwePBt2Q3ZuVUabYeKI0dI/o1RhgGOz/+cPB48C3Zjb1yjJ0uTdcLJTqU0Tj48YeDx4Nv6d1YQvdGzZ0yzdeTYwZ/OHg8+JZSroN5EVxU90cp9MAhOGbwh4PHgw/vH8G8dZ4gp8iFdY8cb6fumMEfDh4PPrz4/09mm/dss9O46T1bl/LkL8g6u03exnXvTv7qrwNu8j0jm36pZwE4+T/IWjb7u9oXdJaT/Df+U/kNIP5JJE+SCZIAAAAASUVORK5CYII=",
+    radial = "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",
 }
 
 function Util.MakeDraggable(btn, opts)
@@ -3037,7 +3038,44 @@ function Util._pvBounds(model)
         end
     end
     if n == 0 then return 2.9, -3, 0, 0 end
+    local limitTop, limitBot = top + 1.2, bot - 0.2
+    for _, d in ipairs(model:GetDescendants()) do
+        if d:IsA("BasePart") and d.Parent ~= model and d.Transparency < 0.95 then
+            local p, s = d.Position, d.Size
+            top = math.max(top, math.min(p.Y + s.Y / 2, limitTop))
+            bot = math.min(bot, math.max(p.Y - s.Y / 2, limitBot))
+        end
+    end
     return top, bot, sx / n, sz / n
+end
+
+function Util._pvFlat(model, inflate)
+    local c = model:Clone()
+    if not c then return nil end
+    for _, d in ipairs(c:GetDescendants()) do
+        if d:IsA("BasePart") then
+            d.Material = Enum.Material.SmoothPlastic
+            d.Color = Color3.new(1, 1, 1)
+            if d:IsA("MeshPart") then d.TextureID = "" end
+            if inflate > 0 and d.Transparency < 0.95 then
+                d.Size = d.Size + Vector3.new(inflate, inflate, inflate)
+            end
+        elseif d:IsA("SpecialMesh") then
+            d.TextureId = ""
+            if inflate > 0 then d.Scale = d.Scale * (1 + inflate * 0.5) end
+        elseif d:IsA("Decal") or d:IsA("Texture") or d:IsA("SurfaceAppearance") or d:IsA("Clothing") or d:IsA("ShirtGraphic") or d:IsA("BodyColors") or d:IsA("CharacterMesh") then
+            d:Destroy()
+        end
+    end
+    return c
+end
+
+function Util._pvBg(t)
+    return ColorSequence.new({
+        ColorSequenceKeypoint.new(0, t.Background:Lerp(t.Accent, 0.2)),
+        ColorSequenceKeypoint.new(0.6, t.Background),
+        ColorSequenceKeypoint.new(1, t.Background:Lerp(Color3.new(0, 0, 0), 0.45)),
+    })
 end
 
 function Util.BuildPreview(parent, cfg)
@@ -3050,7 +3088,8 @@ function Util.BuildPreview(parent, cfg)
     local center, topPt, botPt = Vector3.new(0, 0, 0), Vector3.new(0, 3, 0), Vector3.new(0, -3, 0)
     local dragging, lastPos, autoRotate = false, nil, cfg.AutoRotate ~= false
     local visible, nextVis, nextText, rotAngle = false, 0, 0, -45
-    local model, isR15, boneParts, bodyParts, chamsOn
+    local model, isR15, boneParts, fillModel, outModel
+    local chamsMin = cfg.ChamsMinTransparency or 0.4
     local sample = { hp = 1 }
     local conns = {}
     local alive = true
@@ -3062,7 +3101,7 @@ function Util.BuildPreview(parent, cfg)
 
     ui.holder = Util.Create("Frame", {
         Name = "Preview",
-        BackgroundColor3 = T0.Background,
+        BackgroundColor3 = Color3.new(1, 1, 1),
         Size = UDim2.new(1, 0, 0, cfg.Height or 270),
         ClipsDescendants = true,
         ZIndex = 2,
@@ -3071,10 +3110,89 @@ function Util.BuildPreview(parent, cfg)
     Util.AddCorner(ui.holder, T0.CornerSmall)
     ui.stroke = Util.AddStroke(ui.holder, T0.BorderLight, 1, 0.3)
     ui.bgGrad = Util.Create("UIGradient", {
-        Color = ColorSequence.new(T0.Surface:Lerp(T0.Background, 0.35), T0.Background),
+        Color = Util._pvBg(T0),
         Rotation = 90,
         Parent = ui.holder,
     })
+
+    local ga = Util.GlowAssets()
+    if ga then
+        ui.spot = Util.Create("ImageLabel", {
+            Name = "Spot",
+            BackgroundTransparency = 1,
+            Image = ga.radial,
+            ImageColor3 = T0.Accent,
+            ImageTransparency = 0.7,
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.new(0.5, 0, 0.46, 0),
+            SizeConstraint = Enum.SizeConstraint.RelativeYY,
+            Size = UDim2.new(1.4, 0, 1.4, 0),
+            ZIndex = 1,
+            Parent = ui.holder,
+        })
+        ui.floorGlow = Util.Create("ImageLabel", {
+            Name = "FloorGlow",
+            BackgroundTransparency = 1,
+            Image = ga.radial,
+            ImageColor3 = T0.Accent,
+            ImageTransparency = 0.28,
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            ZIndex = 1,
+            Parent = ui.holder,
+        })
+        ui.floorShadow = Util.Create("ImageLabel", {
+            Name = "FloorShadow",
+            BackgroundTransparency = 1,
+            Image = ga.radial,
+            ImageColor3 = Color3.new(0, 0, 0),
+            ImageTransparency = 0.2,
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            ZIndex = 1,
+            Parent = ui.holder,
+        })
+    end
+
+    local function edge(pos, size, rot)
+        local f = Util.Create("Frame", {
+            Name = "Vignette",
+            BackgroundColor3 = Color3.new(0, 0, 0),
+            BorderSizePixel = 0,
+            Position = pos,
+            Size = size,
+            ZIndex = 1,
+            Parent = ui.holder,
+        })
+        Util.Create("UIGradient", {
+            Rotation = rot,
+            Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0.55),
+                NumberSequenceKeypoint.new(1, 1),
+            }),
+            Parent = f,
+        })
+    end
+    edge(UDim2.new(0, 0, 0, 0), UDim2.new(1, 0, 0.3, 0), 90)
+    edge(UDim2.new(0, 0, 0.7, 0), UDim2.new(1, 0, 0.3, 0), -90)
+    edge(UDim2.new(0, 0, 0, 0), UDim2.new(0.18, 0, 1, 0), 0)
+    edge(UDim2.new(0.82, 0, 0, 0), UDim2.new(0.18, 0, 1, 0), 180)
+
+    local function flatViewport(z)
+        local v = Util.Create("ViewportFrame", {
+            Name = "Flat",
+            BackgroundTransparency = 1,
+            Size = UDim2.new(1, 0, 1, 0),
+            Ambient = Color3.new(1, 1, 1),
+            LightColor = Color3.new(0, 0, 0),
+            ImageTransparency = 1,
+            Visible = false,
+            ZIndex = z,
+            Parent = ui.holder,
+        })
+        local cam = Util.Create("Camera", { FieldOfView = fov, Parent = v })
+        v.CurrentCamera = cam
+        return v, cam
+    end
+    ui.outVp, ui.outCam = flatViewport(2)
 
     ui.vp = Util.Create("ViewportFrame", {
         Name = "Viewport",
@@ -3083,18 +3201,20 @@ function Util.BuildPreview(parent, cfg)
         Ambient = Color3.fromRGB(190, 190, 205),
         LightColor = Color3.fromRGB(255, 255, 255),
         LightDirection = Vector3.new(-0.4, -1, -0.6),
-        ZIndex = 2,
+        ZIndex = 3,
         Parent = ui.holder,
     })
     ui.cam = Util.Create("Camera", { FieldOfView = fov, Parent = ui.vp })
     ui.vp.CurrentCamera = ui.cam
+
+    ui.fillVp, ui.fillCam = flatViewport(4)
 
     ui.ov = Util.Create("Frame", {
         Name = "Overlay",
         BackgroundTransparency = 1,
         Size = UDim2.new(1, 0, 1, 0),
         ClipsDescendants = true,
-        ZIndex = 3,
+        ZIndex = 5,
         Parent = ui.holder,
     })
 
@@ -3209,58 +3329,31 @@ function Util.BuildPreview(parent, cfg)
 
     local unTheme = Hyperion:OnThemeChanged(function(t)
         if not ui.holder.Parent then return end
-        ui.holder.BackgroundColor3 = t.Background
         ui.stroke.Color = t.BorderLight
-        ui.bgGrad.Color = ColorSequence.new(t.Surface:Lerp(t.Background, 0.35), t.Background)
+        ui.bgGrad.Color = Util._pvBg(t)
         ui.hint.TextColor3 = t.TextMuted
+        if ui.spot then
+            ui.spot.ImageColor3 = t.Accent
+            ui.floorGlow.ImageColor3 = t.Accent
+        end
     end)
 
-    local function setChams(on)
-        if on == chamsOn or not bodyParts then return end
-        chamsOn = on
-        for _, rec in ipairs(bodyParts) do
-            local o = rec.obj
-            if rec.kind == "part" then
-                o.Material = on and Enum.Material.SmoothPlastic or rec.mat
-                if rec.tex ~= nil then o.TextureID = on and "" or rec.tex end
-                if not on then o.Color = rec.col end
-            elseif rec.kind == "mesh" then
-                o.TextureId = on and "" or rec.tex
-            elseif rec.kind == "decal" then
-                o.Transparency = on and 1 or rec.tr
-            elseif rec.kind == "surface" then
-                if on then o.Parent = nil else o.Parent = rec.parent end
-            end
-        end
-    end
-
     local function indexModel()
-        boneParts, bodyParts, chamsOn = {}, {}, false
+        boneParts = {}
         isR15 = model:FindFirstChild("UpperTorso") ~= nil
         local bones = isR15 and Util._pvBones.R15 or Util._pvBones.R6
         for i, pair in ipairs(bones) do
             local a, b = model:FindFirstChild(pair[1]), model:FindFirstChild(pair[2])
             if a and b and a:IsA("BasePart") and b:IsA("BasePart") then boneParts[#boneParts + 1] = { a, b } end
         end
-        for _, d in ipairs(model:GetDescendants()) do
-            if d:IsA("BasePart") then
-                local rec = { kind = "part", obj = d, mat = d.Material, col = d.Color }
-                if d:IsA("MeshPart") then rec.tex = d.TextureID end
-                bodyParts[#bodyParts + 1] = rec
-            elseif d:IsA("SpecialMesh") then
-                bodyParts[#bodyParts + 1] = { kind = "mesh", obj = d, tex = d.TextureId }
-            elseif d:IsA("Decal") then
-                bodyParts[#bodyParts + 1] = { kind = "decal", obj = d, tr = d.Transparency }
-            elseif d:IsA("SurfaceAppearance") then
-                bodyParts[#bodyParts + 1] = { kind = "surface", obj = d, parent = d.Parent }
-            end
-        end
     end
 
     local function setModel(m)
         if not alive then return end
         if model then
-            setChams(false)
+            if fillModel then fillModel:Destroy() end
+            if outModel then outModel:Destroy() end
+            fillModel, outModel = nil, nil
             model:Destroy()
             model = nil
         end
@@ -3274,6 +3367,10 @@ function Util.BuildPreview(parent, cfg)
         baseDist = (top - bot) / (2 * 0.7 * math.tan(math.rad(fov) * 0.5))
         dist = baseDist
         indexModel()
+        fillModel = Util._pvFlat(model, 0)
+        outModel = Util._pvFlat(model, cfg.OutlineSize or 0.14)
+        if fillModel then fillModel.Parent = ui.fillVp end
+        if outModel then outModel.Parent = ui.outVp end
     end
 
     local function loadCharacter()
@@ -3341,6 +3438,14 @@ function Util.BuildPreview(parent, cfg)
         local bh = math.max(math.abs(pBot.Y - pTop.Y) * 1.06, 12)
         local bw = bh * 2 / 3
         local bx, by = (pTop.X + pBot.X) / 2 - bw / 2, (pTop.Y + pBot.Y) / 2 - bh / 2
+
+        if ui.floorGlow then
+            local feet = UDim2.fromOffset(pBot.X, pBot.Y)
+            ui.floorGlow.Position = feet
+            ui.floorGlow.Size = UDim2.fromOffset(bw * 2.4, bw * 0.55)
+            ui.floorShadow.Position = feet
+            ui.floorShadow.Size = UDim2.fromOffset(bw * 1.25, bw * 0.24)
+        end
 
         local boxes = d.Boxes
         local fullOn, filledOn, cornerOn = boxes.Full.Enabled, boxes.Filled.Enabled, boxes.Corner.Enabled
@@ -3454,18 +3559,28 @@ function Util.BuildPreview(parent, cfg)
         end
 
         local ch = d.Chams
-        setChams(ch.Enabled == true)
-        if ch.Enabled and bodyParts then
-            local blend = 0.5
+        local fillOn, outOn = false, false
+        if ch.Enabled and fillModel and outModel then
+            local fT, oT = 1, 0
             if ch.Thermal then
                 local b = math.atan(math.sin(now * 2)) * 2 / math.pi
-                blend = 1 - math.clamp((ch.Fill_Transparency or 0) * b * 0.01, 0, 1)
+                fT = chamsMin + math.clamp((ch.Fill_Transparency or 0) * b * 0.01, 0, 1) * (1 - chamsMin)
+                oT = math.clamp((ch.Outline_Transparency or 0) * b * 0.01, 0, 1)
             end
-            local fill = rb or ch.FillRGB
-            for _, rec in ipairs(bodyParts) do
-                if rec.kind == "part" then rec.obj.Color = rec.col:Lerp(fill, blend) end
+            fillOn, outOn = fT < 1, oT < 1
+            if fillOn then
+                ui.fillCam.CFrame = cf
+                put(ui.fillVp, "ImageColor3", rb or ch.FillRGB or Color3.new(1, 1, 1))
+                ui.fillVp.ImageTransparency = fT
+            end
+            if outOn then
+                ui.outCam.CFrame = cf
+                put(ui.outVp, "ImageColor3", rb or ch.OutlineRGB or ch.FillRGB or Color3.new(1, 1, 1))
+                ui.outVp.ImageTransparency = oT
             end
         end
+        put(ui.fillVp, "Visible", fillOn)
+        put(ui.outVp, "Visible", outOn)
     end
 
     local function step(dt)
