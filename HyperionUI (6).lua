@@ -2528,9 +2528,16 @@ function Util.MakeCollapsible(p, collapsed)
         token = token + 1
         local mine = token
         local el = p.Elements
+        local span = c and el.AbsoluteSize.Y or ((list and list.AbsoluteContentSize.Y or 0) + padY)
+        local dur = math.clamp(0.2 + span / 2600, 0.26, 0.42)
         if p.Chevron then
-            if instant then p.Chevron.Rotation = c and -90 or 0 else Util.TweenSmooth(p.Chevron, {Rotation = c and -90 or 0}) end
+            if instant then
+                p.Chevron.Rotation = c and -90 or 0
+            else
+                Util.Tween(p.Chevron, dur, {Rotation = c and -90 or 0}, Enum.EasingStyle.Cubic, Enum.EasingDirection.InOut)
+            end
         end
+        if not instant then Hyperion._layoutBusyUntil = os.clock() + dur + 0.05 end
         if instant then
             el.ClipsDescendants = c
             if c then
@@ -2550,7 +2557,7 @@ function Util.MakeCollapsible(p, collapsed)
             local h = el.AbsoluteSize.Y
             el.AutomaticSize = Enum.AutomaticSize.None
             el.Size = UDim2.new(1, 0, 0, h)
-            local tw = Util.Tween(el, 0.22, {Size = UDim2.new(1, 0, 0, 0)}, Enum.EasingStyle.Quint)
+            local tw = Util.Tween(el, dur, {Size = UDim2.new(1, 0, 0, 0)}, Enum.EasingStyle.Cubic, Enum.EasingDirection.InOut)
             local function done()
                 if token == mine then
                     el.Visible = false
@@ -2569,7 +2576,7 @@ function Util.MakeCollapsible(p, collapsed)
             end
             el.AutomaticSize = Enum.AutomaticSize.None
             el.Size = UDim2.new(1, 0, 0, 0)
-            local tw = Util.Tween(el, 0.22, {Size = UDim2.new(1, 0, 0, h)}, Enum.EasingStyle.Quint)
+            local tw = Util.Tween(el, dur, {Size = UDim2.new(1, 0, 0, h)}, Enum.EasingStyle.Cubic, Enum.EasingDirection.InOut)
             local function done()
                 if token == mine then
                     el.AutomaticSize = Enum.AutomaticSize.Y
@@ -3633,7 +3640,7 @@ function Util.BuildPreview(parent, cfg)
             rbBox, rbFill, rbName = rbOf(src, "Box", now), rbOf(src, "Fill", now), rbOf(src, "Name", now)
             rbSkel, rbTrac = rbOf(src, "Skeleton", now), rbOf(src, "Tracer", now)
             rbCF, rbCO = rbOf(src, "ChamsFill", now), rbOf(src, "ChamsOutline", now)
-            if src.RainbowMode == "Gradient" and src.RainbowSequence then rbSeq = src.RainbowSequence() end
+            if src.RainbowSequence then rbSeq = src.RainbowSequence() end
         end
         local off = Vector3.new(math.sin(yaw) * math.cos(pitch), math.sin(pitch), math.cos(yaw) * math.cos(pitch)) * dist
         local cf = CFrame.lookAt(center + off, center)
@@ -3809,6 +3816,7 @@ function Util.BuildPreview(parent, cfg)
 
     local function step(dt)
         local now = os.clock()
+        if now < (Hyperion._layoutBusyUntil or 0) then return end
         if now >= nextVis then
             nextVis = now + 0.15
             visible = isShown()
@@ -9260,34 +9268,51 @@ function Hyperion:CreateWindow(config)
         Util.AddCorner(ScrollThumb, UDim.new(1, 0))
         Themed(ScrollThumb, { BackgroundColor3 = function(t) return t.Accent end })
 
+        local lastThumbH, lastThumbY = -1, -1
         local function UpdateScrollThumb()
             if not TabPage.Visible then return end
             local canvasY = TabPage.AbsoluteCanvasSize.Y
             local frameH = TabPage.AbsoluteSize.Y
             if canvasY <= frameH then
-                ScrollThumb.Visible = false
+                if ScrollThumb.Visible then ScrollThumb.Visible = false end
                 return
             end
-            ScrollThumb.Visible = true
+            if not ScrollThumb.Visible then ScrollThumb.Visible = true end
             local ratio = frameH / canvasY
             local trackSpan = frameH - 8
             local thumbH = math.max(24, math.floor(trackSpan * ratio))
             local scrollPct = TabPage.CanvasPosition.Y / (canvasY - frameH)
             local trackH = trackSpan - thumbH
-            ScrollThumb.Size = UDim2.new(0, 4, 0, thumbH)
-            ScrollThumb.Position = UDim2.new(1, -8, 0, 4 + math.floor(scrollPct * trackH))
+            local thumbY = 4 + math.floor(scrollPct * trackH)
+            if thumbH ~= lastThumbH then
+                lastThumbH = thumbH
+                ScrollThumb.Size = UDim2.new(0, 4, 0, thumbH)
+            end
+            if thumbY ~= lastThumbY then
+                lastThumbY = thumbY
+                ScrollThumb.Position = UDim2.new(1, -8, 0, thumbY)
+            end
         end
 
-        local thumbToken = 0
+        local thumbUntil, thumbAwake, thumbWatching = 0, false, false
         local function WakeThumb()
-            thumbToken = thumbToken + 1
-            local mine = thumbToken
-            Util.Tween(ScrollThumb, 0.15, {BackgroundTransparency = 0.45})
-            task.delay(1.1, function()
-                if thumbToken == mine then
+            thumbUntil = os.clock() + 1.1
+            if not thumbAwake then
+                thumbAwake = true
+                Util.Tween(ScrollThumb, 0.15, {BackgroundTransparency = 0.45})
+            end
+            if thumbWatching then return end
+            thumbWatching = true
+            local function watch()
+                local left = thumbUntil - os.clock()
+                if left > 0 then
+                    task.delay(left, watch)
+                else
+                    thumbWatching, thumbAwake = false, false
                     Util.Tween(ScrollThumb, 0.4, {BackgroundTransparency = 1})
                 end
-            end)
+            end
+            task.delay(1.1, watch)
         end
 
         TabPage:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
@@ -9540,7 +9565,13 @@ function Hyperion:CreateWindow(config)
             end
 
             UpdateColumns()
-            Util.Connect(GroupPages:GetPropertyChangedSignal("AbsoluteSize"), UpdateColumns)
+            local lastColW = GroupPages.AbsoluteSize.X
+            Util.Connect(GroupPages:GetPropertyChangedSignal("AbsoluteSize"), function()
+                local w = GroupPages.AbsoluteSize.X
+                if w == lastColW then return end
+                lastColW = w
+                UpdateColumns()
+            end)
 
             local groupData = {
                 Name = groupName,
