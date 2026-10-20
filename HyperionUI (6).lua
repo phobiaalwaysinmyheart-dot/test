@@ -1196,6 +1196,108 @@ Hyperion.Themes = {
         SliderBg     = Color3.fromRGB(30,   8,  18),
         InputBg      = Color3.fromRGB(20,   5,  12),
     },
+    ["Fiery Sunset"] = {
+        Logo         = nil,
+        Animated     = true,
+        StarColor    = Color3.fromRGB(250, 163, 7),
+        StarColors   = {
+            Color3.fromRGB(220, 47, 2),
+            Color3.fromRGB(232, 93, 4),
+            Color3.fromRGB(244, 140, 6),
+            Color3.fromRGB(250, 163, 7),
+            Color3.fromRGB(255, 186, 8),
+        },
+        ParticleStyle = "sparks",
+        TitleGradient = {
+            ColorSequenceKeypoint.new(0,   Color3.fromRGB(232, 93, 4)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 186, 8)),
+            ColorSequenceKeypoint.new(1,   Color3.fromRGB(220, 47, 2)),
+        },
+        LogoGradient = {
+            ColorSequenceKeypoint.new(0,   Color3.fromRGB(208, 0, 0)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(244, 140, 6)),
+            ColorSequenceKeypoint.new(1,   Color3.fromRGB(255, 186, 8)),
+        },
+        GradientStops = {
+            {0,    Color3.fromRGB(3, 7, 30)},
+            {0.2,  Color3.fromRGB(34, 5, 20)},
+            {0.4,  Color3.fromRGB(66, 4, 14)},
+            {0.55, Color3.fromRGB(94, 3, 8)},
+            {0.7,  Color3.fromRGB(66, 4, 14)},
+            {0.88, Color3.fromRGB(34, 5, 20)},
+            {1,    Color3.fromRGB(3, 7, 30)},
+        },
+        Accent       = Color3.fromRGB(232, 93, 4),
+        AccentDark   = Color3.fromRGB(208, 0, 0),
+        AccentLight  = Color3.fromRGB(250, 163, 7),
+        AccentGlow   = Color3.fromRGB(244, 140, 6),
+        AccentSub    = Color3.fromRGB(157, 2, 8),
+        Background   = Color3.fromRGB(10, 3, 12),
+        Surface      = Color3.fromRGB(24, 6, 16),
+        SurfaceLight = Color3.fromRGB(40, 10, 22),
+        SurfaceHover = Color3.fromRGB(58, 14, 28),
+        SurfaceActive= Color3.fromRGB(76, 18, 32),
+        Sidebar      = Color3.fromRGB(14, 4, 12),
+        SidebarActive= Color3.fromRGB(50, 12, 24),
+        Text         = Color3.fromRGB(255, 238, 216),
+        TextDim      = Color3.fromRGB(222, 168, 134),
+        TextMuted    = Color3.fromRGB(140, 84, 74),
+        Border       = Color3.fromRGB(82, 18, 30),
+        BorderLight  = Color3.fromRGB(122, 32, 38),
+        ToggleOff    = Color3.fromRGB(56, 14, 26),
+        SliderBg     = Color3.fromRGB(32, 8, 18),
+        InputBg      = Color3.fromRGB(13, 4, 11),
+    },
+    ["Soft Lavender"] = {
+        Logo         = nil,
+        Animated     = true,
+        StarColor    = Color3.fromRGB(201, 173, 167),
+        StarColors   = {
+            Color3.fromRGB(201, 173, 167),
+            Color3.fromRGB(154, 140, 152),
+            Color3.fromRGB(242, 233, 228),
+            Color3.fromRGB(232, 196, 206),
+            Color3.fromRGB(170, 160, 200),
+        },
+        ParticleStyle = "easter",
+        TitleGradient = {
+            ColorSequenceKeypoint.new(0,   Color3.fromRGB(201, 173, 167)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(242, 233, 228)),
+            ColorSequenceKeypoint.new(1,   Color3.fromRGB(176, 154, 176)),
+        },
+        LogoGradient = {
+            ColorSequenceKeypoint.new(0,   Color3.fromRGB(214, 190, 190)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(176, 154, 176)),
+            ColorSequenceKeypoint.new(1,   Color3.fromRGB(124, 112, 146)),
+        },
+        GradientStops = {
+            {0,    Color3.fromRGB(24, 24, 43)},
+            {0.3,  Color3.fromRGB(34, 34, 59)},
+            {0.5,  Color3.fromRGB(58, 60, 88)},
+            {0.7,  Color3.fromRGB(34, 34, 59)},
+            {1,    Color3.fromRGB(24, 24, 43)},
+        },
+        Accent       = Color3.fromRGB(176, 154, 176),
+        AccentDark   = Color3.fromRGB(124, 112, 146),
+        AccentLight  = Color3.fromRGB(214, 190, 190),
+        AccentGlow   = Color3.fromRGB(190, 168, 184),
+        AccentSub    = Color3.fromRGB(110, 104, 134),
+        Background   = Color3.fromRGB(22, 22, 40),
+        Surface      = Color3.fromRGB(34, 34, 59),
+        SurfaceLight = Color3.fromRGB(46, 47, 74),
+        SurfaceHover = Color3.fromRGB(58, 60, 90),
+        SurfaceActive= Color3.fromRGB(74, 78, 105),
+        Sidebar      = Color3.fromRGB(27, 27, 48),
+        SidebarActive= Color3.fromRGB(52, 54, 82),
+        Text         = Color3.fromRGB(242, 233, 228),
+        TextDim      = Color3.fromRGB(201, 173, 167),
+        TextMuted    = Color3.fromRGB(130, 120, 142),
+        Border       = Color3.fromRGB(62, 64, 92),
+        BorderLight  = Color3.fromRGB(86, 88, 120),
+        ToggleOff    = Color3.fromRGB(56, 58, 86),
+        SliderBg     = Color3.fromRGB(40, 41, 66),
+        InputBg      = Color3.fromRGB(26, 26, 46),
+    },
 }
 
 function Hyperion._LiftText(t)
@@ -1893,6 +1995,78 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
         _shapeDrift(c, sz, H, tr, 22, 40)
     end
 
+    local function spawnSpark()
+        if not isAlive() then return end
+        local W, H = getCanvasSize()
+        local sz = math.random(2, 5)
+        local col = getParticleColor()
+        local baseTr = math.random(4, 28) / 100
+        local x = math.random(10, math.max(11, W - 10))
+        local spark = Instance.new("Frame")
+        spark.BackgroundColor3 = col
+        spark.BackgroundTransparency = baseTr
+        spark.BorderSizePixel = 0
+        spark.Size = UDim2.fromOffset(sz, sz)
+        spark.AnchorPoint = Vector2.new(0.5, 0.5)
+        spark.Position = UDim2.fromOffset(x, H + sz)
+        spark.ZIndex = 4
+        spark.Parent = mParent
+        Instance.new("UICorner", spark).CornerRadius = UDim.new(1, 0)
+        local halo = Instance.new("Frame")
+        halo.BackgroundColor3 = col
+        halo.BackgroundTransparency = 0.8
+        halo.BorderSizePixel = 0
+        halo.AnchorPoint = Vector2.new(0.5, 0.5)
+        halo.Position = UDim2.fromScale(0.5, 0.5)
+        halo.Size = UDim2.fromScale(3.4, 3.4)
+        halo.ZIndex = 3
+        halo.Parent = spark
+        Instance.new("UICorner", halo).CornerRadius = UDim.new(1, 0)
+        table.insert(Hyperion._starFrames, spark)
+
+        table.insert(activeParticles, {
+            type = "spark", frame = spark, halo = halo, alive = true,
+            x = x, y = H + sz, startY = H + sz,
+            travel = H * (math.random(55, 100) / 100),
+            speed = math.random(40, 95),
+            swayAmp = math.random(6, 18), swaySpeed = math.random(12, 26) / 10,
+            phase = math.random(0, 628) / 100, time = 0,
+            baseTr = baseTr, flick = math.random(50, 120) / 10,
+        })
+    end
+
+    local function spawnEgg()
+        if not isAlive() then return end
+        local sz = math.random(18, 30)
+        local c, _, H = _shapeContainer(sz)
+        local tr = math.random(6, 20) / 100
+        local base = getParticleColor()
+        local light = base:Lerp(Color3.new(1, 1, 1), 0.6)
+        local deep = base:Lerp(Color3.new(0, 0, 0), 0.22)
+        _shape(c, base, tr, 0.76, 0.72, 0.5, 0.62, 0, 0.5)
+        _shape(c, base, tr, 0.68, 0.72, 0.5, 0.5, 0, 0.5)
+        _shape(c, base, tr, 0.58, 0.66, 0.5, 0.38, 0, 0.5)
+        _shape(c, base, tr, 0.4, 0.4, 0.5, 0.27, 0, 0.5)
+        local pick = math.random(1, 4)
+        if pick == 1 then
+            _shape(c, light, tr, 0.64, 0.08, 0.5, 0.52, 0, 0.4)
+            _shape(c, deep, tr, 0.66, 0.06, 0.5, 0.68, 0, 0.4)
+        elseif pick == 2 then
+            local dots = { { 0.38, 0.34 }, { 0.6, 0.3 }, { 0.5, 0.52 }, { 0.34, 0.68 }, { 0.66, 0.66 }, { 0.5, 0.8 } }
+            for i = 1, #dots do
+                _shape(c, light, tr, 0.1, 0.1, dots[i][1], dots[i][2], 0, 0.5)
+            end
+        elseif pick == 3 then
+            for k = 0, 4 do
+                _shape(c, light, tr, 0.1, 0.1, 0.26 + k * 0.12, 0.56, 45)
+            end
+        else
+            _shape(c, deep, tr, 0.6, 0.2, 0.5, 0.8, 0, 0.5)
+            _shape(c, light, tr, 0.14, 0.2, 0.4, 0.3, -20, 0.5)
+        end
+        _shapeDrift(c, sz, H, tr, 20, 38)
+    end
+
     -- CHRISTMAS LIGHTS: strung wire with bulbs that glow and flicker.
     -- Built once as a decoration (not spawned on the particle timer); snow
     -- keeps falling underneath it.
@@ -2002,6 +2176,7 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
         gridlines = spawnGridline, hearts = spawnHeart, paws = spawnPaw,
         snowflakes = spawnSnowflake,
         halloween = spawnHalloween, strawberry = spawnStrawberry,
+        sparks = spawnSpark, easter = spawnEgg,
         christmaslights = spawnSnowflake, -- snow falls under the light string
     }
     local spawnFunc = spawnFn[pStyle] or spawnStar
@@ -2024,6 +2199,8 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
         snowflakes = {4, 9},
         halloween = {6, 13},
         strawberry = {4, 9},
+        sparks = {2, 5},
+        easter = {6, 12},
         christmaslights = {4, 9},
     }
     local iRange = intervalRange[pStyle] or {14, 28}
@@ -2090,6 +2267,18 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
                     p.frame.BackgroundTransparency = math.max(p.frame.BackgroundTransparency, t)
                 end
                 if p.y > p.maxY then p.alive = false; if p.frame.Parent then p.frame:Destroy() end end
+
+            elseif p.type == "spark" then
+                if not p.frame or not p.frame.Parent then p.alive = false; table.remove(activeParticles, i); continue end
+                p.time = p.time + dt
+                p.y = p.y - p.speed * dt
+                local rise = math.clamp((p.startY - p.y) / p.travel, 0, 1)
+                local sx = p.x + math.sin(p.time * p.swaySpeed + p.phase) * p.swayAmp * (0.35 + rise)
+                p.frame.Position = UDim2.fromOffset(sx, p.y)
+                local flick = 0.5 + 0.5 * math.sin(p.time * p.flick + p.phase)
+                p.frame.BackgroundTransparency = math.clamp(p.baseTr + rise * rise * (1 - p.baseTr) + flick * 0.16 * (1 - rise), 0, 1)
+                p.halo.BackgroundTransparency = math.clamp(0.8 + 0.2 * rise + flick * 0.06, 0, 1)
+                if rise >= 1 then p.alive = false; if p.frame.Parent then p.frame:Destroy() end end
 
             elseif p.type == "wisp" then
                 if not p.frame or not p.frame.Parent then p.alive = false; table.remove(activeParticles, i); continue end
@@ -7691,7 +7880,7 @@ function Hyperion:CreateWindow(config)
         {key="GradB",        label="Grad 2", anim=true, default=Color3.fromRGB(30, 42, 96)},
         {key="StarColor",    label="Stars",  anim=true, default=Color3.fromRGB(180, 205, 255)},
     }
-    local THEME_STYLES = { "stars", "petals", "hearts", "snowflakes", "embers", "bubbles", "paws", "wisps", "orbs", "gridlines", "halloween", "strawberry", "christmaslights" }
+    local THEME_STYLES = { "stars", "petals", "hearts", "snowflakes", "embers", "bubbles", "paws", "wisps", "orbs", "gridlines", "halloween", "strawberry", "christmaslights", "sparks", "easter" }
     local working = {}
     for _, f in ipairs(THEME_FIELDS) do working[f.key] = Theme[f.key] or f.default end
     working.Animated = Theme.Animated == true
@@ -12052,6 +12241,7 @@ function Hyperion:CreateWindow(config)
         })
 
         local CATEGORIES = {
+            { "Easter",      { "Fiery Sunset", "Soft Lavender" } },
             { "Signature",   { "Hyperion", "Purple", "Midnight", "Nebula", "Dracula" } },
             { "Cool",        { "Ocean", "StarryNight", "Aurora", "Nord", "Mint", "Christmas" } },
             { "Warm",        { "Sunset", "Crimson", "Royal Gold", "Coffee", "Halloween" } },
