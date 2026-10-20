@@ -2701,6 +2701,7 @@ function Hyperion:SetTheme(nameOrTable)
             if Hyperion._bgTintFrame then Hyperion._bgTintFrame.Visible = false end
         end
     end
+    if Hyperion._videoSync then Hyperion._videoSync() end
     -- Apply gradient directly onto MainFrame's UIGradient
     if Hyperion._bgGradient then
         if preset and preset.Animated then
@@ -3115,6 +3116,217 @@ function Util.SectionChrome(p, cfg)
 
     return ctl
 end
+Util._glass = { value = 0, set = setmetatable({}, { __mode = "k" }) }
+
+function Util.GlassRegister(f)
+    Util._glass.set[f] = true
+    f.BackgroundTransparency = Util._glass.value
+end
+
+function Util.GlassApply(value)
+    local g = Util._glass
+    g.value = value
+    for f in pairs(g.set) do
+        if f.Parent then f.BackgroundTransparency = value else g.set[f] = nil end
+    end
+end
+
+Util._vid = {
+    frame = nil, conn = nil, on = false, src = "", tint = 0.45, glass = 0.25,
+    ready = false, gen = 0, saveToken = 0, restored = false,
+    file = "Hyperion/video_bg.json", folder = "Hyperion/Backgrounds",
+    maxBytes = 40 * 1024 * 1024,
+}
+
+function Util.VideoHash(s)
+    local h = 5381
+    for i = 1, #s do
+        h = (h * 33 + string.byte(s, i)) % 4294967296
+    end
+    return string.format("%08x", h)
+end
+
+function Util.VideoExt(s)
+    local clean = string.gsub(s, "[%?#].*$", "")
+    local ext = string.lower(string.match(clean, "%.(%w+)$") or "")
+    if ext == "mp4" or ext == "ogv" or ext == "webm" then return ext end
+    return "webm"
+end
+
+function Util.VideoDownload(url)
+    local ok, body = pcall(function() return game:HttpGet(url) end)
+    if ok and type(body) == "string" and #body > 0 then return body end
+    local req = (syn and syn.request) or http_request or request
+    if req then
+        local ok2, res = pcall(req, { Url = url, Method = "GET" })
+        if ok2 and type(res) == "table" and type(res.Body) == "string" and #res.Body > 0 then return res.Body end
+    end
+    return nil
+end
+
+function Util.VideoResolve(src)
+    if type(src) == "number" then return "rbxassetid://" .. src end
+    if type(src) ~= "string" then return nil, "Enter a file name or link first" end
+    src = string.match(src, "^%s*(.-)%s*$")
+    if src == "" then return nil, "Enter a file name or link first" end
+    if string.match(src, "^%d+$") then return "rbxassetid://" .. src end
+    if string.find(src, "^rbxasset") then return src end
+    if not getcustomasset then return nil, "This executor can't play local video files" end
+    local v = Util._vid
+    local path
+    if string.find(src, "^https?://") then
+        path = v.folder .. "/bg_" .. Util.VideoHash(src) .. "." .. Util.VideoExt(src)
+        local okF, cached = pcall(_rawIsfile, path)
+        if not (okF and cached) then
+            local body = Util.VideoDownload(src)
+            if not body or #body < 1024 then return nil, "Couldn't download that link" end
+            if #body > v.maxBytes then return nil, "That clip is over 40 MB, use a shorter or smaller one" end
+            pcall(function()
+                if not _rawIsfolder("Hyperion") then _rawMakefolder("Hyperion") end
+                if not _rawIsfolder(v.folder) then _rawMakefolder(v.folder) end
+            end)
+            if not pcall(_rawWritefile, path, body) then return nil, "Couldn't save the clip to your workspace folder" end
+        end
+    else
+        if string.find(src, "..", 1, true) then return nil, "That file name isn't allowed" end
+        local candidates = { src, src .. ".webm", v.folder .. "/" .. src, v.folder .. "/" .. src .. ".webm" }
+        for i = 1, #candidates do
+            local okF, exists = pcall(_rawIsfile, candidates[i])
+            if okF and exists then path = candidates[i]; break end
+        end
+        if not path then return nil, "File not found in your workspace folder" end
+    end
+    local okA, asset = pcall(getcustomasset, path)
+    if not okA or not asset then return nil, "Couldn't load that file as an asset" end
+    return asset
+end
+
+function Util.VideoFrame()
+    local v = Util._vid
+    if v.frame and v.frame.Parent then return v.frame end
+    local main = Hyperion._mainFrame
+    if not (main and main.Parent) then return nil end
+    if v.conn then v.conn:Disconnect(); v.conn = nil end
+    local f = Instance.new("VideoFrame")
+    f.Name = "BgVideo"
+    f.BackgroundTransparency = 1
+    f.BorderSizePixel = 0
+    f.Size = UDim2.new(1, 0, 1, 0)
+    f.ZIndex = 0
+    f.Looped = true
+    f.Volume = 0
+    f.Visible = false
+    f.Parent = main
+    Util.AddCorner(f, Hyperion.Theme.CornerLarge)
+    v.conn = main:GetPropertyChangedSignal("Visible"):Connect(Util.VideoSync)
+    v.frame = f
+    return f
+end
+
+function Util.VideoSync()
+    local v = Util._vid
+    if not (v.frame or v.on) then return end
+    local f = v.frame
+    local live = (v.on and v.ready and f ~= nil and f.Parent ~= nil) and true or false
+    if f and f.Parent then
+        f.Visible = live
+        local main = Hyperion._mainFrame
+        local shown = live and main ~= nil and main.Visible
+        pcall(function() if shown then f:Play() else f:Pause() end end)
+    end
+    local img, tint = Hyperion._bgImageLabel, Hyperion._bgTintFrame
+    if live then
+        if img then img.Visible = false end
+        if tint then
+            tint.BackgroundTransparency = 1 - v.tint
+            tint.Visible = v.tint > 0
+        end
+    else
+        local p = Hyperion._currentPreset or (Hyperion._currentThemeName and Hyperion.Themes[Hyperion._currentThemeName])
+        local hasImg = p ~= nil and p.BackgroundImage ~= nil and p.BackgroundImage ~= ""
+        if img then img.Visible = hasImg end
+        if tint then
+            if hasImg then
+                local ta = p.BackgroundTint
+                if ta == nil then ta = 0.45 end
+                tint.BackgroundTransparency = 1 - ta
+                tint.Visible = ta > 0
+            else
+                tint.Visible = false
+            end
+        end
+    end
+    Util.GlassApply(live and v.glass or 0)
+end
+Hyperion._videoSync = Util.VideoSync
+
+function Util.VideoApply(silent)
+    local v = Util._vid
+    v.gen = v.gen + 1
+    local gen = v.gen
+    v.ready = false
+    if not (v.on and v.src ~= "") then
+        Util.VideoSync()
+        return
+    end
+    task.spawn(function()
+        local content, err = Util.VideoResolve(v.src)
+        if gen ~= v.gen then return end
+        local f = content and Util.VideoFrame() or nil
+        if not f then
+            Util.VideoSync()
+            Hyperion:Notify({ Title = "Video Background", Content = err or "The window isn't ready yet", Type = "Error" })
+            return
+        end
+        f.Video = content
+        local function isLoaded()
+            local okL, res = pcall(function() return f.IsLoaded end)
+            return okL and res == true
+        end
+        local started = os.clock()
+        while not isLoaded() and os.clock() - started < 10 and gen == v.gen and f.Parent do
+            task.wait(0.1)
+        end
+        if gen ~= v.gen then return end
+        v.ready = isLoaded()
+        Util.VideoSync()
+        if v.ready then
+            if not silent then Hyperion:Notify({ Title = "Video Background", Content = "Clip loaded", Type = "Success" }) end
+        else
+            Hyperion:Notify({ Title = "Video Background", Content = "That clip wouldn't play. Try a short .webm (VP8 or VP9)", Type = "Error" })
+        end
+    end)
+end
+
+function Util.VideoRestore()
+    local v = Util._vid
+    if v.restored then return end
+    v.restored = true
+    local okF, exists = pcall(_rawIsfile, v.file)
+    if not (okF and exists) then return end
+    local okR, raw = pcall(_rawReadfile, v.file)
+    if not okR then return end
+    local okD, data = pcall(function() return HttpService:JSONDecode(raw) end)
+    if not okD or type(data) ~= "table" then return end
+    if type(data.src) == "string" then v.src = data.src end
+    if type(data.on) == "boolean" then v.on = data.on end
+    if type(data.tint) == "number" then v.tint = math.clamp(data.tint, 0, 0.9) end
+    if type(data.glass) == "number" then v.glass = math.clamp(data.glass, 0, 0.8) end
+end
+
+function Util.VideoSave()
+    local v = Util._vid
+    v.saveToken = v.saveToken + 1
+    local token = v.saveToken
+    task.delay(0.6, function()
+        if token ~= v.saveToken then return end
+        pcall(function()
+            if not _rawIsfolder("Hyperion") then _rawMakefolder("Hyperion") end
+            _rawWritefile(v.file, HttpService:JSONEncode({ on = v.on, src = v.src, tint = v.tint, glass = v.glass }))
+        end)
+    end)
+end
+
 function Util.B64Decode(s)
     local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     local lookup = {}
@@ -10193,6 +10405,7 @@ function Hyperion:CreateWindow(config)
                 end
             end)
             Util.AddCorner(SectionFrame, Theme.CornerRadius)
+            Util.GlassRegister(SectionFrame)
             local _secStroke = Util.AddStroke(SectionFrame, Theme.Border, 1, 0.62)
             Themed(SectionFrame, { BackgroundColor3 = function(t) return t.Surface end })
             Themed(_secStroke, { Color = function(t) return t.Border end })
@@ -12583,6 +12796,56 @@ function Hyperion:CreateWindow(config)
 
         paint(Hyperion._currentThemeName or "Hyperion")
         pcall(function() Hyperion:OnThemeChanged(function() paint(Hyperion._currentThemeName) end) end)
+        return sec
+    end
+
+    function WindowObj:AddVideoBackground(sec)
+        Util.VideoRestore()
+        local v = Util._vid
+        sec:AddToggle({
+            Name = "Video Background",
+            Desc = "Plays a looping clip behind the window.",
+            Default = v.on,
+            Callback = function(on)
+                v.on = on
+                Util.VideoApply()
+                Util.VideoSave()
+            end,
+        })
+        sec:AddTextbox({
+            Name = "Clip",
+            Placeholder = "clip.webm  or  https://link/to/clip.webm",
+            Desc = "A .webm in your executor's workspace folder, or a direct link.",
+            Default = v.src,
+            Callback = function(text)
+                v.src = string.match(text or "", "^%s*(.-)%s*$")
+                if v.on then Util.VideoApply() end
+                Util.VideoSave()
+            end,
+        })
+        sec:AddSlider({
+            Name = "Darkness", Min = 0, Max = 90, Default = math.floor(v.tint * 100 + 0.5), Suffix = "%",
+            Callback = function(n)
+                v.tint = n / 100
+                Util.VideoSync()
+                Util.VideoSave()
+            end,
+        })
+        sec:AddSlider({
+            Name = "Card Transparency", Min = 0, Max = 80, Default = math.floor(v.glass * 100 + 0.5), Suffix = "%",
+            Callback = function(n)
+                v.glass = n / 100
+                Util.VideoSync()
+                Util.VideoSave()
+            end,
+        })
+        sec:AddButton({
+            Name = "Reload Clip", Icon = Hyperion.Lucide.RefreshCw,
+            Callback = function() Util.VideoApply() end,
+        })
+        if v.on and v.src ~= "" then
+            task.defer(function() Util.VideoApply(true) end)
+        end
         return sec
     end
 
