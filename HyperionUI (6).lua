@@ -2478,6 +2478,204 @@ function Util.AccentBarGradient(bar, theme)
     end)
     return grad
 end
+function Util.ResolveImage(v)
+    if type(v) == "number" then return "rbxassetid://" .. tostring(v) end
+    if type(v) ~= "string" or v == "" then return nil end
+    if v:find("^rbx") or v:find("^http") then return v end
+    if v:match("^%d+$") then return "rbxassetid://" .. v end
+    return Hyperion:GetIcon(v)
+end
+
+function Util.AddDesc(parent, cfg)
+    local text = cfg and (cfg.Desc or cfg.Description)
+    if type(text) ~= "string" or text == "" then return nil end
+    local label = Util.Create("TextLabel", {
+        Name = "Desc",
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 0, 14),
+        Text = text,
+        TextColor3 = Hyperion.Theme.TextDim,
+        FontFace = Hyperion.Theme.Font,
+        TextSize = 11,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextTruncate = Enum.TextTruncate.AtEnd,
+        ZIndex = 2,
+        Parent = parent,
+    })
+    Hyperion:OnThemeChanged(function(t)
+        if label.Parent then label.TextColor3 = t.TextDim end
+    end)
+    return label
+end
+
+function Util.MakeCollapsible(p, collapsed)
+    local ctl = {}
+    local token = 0
+    local list = p.Elements:FindFirstChildOfClass("UIListLayout")
+    local padY = p.PadY or 16
+
+    local function chrome(c)
+        p.BottomFix.Visible = not c
+        p.Divider.Visible = not c
+    end
+
+    function ctl:Get() return collapsed end
+
+    function ctl:Set(c, instant)
+        c = c == true
+        if c == collapsed and not instant then return end
+        collapsed = c
+        token = token + 1
+        local mine = token
+        local el = p.Elements
+        if p.Chevron then
+            if instant then p.Chevron.Rotation = c and -90 or 0 else Util.TweenSmooth(p.Chevron, {Rotation = c and -90 or 0}) end
+        end
+        if instant then
+            el.ClipsDescendants = c
+            if c then
+                el.AutomaticSize = Enum.AutomaticSize.None
+                el.Size = UDim2.new(1, 0, 0, 0)
+                el.Visible = false
+            else
+                el.Visible = true
+                el.AutomaticSize = Enum.AutomaticSize.Y
+                el.Size = UDim2.new(1, 0, 0, 0)
+            end
+            chrome(c)
+            return
+        end
+        el.ClipsDescendants = true
+        if c then
+            local h = el.AbsoluteSize.Y
+            el.AutomaticSize = Enum.AutomaticSize.None
+            el.Size = UDim2.new(1, 0, 0, h)
+            local tw = Util.Tween(el, 0.22, {Size = UDim2.new(1, 0, 0, 0)}, Enum.EasingStyle.Quint)
+            local function done()
+                if token == mine then
+                    el.Visible = false
+                    chrome(true)
+                end
+            end
+            if tw then tw.Completed:Connect(done) else done() end
+        else
+            chrome(false)
+            el.Visible = true
+            local h = (list and list.AbsoluteContentSize.Y or 0) + padY
+            if h <= padY then
+                el.AutomaticSize = Enum.AutomaticSize.Y
+                el.ClipsDescendants = false
+                return
+            end
+            el.AutomaticSize = Enum.AutomaticSize.None
+            el.Size = UDim2.new(1, 0, 0, 0)
+            local tw = Util.Tween(el, 0.22, {Size = UDim2.new(1, 0, 0, h)}, Enum.EasingStyle.Quint)
+            local function done()
+                if token == mine then
+                    el.AutomaticSize = Enum.AutomaticSize.Y
+                    el.ClipsDescendants = false
+                end
+            end
+            if tw then tw.Completed:Connect(done) else done() end
+        end
+    end
+
+    function ctl:Toggle() ctl:Set(not collapsed) end
+
+    return ctl
+end
+
+function Util.SectionChrome(p, cfg)
+    cfg = cfg or {}
+    local T = Hyperion.Theme
+    local collapsible = cfg.Collapsible ~= false
+    local img = Util.ResolveImage(cfg.Image)
+    local icon = (not img) and Util.ResolveImage(cfg.Icon) or nil
+    local left = 12
+    if img then
+        local pic = Util.Create("ImageLabel", {
+            Name = "Image",
+            BackgroundTransparency = 1,
+            Image = img,
+            ScaleType = Enum.ScaleType.Crop,
+            Size = UDim2.fromOffset(22, 22),
+            Position = UDim2.fromOffset(8, 6),
+            ZIndex = 3,
+            Parent = p.Header,
+        })
+        Util.AddCorner(pic, UDim.new(0, 5))
+        left = 38
+    elseif icon then
+        local ico = Util.Create("ImageLabel", {
+            Name = "Icon",
+            BackgroundTransparency = 1,
+            Image = icon,
+            ImageColor3 = T.Accent,
+            ScaleType = Enum.ScaleType.Fit,
+            Size = UDim2.fromOffset(16, 16),
+            Position = UDim2.fromOffset(12, 9),
+            ZIndex = 3,
+            Parent = p.Header,
+        })
+        Hyperion:OnThemeChanged(function(t)
+            if ico.Parent then ico.ImageColor3 = t.Accent end
+        end)
+        left = 34
+    end
+    p.Title.Position = UDim2.new(0, left, 0, 1)
+    p.Title.Size = UDim2.new(1, -(left + (collapsible and 32 or 12)), 1, 0)
+
+    local chev, hit
+    if collapsible then
+        chev = Util.Create("ImageLabel", {
+            Name = "Chevron",
+            BackgroundTransparency = 1,
+            Image = Hyperion.Lucide.ChevronDown,
+            ImageColor3 = T.TextMuted,
+            ScaleType = Enum.ScaleType.Fit,
+            AnchorPoint = Vector2.new(1, 0.5),
+            Position = UDim2.new(1, -12, 0, 17),
+            Size = UDim2.fromOffset(12, 12),
+            ZIndex = 4,
+            Parent = p.Header,
+        })
+        hit = Util.Create("TextButton", {
+            Name = "Toggle",
+            BackgroundTransparency = 1,
+            Text = "",
+            AutoButtonColor = false,
+            Size = UDim2.new(1, 0, 1, 0),
+            ZIndex = 6,
+            Parent = p.Header,
+        })
+        Hyperion:OnThemeChanged(function(t)
+            if chev.Parent then chev.ImageColor3 = t.TextMuted end
+        end)
+    end
+
+    local ctl = Util.MakeCollapsible({
+        Elements = p.Elements,
+        BottomFix = p.BottomFix,
+        Divider = p.Divider,
+        Chevron = chev,
+        PadY = p.PadY or 16,
+    }, false)
+    if cfg.Collapsed == true then ctl:Set(true, true) end
+
+    if hit then
+        hit.MouseButton1Click:Connect(function() ctl:Toggle() end)
+        hit.MouseEnter:Connect(function()
+            Util.TweenFast(p.Header, {BackgroundTransparency = 0.2})
+            Util.TweenFast(chev, {ImageColor3 = Hyperion.Theme.Text})
+        end)
+        hit.MouseLeave:Connect(function()
+            Util.TweenFast(p.Header, {BackgroundTransparency = 0.5})
+            Util.TweenFast(chev, {ImageColor3 = Hyperion.Theme.TextMuted})
+        end)
+    end
+
+    return ctl
+end
 function Util.B64Decode(s)
     local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     local lookup = {}
@@ -3400,6 +3598,12 @@ function Util.BuildPreview(parent, cfg)
         grad.Color = ColorSequence.new(a, b)
     end
 
+    local function rbOf(src, key, now)
+        local f = src.RainbowColor
+        if f then return f(key, 0) end
+        return Color3.fromHSV((now * (src.RainbowSpeed or 1)) % 1, 1, 1)
+    end
+
     local cornerX = { 0, 0, 1, 1, 0, 0, 1, 1 }
     local cornerY = { 0, 0, 0, 0, 1, 1, 1, 1 }
     local cornerWide = { true, false, true, false, false, true, false, true }
@@ -3424,7 +3628,13 @@ function Util.BuildPreview(parent, cfg)
         local w, h = size.X, size.Y
         if w < 8 or h < 8 then return end
 
-        local rb = src.Rainbow and Color3.fromHSV((now * (src.RainbowSpeed or 1)) % 1, 1, 1) or nil
+        local rbBox, rbFill, rbName, rbSkel, rbTrac, rbCF, rbCO, rbSeq
+        if src.Rainbow then
+            rbBox, rbFill, rbName = rbOf(src, "Box", now), rbOf(src, "Fill", now), rbOf(src, "Name", now)
+            rbSkel, rbTrac = rbOf(src, "Skeleton", now), rbOf(src, "Tracer", now)
+            rbCF, rbCO = rbOf(src, "ChamsFill", now), rbOf(src, "ChamsOutline", now)
+            if src.RainbowMode == "Gradient" and src.RainbowSequence then rbSeq = src.RainbowSequence() end
+        end
         local off = Vector3.new(math.sin(yaw) * math.cos(pitch), math.sin(pitch), math.cos(yaw) * math.cos(pitch)) * dist
         local cf = CFrame.lookAt(center + off, center)
         ui.cam.CFrame = cf
@@ -3453,24 +3663,38 @@ function Util.BuildPreview(parent, cfg)
         ui.box.Size = UDim2.fromOffset(bw, bh)
         put(ui.box, "Visible", fullOn or filledOn)
         if filledOn then
-            put(ui.box, "BackgroundColor3", rb or boxes.Filled.RGB)
             put(ui.box, "BackgroundTransparency", boxes.Filled.Transparency)
-            put(ui.fillGrad, "Enabled", (not rb) and boxes.GradientFill == true)
-            setSeq(ui.fillGrad, boxes.GradientFillRGB1, boxes.GradientFillRGB2)
+            if rbSeq then
+                put(ui.box, "BackgroundColor3", Color3.new(1, 1, 1))
+                put(ui.fillGrad, "Enabled", true)
+                put(ui.fillGrad, "Color", rbSeq)
+                seqLast[ui.fillGrad] = nil
+            else
+                put(ui.box, "BackgroundColor3", rbFill or boxes.Filled.RGB)
+                put(ui.fillGrad, "Enabled", (not rbFill) and boxes.GradientFill == true)
+                setSeq(ui.fillGrad, boxes.GradientFillRGB1, boxes.GradientFillRGB2)
+            end
         else
             put(ui.box, "BackgroundTransparency", 1)
             put(ui.fillGrad, "Enabled", false)
         end
         put(ui.outline, "Enabled", fullOn)
-        put(ui.outline, "Color", rb or boxes.Full.RGB)
-        put(ui.outlineGrad, "Enabled", (not rb) and boxes.Gradient == true)
-        setSeq(ui.outlineGrad, boxes.GradientRGB1, boxes.GradientRGB2)
+        if rbSeq then
+            put(ui.outline, "Color", Color3.new(1, 1, 1))
+            put(ui.outlineGrad, "Enabled", true)
+            put(ui.outlineGrad, "Color", rbSeq)
+            seqLast[ui.outlineGrad] = nil
+        else
+            put(ui.outline, "Color", rbBox or boxes.Full.RGB)
+            put(ui.outlineGrad, "Enabled", (not rbBox) and boxes.Gradient == true)
+            setSeq(ui.outlineGrad, boxes.GradientRGB1, boxes.GradientRGB2)
+        end
         rotAngle = rotAngle + dt * (boxes.RotationSpeed or 0) * math.cos(math.pi / 4 * now - math.pi / 2)
         local rot = boxes.Animate and rotAngle or -45
         ui.fillGrad.Rotation = rot
         ui.outlineGrad.Rotation = rot
 
-        local cc = rb or boxes.Corner.RGB
+        local cc = rbBox or boxes.Corner.RGB
         local cLen, cTall = UDim2.fromOffset(bw / 5, 1), UDim2.fromOffset(1, bh / 5)
         for i = 1, 8 do
             local c = ui.corners[i]
@@ -3515,14 +3739,14 @@ function Util.BuildPreview(parent, cfg)
         end
         local fs = src.FontSize or 11
         put(ui.name, "TextSize", fs)
-        put(ui.name, "TextColor3", rb or nd.RGB)
+        put(ui.name, "TextColor3", rbName or nd.RGB)
         ui.name.Position = UDim2.fromOffset(bx + bw / 2, by - 9)
         local bottom = dd.Enabled and dd.Position == "Bottom"
         put(ui.distLbl, "Visible", bottom)
         if bottom then
             put(ui.distLbl, "TextSize", fs)
             put(ui.distLbl, "Text", "42 meters")
-            put(ui.distLbl, "TextColor3", rb or dd.RGB)
+            put(ui.distLbl, "TextColor3", dd.RGB)
             ui.distLbl.Position = UDim2.fromOffset(bx + bw / 2, by + bh + 7)
         end
 
@@ -3535,7 +3759,7 @@ function Util.BuildPreview(parent, cfg)
                 local b = Util._pvProject(cf, fov, w, h, pair[2].Position)
                 if a and b then
                     seg(f, a, b, sk.Thickness or 1)
-                    put(f, "BackgroundColor3", rb or sk.RGB)
+                    put(f, "BackgroundColor3", rbSkel or sk.RGB)
                     drawn = true
                 end
             end
@@ -3555,7 +3779,7 @@ function Util.BuildPreview(parent, cfg)
                 origin = (m.X >= 0 and m.X <= w and m.Y >= 0 and m.Y <= h) and m or Vector2.new(w / 2, h)
             end
             seg(ui.tracer, origin, Vector2.new(bx + bw / 2, by + bh / 2), tr.Thickness or 1)
-            put(ui.tracer, "BackgroundColor3", rb or tr.RGB)
+            put(ui.tracer, "BackgroundColor3", rbTrac or tr.RGB)
         end
 
         local ch = d.Chams
@@ -3570,12 +3794,12 @@ function Util.BuildPreview(parent, cfg)
             fillOn, outOn = fT < 1, oT < 1
             if fillOn then
                 ui.fillCam.CFrame = cf
-                put(ui.fillVp, "ImageColor3", rb or ch.FillRGB or Color3.new(1, 1, 1))
+                put(ui.fillVp, "ImageColor3", rbCF or ch.FillRGB or Color3.new(1, 1, 1))
                 ui.fillVp.ImageTransparency = fT
             end
             if outOn then
                 ui.outCam.CFrame = cf
-                put(ui.outVp, "ImageColor3", rb or ch.OutlineRGB or ch.FillRGB or Color3.new(1, 1, 1))
+                put(ui.outVp, "ImageColor3", rbCO or ch.OutlineRGB or ch.FillRGB or Color3.new(1, 1, 1))
                 ui.outVp.ImageTransparency = oT
             end
         end
@@ -5517,7 +5741,13 @@ function Hyperion:CreateWindow(config)
         closeSearch()
         if entry.tab and entry.tab.Activate then pcall(entry.tab.Activate) end
         if entry.tab and entry.tab.ActivateGroup and entry.groupData then pcall(entry.tab.ActivateGroup, entry.groupData) end
-        task.defer(function()
+        local settle = 0
+        local sr = entry.secRef
+        if sr and sr.ctl and sr.ctl:Get() then
+            sr.ctl:Set(false, true)
+            settle = 0.08
+        end
+        task.delay(settle, function()
             local frame, page = entry.frame, entry.page
             if frame and frame.Parent and page then
                 local relY = frame.AbsolutePosition.Y - page.AbsolutePosition.Y + page.CanvasPosition.Y
@@ -9450,6 +9680,7 @@ function Hyperion:CreateWindow(config)
             local groupData = EnsureGroup(groupName)
             local parentCol = (side == "right") and groupData.Right or groupData.Left
             local _grpDisplay = (groupName ~= "__default") and groupName or secName
+            local _secRef = {}
             local function _regSearch(elName, elFrame, kind, elCfg)
                 -- Any element passing a Tooltip = "..." in its config gets a
                 -- hover bubble; every element type already routes through here.
@@ -9462,6 +9693,7 @@ function Hyperion:CreateWindow(config)
                     section = secName, group = _grpDisplay, kind = kind or "",
                     tabName = (TabObj.Name or ""), ltab = string.lower(TabObj.Name or ""),
                     frame = elFrame, tab = TabObj, groupData = groupData, page = TabPage,
+                    secRef = _secRef,
                 })
             end
 
@@ -9566,6 +9798,15 @@ function Hyperion:CreateWindow(config)
             Util.AddList(Elements, Enum.FillDirection.Vertical, 2)
             Util.AddPadding(Elements, 6, 10, 10, 10)
 
+            local SecCtl = Util.SectionChrome({
+                Header = SecHeader, Title = _secTitle, Elements = Elements,
+                BottomFix = _secBottomFix, Divider = _secDivider, PadY = 16,
+            }, secCfg)
+            _secRef.ctl = SecCtl
+            function SectionObj:SetCollapsed(c) SecCtl:Set(c) end
+            function SectionObj:IsCollapsed() return SecCtl:Get() end
+            function SectionObj:ToggleCollapsed() SecCtl:Toggle() end
+
             -- ==============================================
             -- TOGGLE
             -- ==============================================
@@ -9578,6 +9819,8 @@ function Hyperion:CreateWindow(config)
                 local value    = default
                 local style    = cfg.Style or Hyperion.ToggleStyle or "Checkbox"
                 local isBox    = style == "Checkbox" or style == 1
+                local descText = cfg.Desc or cfg.Description
+                local hasDesc  = type(descText) == "string" and descText ~= ""
 
                 if flag then
                     Hyperion.Flags[flag] = value
@@ -9587,7 +9830,7 @@ function Hyperion:CreateWindow(config)
                     Name = "Toggle_" .. name,
                     BackgroundColor3 = Theme.SurfaceLight,
                     BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 0, 32),
+                    Size = UDim2.new(1, 0, 0, hasDesc and 46 or 32),
                     ZIndex = 2,
                     Parent = Elements
                 })
@@ -9598,8 +9841,8 @@ function Hyperion:CreateWindow(config)
                 local ToggleLabel = Util.Create("TextLabel", {
                     Name = "Label",
                     BackgroundTransparency = 1,
-                    Size = UDim2.new(1, -52, 1, 0),
-                    Position = UDim2.new(0, 0, 0, 0),
+                    Size = hasDesc and UDim2.new(1, -52, 0, 18) or UDim2.new(1, -52, 1, 0),
+                    Position = hasDesc and UDim2.new(0, 0, 0, 6) or UDim2.new(0, 0, 0, 0),
                     Text = name,
                     TextColor3 = Theme.Text,
                     FontFace = Theme.Font,
@@ -9782,7 +10025,26 @@ function Hyperion:CreateWindow(config)
                     end)
                     accOffset = accOffset - 48
                 end
-                ToggleLabel.Size = UDim2.new(1, accOffset - 6, 1, 0)
+                if hasDesc then
+                    ToggleLabel.Size = UDim2.new(1, accOffset - 6, 0, 18)
+                    local ToggleDesc = Util.Create("TextLabel", {
+                        Name = "Desc",
+                        BackgroundTransparency = 1,
+                        Size = UDim2.new(1, accOffset - 6, 0, 16),
+                        Position = UDim2.new(0, 0, 0, 24),
+                        Text = descText,
+                        TextColor3 = Theme.TextDim,
+                        FontFace = Theme.Font,
+                        TextSize = 11,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        TextTruncate = Enum.TextTruncate.AtEnd,
+                        ZIndex = 2,
+                        Parent = Frame
+                    })
+                    Themed(ToggleDesc, { TextColor3 = function(t) return t.TextDim end })
+                else
+                    ToggleLabel.Size = UDim2.new(1, accOffset - 6, 1, 0)
+                end
 
                 local function UpdateVisual(state)
                     TrackGrad.Enabled = state
@@ -10181,6 +10443,7 @@ function Hyperion:CreateWindow(config)
                 function API:Get() return value end
                 API.Kind = "slider"; API.Min = min; API.Max = max
                 if flag then Hyperion.FlagAPIs[flag] = API end
+                Util.AddDesc(Elements, cfg)
                 return API
             end
 
@@ -10299,6 +10562,7 @@ function Hyperion:CreateWindow(config)
 
                 local API = {}
                 function API:SetLabel(text) BtnLabel.Text = text end
+                Util.AddDesc(Elements, cfg)
                 return API
             end
             -- ==============================================
@@ -10816,6 +11080,7 @@ function Hyperion:CreateWindow(config)
                 end
                 API.Kind = "dropdown"; API.Values = values
                 if flag then Hyperion.FlagAPIs[flag] = API end
+                Util.AddDesc(Elements, cfg)
                 return API
             end
 
@@ -10902,6 +11167,7 @@ function Hyperion:CreateWindow(config)
                 local API = {}
                 function API:Set(v) Input.Text = v; value = v; if flag then Hyperion.Flags[flag] = v end end
                 function API:Get() return value end
+                Util.AddDesc(Elements, cfg)
                 return API
             end
 
@@ -11015,6 +11281,7 @@ function Hyperion:CreateWindow(config)
                 entry.StartRebind = BeginListen
                 Hyperion:_RegisterKeybind(entry)
 
+                Util.AddDesc(Elements, cfg)
                 return API
             end
 
@@ -11143,6 +11410,7 @@ function Hyperion:CreateWindow(config)
                 function API:Get() return color, alpha end
                 API.Kind = "color"
                 if flag then Hyperion.FlagAPIs[flag] = API end
+                Util.AddDesc(Elements, cfg)
                 return API
             end
 
