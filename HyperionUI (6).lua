@@ -6078,6 +6078,7 @@ function Hyperion:CreateWindow(config)
         })
         Util.AddCorner(btn, UDim.new(0, 3))
         Themed(btn, {
+            BackgroundColor3 = function(t) return t.SurfaceLight end,
             ImageColor3 = function(t) return t.TextMuted end,
         })
 
