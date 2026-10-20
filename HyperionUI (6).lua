@@ -2584,7 +2584,32 @@ end
 Util._cp = { frame=nil, h=0, s=0, v=1, a=0, useAlpha=false,
              set=nil, setA=nil, owner=nil, onClose=nil, openedAt=0,
              svDrag=false, hueDrag=false, aDrag=false,
-             awayConn=nil, posConn=nil }
+             catcher=nil, pendingRelease=false, posConn=nil }
+
+Util._cpSwatches = setmetatable({}, { __mode = "k" })
+
+function Util._cpHits(obj, p)
+    local ap, as = obj.AbsolutePosition, obj.AbsoluteSize
+    if p.X < ap.X or p.X > ap.X + as.X or p.Y < ap.Y or p.Y > ap.Y + as.Y then return false end
+    local a = obj
+    while a and a:IsA("GuiObject") do
+        if not a.Visible then return false end
+        if a ~= obj and a.ClipsDescendants then
+            local cp, cs = a.AbsolutePosition, a.AbsoluteSize
+            if p.X < cp.X or p.X > cp.X + cs.X or p.Y < cp.Y or p.Y > cp.Y + cs.Y then return false end
+        end
+        a = a.Parent
+    end
+    return true
+end
+
+function Util._cpSwatchAt(p)
+    local owner = Util._cp.owner
+    for sw, fn in pairs(Util._cpSwatches) do
+        if sw ~= owner and sw.Parent and Util._cpHits(sw, p) then return fn end
+    end
+    return nil
+end
 
 function Util._cpBuild(host)
     local c = Util._cp
@@ -2595,11 +2620,18 @@ function Util._cpBuild(host)
     local f = Util.Create("Frame", {
         Name = "HyperionColorPopup", BackgroundColor3 = T.Surface,
         Size = UDim2.fromOffset(240, 186), Visible = false, BorderSizePixel = 0,
-        ClipsDescendants = true, ZIndex = 950, Parent = host,
+        ClipsDescendants = true, Active = true, ZIndex = 950, Parent = host,
     })
     Util.AddCorner(f, T.CornerSmall)
     c.stroke = Util.AddStroke(f, T.BorderLight, 1, 0.15)
     c.frame = f
+
+    if c.catcher then c.catcher:Destroy() end
+    c.catcher = Util.Create("TextButton", {
+        Name = "HyperionColorCatcher", BackgroundTransparency = 1, Text = "",
+        AutoButtonColor = false, Active = true, Size = UDim2.fromScale(1, 1),
+        Visible = false, ZIndex = 949, Parent = host,
+    })
 
     c.title = Util.Create("TextLabel", {
         Name = "Title", BackgroundTransparency = 1,
@@ -2752,10 +2784,10 @@ function Util._cpBuild(host)
         if c.set then c.set(col) end
     end
 
-    function c.close()
+    function c.close(keepCatcher)
         if not c.frame.Visible then return end
         c.svDrag, c.hueDrag, c.aDrag = false, false, false
-        if c.awayConn then c.awayConn:Disconnect(); c.awayConn = nil end
+        if not keepCatcher then c.catcher.Visible = false end
         if c.posConn then c.posConn:Disconnect(); c.posConn = nil end
         local oc = c.onClose
         c.owner, c.onClose, c.set, c.setA = nil, nil, nil, nil
@@ -2767,6 +2799,28 @@ function Util._cpBuild(host)
     end
 
     c.closeBtn.MouseButton1Click:Connect(function() c.close() end)
+
+    c.catcher.InputBegan:Connect(function(i)
+        local k = i.UserInputType
+        if k ~= Enum.UserInputType.MouseButton1 and k ~= Enum.UserInputType.Touch then return end
+        if not c.frame.Visible or not c.owner then return end
+        local p = i.Position
+        local fp, fs = c.frame.AbsolutePosition, c.frame.AbsoluteSize
+        if p.X >= fp.X and p.X <= fp.X + fs.X and p.Y >= fp.Y and p.Y <= fp.Y + fs.Y then return end
+        local nextToggle = Util._cpSwatchAt(p)
+        c.pendingRelease = true
+        c.close(true)
+        if nextToggle then nextToggle() end
+        task.delay(1, function()
+            if c.pendingRelease then
+                c.pendingRelease = false
+                if not c.owner then c.catcher.Visible = false end
+            end
+        end)
+    end)
+    c.catcher.InputChanged:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseWheel and c.owner then c.close() end
+    end)
 
     c.hex.FocusLost:Connect(function()
         local str = tostring(c.hex.Text):gsub("%s", ""):gsub("^#", "")
@@ -2829,6 +2883,12 @@ function Util._cpBuild(host)
     c.uisEnded = UserInputService.InputEnded:Connect(function(i)
         if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
             c.svDrag, c.hueDrag, c.aDrag = false, false, false
+            if c.pendingRelease then
+                c.pendingRelease = false
+                task.defer(function()
+                    if not c.owner then c.catcher.Visible = false end
+                end)
+            end
         end
     end)
 
@@ -2839,7 +2899,7 @@ end
 
 function Util.AttachColorSwatch(swatch, getColor, setColor, opts)
     opts = opts or {}
-    swatch.MouseButton1Click:Connect(function()
+    local function toggle()
         local host = swatch:FindFirstAncestorWhichIsA("ScreenGui")
         if not host then return end
         Util._cpBuild(host)
@@ -2876,6 +2936,7 @@ function Util.AttachColorSwatch(swatch, getColor, setColor, opts)
         c.frame.Size = UDim2.fromOffset(0, 0)
         c.openedAt = os.clock()
         c.frame.Visible = true
+        c.catcher.Visible = true
         c.commit()
         if opts.OnOpen then task.spawn(opts.OnOpen) end
         Util.Tween(c.frame, 0.16, { Size = UDim2.fromOffset(240, hgt) }, Enum.EasingStyle.Quint)
@@ -2884,20 +2945,9 @@ function Util.AttachColorSwatch(swatch, getColor, setColor, opts)
             if os.clock() - c.openedAt < 0.25 then return end
             c.close()
         end)
-        c.awayConn = UserInputService.InputBegan:Connect(function(i)
-            if i.UserInputType ~= Enum.UserInputType.MouseButton1 and i.UserInputType ~= Enum.UserInputType.Touch then return end
-            if not c.frame.Visible then return end
-            if os.clock() - c.openedAt < 0.25 then return end
-            local p = i.Position
-            local fp, fs = c.frame.AbsolutePosition, c.frame.AbsoluteSize
-            if p.X >= fp.X and p.X <= fp.X + fs.X and p.Y >= fp.Y and p.Y <= fp.Y + fs.Y then return end
-            if c.owner then
-                local op, os2 = c.owner.AbsolutePosition, c.owner.AbsoluteSize
-                if p.X >= op.X and p.X <= op.X + os2.X and p.Y >= op.Y and p.Y <= op.Y + os2.Y then return end
-            end
-            c.close()
-        end)
-    end)
+    end
+    swatch.MouseButton1Click:Connect(toggle)
+    Util._cpSwatches[swatch] = toggle
 end
 
 function Util.AttachTooltip(obj, text)
@@ -4167,7 +4217,7 @@ function Hyperion:CreateWindow(config)
     -- ============================================================
     -- HEADER (48px)
     -- ============================================================
-    local HeaderHeight = 36
+    local HeaderHeight = 44
     local SidebarWidth = 176
     local Header = Util.Create("Frame", {
         Name = "Header",
@@ -4369,7 +4419,7 @@ function Hyperion:CreateWindow(config)
         BackgroundTransparency = 0.18,
         AnchorPoint = Vector2.new(1, 0.5),
         Position = UDim2.new(1, -46, 0.5, 0),
-        Size = UDim2.new(0, 200, 0, 30),
+        Size = UDim2.new(0, 200, 0, 36),
         BorderSizePixel = 0,
         ZIndex = 6,
         Parent = Header
@@ -4400,8 +4450,8 @@ function Hyperion:CreateWindow(config)
     local PlayerIcon = Util.Create("ImageLabel", {
         Name = "PlayerIcon",
         BackgroundColor3 = Theme.Surface,
-        Size = UDim2.new(0, 22, 0, 22),
-        Position = UDim2.new(0, 4, 0.5, 0),
+        Size = UDim2.new(0, 26, 0, 26),
+        Position = UDim2.new(0, 5, 0.5, 0),
         AnchorPoint = Vector2.new(0, 0.5),
         Image = thumb,
         ScaleType = Enum.ScaleType.Crop,
@@ -4416,12 +4466,12 @@ function Hyperion:CreateWindow(config)
     local UserInfo = Util.Create("TextLabel", {
         Name = "UserInfo",
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 34, 0, 1),
-        Size = UDim2.new(1, -40, 0, 10),
+        Position = UDim2.new(0, 39, 0, 3),
+        Size = UDim2.new(1, -45, 0, 11),
         Text = "User: " .. LocalPlayer.Name,
         TextColor3 = Theme.Text,
         FontFace = Theme.FontSemiBold,
-        TextSize = 10,
+        TextSize = 11,
         TextXAlignment = Enum.TextXAlignment.Left,
         ZIndex = 7,
         Parent = TopRightInfo
@@ -4432,12 +4482,12 @@ function Hyperion:CreateWindow(config)
     local ExecutorInfo = Util.Create("TextLabel", {
         Name = "ExecutorInfo",
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 34, 0, 10),
-        Size = UDim2.new(1, -40, 0, 9),
+        Position = UDim2.new(0, 39, 0, 14),
+        Size = UDim2.new(1, -45, 0, 10),
         Text = "Executor: " .. executorName,
         TextColor3 = Theme.TextDim,
         FontFace = Theme.FontMedium,
-        TextSize = 9,
+        TextSize = 10,
         TextXAlignment = Enum.TextXAlignment.Left,
         ZIndex = 7,
         Parent = TopRightInfo
@@ -4447,12 +4497,12 @@ function Hyperion:CreateWindow(config)
     local ExpiresInfo = Util.Create("TextLabel", {
         Name = "ExpiresInfo",
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 34, 0, 19),
-        Size = UDim2.new(1, -40, 0, 9),
+        Position = UDim2.new(0, 39, 0, 24),
+        Size = UDim2.new(1, -45, 0, 10),
         Text = "Expires: Never",
         TextColor3 = Theme.TextMuted,
         FontFace = Theme.Font,
-        TextSize = 9,
+        TextSize = 10,
         TextXAlignment = Enum.TextXAlignment.Left,
         ZIndex = 7,
         Parent = TopRightInfo
@@ -8339,7 +8389,7 @@ function Hyperion:CreateWindow(config)
             BackgroundTransparency = 1,
             AnchorPoint = Vector2.new(0, 0.5),
             Position = UDim2.new(0, 8, 0.5, 0),
-            Size = UDim2.new(1, -294, 0, 30),
+            Size = UDim2.new(1, -294, 0, 32),
             BorderSizePixel = 0,
             ScrollBarThickness = 0,
             ScrollingDirection = Enum.ScrollingDirection.X,
@@ -8378,7 +8428,7 @@ function Hyperion:CreateWindow(config)
                 BorderSizePixel = 0,
                 AnchorPoint = Vector2.new(rightSide and 1 or 0, 0.5),
                 Position = rightSide and UDim2.new(1, -286, 0.5, 0) or UDim2.new(0, 8, 0.5, 0),
-                Size = UDim2.new(0, 44, 0, 30),
+                Size = UDim2.new(0, 44, 0, 32),
                 Visible = false,
                 ZIndex = 8,
                 Parent = Header
@@ -8489,7 +8539,7 @@ function Hyperion:CreateWindow(config)
                     BackgroundColor3 = Theme.SurfaceLight,
                     BackgroundTransparency = 0.12,
                     AutomaticSize = Enum.AutomaticSize.X,
-                    Size = UDim2.new(0, 0, 0, 26),
+                    Size = UDim2.new(0, 0, 0, 28),
                     Text = tostring(groupName),
                     TextColor3 = Theme.Text,
                     FontFace = Theme.FontBold,
