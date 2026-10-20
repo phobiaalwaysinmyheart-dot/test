@@ -2511,12 +2511,32 @@ end
 function Util.MakeCollapsible(p, collapsed)
     local ctl = {}
     local token = 0
-    local list = p.Elements:FindFirstChildOfClass("UIListLayout")
+    local el, sec = p.Elements, p.Section
+    local list = el:FindFirstChildOfClass("UIListLayout")
     local padY = p.PadY or 16
 
     local function chrome(c)
         p.BottomFix.Visible = not c
         p.Divider.Visible = not c
+    end
+
+    local function settle(c)
+        if sec then
+            sec.ClipsDescendants = false
+            sec.AutomaticSize = Enum.AutomaticSize.Y
+            sec.Size = UDim2.new(1, 0, 0, 0)
+        end
+        el.Size = UDim2.new(1, 0, 0, 0)
+        if c then
+            el.AutomaticSize = Enum.AutomaticSize.None
+            el.Visible = false
+            el.ClipsDescendants = true
+        else
+            el.Visible = true
+            el.AutomaticSize = Enum.AutomaticSize.Y
+            el.ClipsDescendants = false
+        end
+        chrome(c)
     end
 
     function ctl:Get() return collapsed end
@@ -2527,71 +2547,51 @@ function Util.MakeCollapsible(p, collapsed)
         collapsed = c
         token = token + 1
         local mine = token
-        local el = p.Elements
-        local span = c and el.AbsoluteSize.Y or ((list and list.AbsoluteContentSize.Y or 0) + padY)
-        local dur = math.clamp(0.2 + span / 2600, 0.26, 0.42)
-        if p.Chevron then
-            if instant then
-                p.Chevron.Rotation = c and -90 or 0
-            else
-                Util.Tween(p.Chevron, dur, {Rotation = c and -90 or 0}, Enum.EasingStyle.Cubic, Enum.EasingDirection.InOut)
-            end
-        end
-        if not instant then Hyperion._layoutBusyUntil = os.clock() + dur + 0.05 end
-        if instant then
-            el.ClipsDescendants = c
-            if c then
-                el.AutomaticSize = Enum.AutomaticSize.None
-                el.Size = UDim2.new(1, 0, 0, 0)
-                el.Visible = false
-            else
-                el.Visible = true
-                el.AutomaticSize = Enum.AutomaticSize.Y
-                el.Size = UDim2.new(1, 0, 0, 0)
-            end
-            chrome(c)
+        if p.Chevron and instant then p.Chevron.Rotation = c and -90 or 0 end
+        if instant or not sec then
+            settle(c)
             return
         end
-        el.ClipsDescendants = true
+
+        local from = sec.AbsoluteSize.Y
+        local target
         if c then
-            local h = el.AbsoluteSize.Y
-            el.AutomaticSize = Enum.AutomaticSize.None
-            el.Size = UDim2.new(1, 0, 0, h)
-            local tw = Util.Tween(el, dur, {Size = UDim2.new(1, 0, 0, 0)}, Enum.EasingStyle.Cubic, Enum.EasingDirection.InOut)
-            local function done()
-                if token == mine then
-                    el.Visible = false
-                    chrome(true)
-                end
-            end
-            if tw then tw.Completed:Connect(done) else done() end
+            local headerH = p.Header.AbsoluteSize.Y
+            target = headerH > 0 and headerH or 34
         else
-            chrome(false)
             el.Visible = true
-            local h = (list and list.AbsoluteContentSize.Y or 0) + padY
-            if h <= padY then
-                el.AutomaticSize = Enum.AutomaticSize.Y
-                el.ClipsDescendants = false
+            el.AutomaticSize = Enum.AutomaticSize.Y
+            el.Size = UDim2.new(1, 0, 0, 0)
+            local content = (list and list.AbsoluteContentSize.Y or 0) + padY
+            if content <= padY then
+                settle(false)
+                if p.Chevron then p.Chevron.Rotation = 0 end
                 return
             end
-            el.AutomaticSize = Enum.AutomaticSize.None
-            el.Size = UDim2.new(1, 0, 0, 0)
-            local tw = Util.Tween(el, dur, {Size = UDim2.new(1, 0, 0, h)}, Enum.EasingStyle.Cubic, Enum.EasingDirection.InOut)
-            local function done()
-                if token == mine then
-                    el.AutomaticSize = Enum.AutomaticSize.Y
-                    el.ClipsDescendants = false
-                end
-            end
-            if tw then tw.Completed:Connect(done) else done() end
+            target = el.Position.Y.Offset + content
+            chrome(false)
         end
+
+        local dur = math.clamp(0.2 + math.abs(target - from) / 2600, 0.26, 0.42)
+        Hyperion._layoutBusyUntil = os.clock() + dur + 0.05
+        if p.Chevron then
+            Util.Tween(p.Chevron, dur, {Rotation = c and -90 or 0}, Enum.EasingStyle.Cubic, Enum.EasingDirection.InOut)
+        end
+
+        sec.AutomaticSize = Enum.AutomaticSize.None
+        sec.Size = UDim2.new(1, 0, 0, from)
+        sec.ClipsDescendants = true
+        local tw = Util.Tween(sec, dur, {Size = UDim2.new(1, 0, 0, target)}, Enum.EasingStyle.Cubic, Enum.EasingDirection.InOut)
+        local function done()
+            if token == mine then settle(c) end
+        end
+        if tw then tw.Completed:Connect(done) else done() end
     end
 
     function ctl:Toggle() ctl:Set(not collapsed) end
 
     return ctl
 end
-
 function Util.SectionChrome(p, cfg)
     cfg = cfg or {}
     local T = Hyperion.Theme
@@ -2661,6 +2661,8 @@ function Util.SectionChrome(p, cfg)
     end
 
     local ctl = Util.MakeCollapsible({
+        Section = p.Section,
+        Header = p.Header,
         Elements = p.Elements,
         BottomFix = p.BottomFix,
         Divider = p.Divider,
@@ -3635,9 +3637,9 @@ function Util.BuildPreview(parent, cfg)
         local w, h = size.X, size.Y
         if w < 8 or h < 8 then return end
 
-        local rbBox, rbFill, rbName, rbSkel, rbTrac, rbCF, rbCO, rbSeq
+        local rbBox, rbFill, rbName, rbHP, rbSkel, rbTrac, rbCF, rbCO, rbSeq
         if src.Rainbow then
-            rbBox, rbFill, rbName = rbOf(src, "Box", now), rbOf(src, "Fill", now), rbOf(src, "Name", now)
+            rbBox, rbFill, rbName, rbHP = rbOf(src, "Box", now), rbOf(src, "Fill", now), rbOf(src, "Name", now), rbOf(src, "Health", now)
             rbSkel, rbTrac = rbOf(src, "Skeleton", now), rbOf(src, "Tracer", now)
             rbCF, rbCO = rbOf(src, "ChamsFill", now), rbOf(src, "ChamsOutline", now)
             if src.RainbowSequence then rbSeq = src.RainbowSequence() end
@@ -3723,8 +3725,8 @@ function Util.BuildPreview(parent, cfg)
             ui.hbBack.Size = UDim2.fromOffset(width, bh)
             ui.hb.Position = UDim2.fromOffset(bx - 6, by + bh * (1 - sample.hp))
             ui.hb.Size = UDim2.fromOffset(width, bh * sample.hp)
-            put(ui.hbGrad, "Enabled", hbd.Gradient == true)
-            put(ui.hbGrad, "Color", hbd.GradientSequence)
+            put(ui.hbGrad, "Enabled", rbSeq ~= nil or hbd.Gradient == true)
+            put(ui.hbGrad, "Color", rbSeq or hbd.GradientSequence)
         end
 
         local dd, nd = d.Distances, d.Names
@@ -3738,7 +3740,7 @@ function Util.BuildPreview(parent, cfg)
                 text = text ~= "" and (text .. " [42]") or "[42]"
             end
             if hbd.HealthText and hbd.Enabled then
-                local hc = hbd.HealthTextRGB
+                local hc = rbHP or hbd.HealthTextRGB
                 text = text .. string.format('<font color="rgb(%d,%d,%d)"> [%d%%]</font>', hc.R * 255, hc.G * 255, hc.B * 255, math.floor(sample.hp * 100))
             end
             put(ui.name, "Text", text)
@@ -4544,8 +4546,8 @@ function Hyperion:CreateWindow(config)
     local MobileToggleButton = Util.Create("ImageButton", {
         Name = "MobileToggleButton",
         BackgroundTransparency = 1,
-        Size = UDim2.new(0, 60, 0, 60),
-        Position = UDim2.new(0, 14, 1, -74),
+        Size = UDim2.new(0, 72, 0, 72),
+        Position = UDim2.new(0, 14, 1, -86),
         BorderSizePixel = 0,
         Image = "",
         ImageColor3 = Theme.Accent,
@@ -4562,7 +4564,7 @@ function Hyperion:CreateWindow(config)
         Text = string.upper(string.sub(windowConfig.Title or "H", 1, 1)),
         TextColor3 = Theme.Accent,
         FontFace = Theme.FontBold,
-        TextSize = 30,
+        TextSize = 36,
         Visible = false,
         ZIndex = 151,
         Parent = MobileToggleButton
@@ -5140,7 +5142,7 @@ function Hyperion:CreateWindow(config)
     -- ============================================================
     -- HEADER (48px)
     -- ============================================================
-    local HeaderHeight = 44
+    local HeaderHeight = 40
     local SidebarWidth = 176
     local Header = Util.Create("Frame", {
         Name = "Header",
@@ -5342,7 +5344,7 @@ function Hyperion:CreateWindow(config)
         BackgroundTransparency = 0.18,
         AnchorPoint = Vector2.new(1, 0.5),
         Position = UDim2.new(1, -46, 0.5, 0),
-        Size = UDim2.new(0, 200, 0, 36),
+        Size = UDim2.new(0, 200, 0, 32),
         BorderSizePixel = 0,
         ZIndex = 6,
         Parent = Header
@@ -5373,8 +5375,8 @@ function Hyperion:CreateWindow(config)
     local PlayerIcon = Util.Create("ImageLabel", {
         Name = "PlayerIcon",
         BackgroundColor3 = Theme.Surface,
-        Size = UDim2.new(0, 26, 0, 26),
-        Position = UDim2.new(0, 5, 0.5, 0),
+        Size = UDim2.new(0, 24, 0, 24),
+        Position = UDim2.new(0, 4, 0.5, 0),
         AnchorPoint = Vector2.new(0, 0.5),
         Image = thumb,
         ScaleType = Enum.ScaleType.Crop,
@@ -5389,8 +5391,8 @@ function Hyperion:CreateWindow(config)
     local UserInfo = Util.Create("TextLabel", {
         Name = "UserInfo",
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 39, 0, 3),
-        Size = UDim2.new(1, -45, 0, 11),
+        Position = UDim2.new(0, 36, 0, 2),
+        Size = UDim2.new(1, -42, 0, 11),
         Text = "User: " .. LocalPlayer.Name,
         TextColor3 = Theme.Text,
         FontFace = Theme.FontSemiBold,
@@ -5405,8 +5407,8 @@ function Hyperion:CreateWindow(config)
     local ExecutorInfo = Util.Create("TextLabel", {
         Name = "ExecutorInfo",
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 39, 0, 14),
-        Size = UDim2.new(1, -45, 0, 10),
+        Position = UDim2.new(0, 36, 0, 12),
+        Size = UDim2.new(1, -42, 0, 10),
         Text = "Executor: " .. executorName,
         TextColor3 = Theme.TextDim,
         FontFace = Theme.FontMedium,
@@ -5420,8 +5422,8 @@ function Hyperion:CreateWindow(config)
     local ExpiresInfo = Util.Create("TextLabel", {
         Name = "ExpiresInfo",
         BackgroundTransparency = 1,
-        Position = UDim2.new(0, 39, 0, 24),
-        Size = UDim2.new(1, -45, 0, 10),
+        Position = UDim2.new(0, 36, 0, 21),
+        Size = UDim2.new(1, -42, 0, 10),
         Text = "Expires: Never",
         TextColor3 = Theme.TextMuted,
         FontFace = Theme.Font,
@@ -9830,7 +9832,7 @@ function Hyperion:CreateWindow(config)
             Util.AddPadding(Elements, 6, 10, 10, 10)
 
             local SecCtl = Util.SectionChrome({
-                Header = SecHeader, Title = _secTitle, Elements = Elements,
+                Section = SectionFrame, Header = SecHeader, Title = _secTitle, Elements = Elements,
                 BottomFix = _secBottomFix, Divider = _secDivider, PadY = 16,
             }, secCfg)
             _secRef.ctl = SecCtl
@@ -9971,12 +9973,21 @@ function Hyperion:CreateWindow(config)
                 -- full-row hitbox so their own clicks land.
                 local _setToggle
                 local accOffset = isBox and -34 or -48
-                if type(cfg.Color) == "table" then
-                    local ccfg = cfg.Color
+                local colorCfgs = {}
+                if type(cfg.Colors) == "table" then
+                    for _, c in ipairs(cfg.Colors) do colorCfgs[#colorCfgs + 1] = c end
+                elseif type(cfg.Color) == "table" then
+                    if cfg.Color[1] ~= nil then
+                        for _, c in ipairs(cfg.Color) do colorCfgs[#colorCfgs + 1] = c end
+                    else
+                        colorCfgs[1] = cfg.Color
+                    end
+                end
+                for swIndex, ccfg in ipairs(colorCfgs) do
                     local ccol = ccfg.Default or Color3.fromRGB(255, 255, 255)
                     if ccfg.Flag then Hyperion.Flags[ccfg.Flag] = ccol end
                     local Sw = Util.Create("TextButton", {
-                        Name = "Swatch", BackgroundColor3 = ccol, Text = "",
+                        Name = swIndex == 1 and "Swatch" or ("Swatch" .. swIndex), BackgroundColor3 = ccol, Text = "",
                         Size = UDim2.fromOffset(40, 14),
                         Position = UDim2.new(1, accOffset, 0.5, 0),
                         AnchorPoint = Vector2.new(1, 0.5),
@@ -9990,7 +10001,7 @@ function Hyperion:CreateWindow(config)
                         if ccfg.Flag then Hyperion.Flags[ccfg.Flag] = c2 end
                         if ccfg.Callback then task.spawn(ccfg.Callback, c2) end
                     end
-                    Util.AttachColorSwatch(Sw, function() return Sw.BackgroundColor3 end, applyCol)
+                    Util.AttachColorSwatch(Sw, function() return Sw.BackgroundColor3 end, applyCol, ccfg.Name and { Title = ccfg.Name } or nil)
                     if ccfg.Flag then
                         Hyperion.FlagCallbacks[ccfg.Flag] = applyCol
                         local cAPI = { Kind = "color" }
