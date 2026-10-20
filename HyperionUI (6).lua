@@ -1298,6 +1298,210 @@ Hyperion.Themes = {
         SliderBg     = Color3.fromRGB(40, 41, 66),
         InputBg      = Color3.fromRGB(26, 26, 46),
     },
+    ["Easter"] = {
+        Logo         = nil,
+        Animated     = true,
+        StarColor    = Color3.fromRGB(247, 150, 185),
+        StarColors   = {
+            Color3.fromRGB(247, 150, 185),
+            Color3.fromRGB(125, 190, 240),
+            Color3.fromRGB(115, 205, 155),
+            Color3.fromRGB(250, 213, 95),
+            Color3.fromRGB(178, 148, 222),
+            Color3.fromRGB(250, 170, 120),
+        },
+        ParticleStyle = "spring",
+        TitleGradient = {
+            ColorSequenceKeypoint.new(0,   Color3.fromRGB(236, 120, 170)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(150, 118, 206)),
+            ColorSequenceKeypoint.new(1,   Color3.fromRGB(80, 170, 230)),
+        },
+        LogoGradient = {
+            ColorSequenceKeypoint.new(0,   Color3.fromRGB(247, 150, 185)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(250, 213, 95)),
+            ColorSequenceKeypoint.new(1,   Color3.fromRGB(115, 205, 155)),
+        },
+        GradientStops = {
+            {0,    Color3.fromRGB(251, 246, 224)},
+            {0.33, Color3.fromRGB(246, 238, 250)},
+            {0.66, Color3.fromRGB(232, 246, 236)},
+            {1,    Color3.fromRGB(251, 246, 224)},
+        },
+        Accent       = Color3.fromRGB(150, 118, 206),
+        AccentDark   = Color3.fromRGB(118, 86, 176),
+        AccentLight  = Color3.fromRGB(196, 166, 238),
+        AccentGlow   = Color3.fromRGB(176, 146, 226),
+        AccentSub    = Color3.fromRGB(132, 100, 190),
+        Background   = Color3.fromRGB(250, 246, 228),
+        Surface      = Color3.fromRGB(255, 252, 240),
+        SurfaceLight = Color3.fromRGB(249, 243, 226),
+        SurfaceHover = Color3.fromRGB(243, 235, 224),
+        SurfaceActive= Color3.fromRGB(236, 226, 222),
+        Sidebar      = Color3.fromRGB(252, 248, 234),
+        SidebarActive= Color3.fromRGB(240, 232, 234),
+        Text         = Color3.fromRGB(66, 48, 92),
+        TextDim      = Color3.fromRGB(112, 92, 140),
+        TextMuted    = Color3.fromRGB(170, 150, 190),
+        Border       = Color3.fromRGB(232, 224, 208),
+        BorderLight  = Color3.fromRGB(220, 208, 212),
+        ToggleOff    = Color3.fromRGB(226, 220, 214),
+        SliderBg     = Color3.fromRGB(234, 228, 216),
+        InputBg      = Color3.fromRGB(255, 252, 240),
+    },
+    ["Vivid Nightfall"] = {
+        Logo         = nil,
+        Animated     = true,
+        StarColor    = Color3.fromRGB(199, 125, 255),
+        StarColors   = {
+            Color3.fromRGB(123, 44, 191),
+            Color3.fromRGB(157, 78, 221),
+            Color3.fromRGB(199, 125, 255),
+            Color3.fromRGB(224, 170, 255),
+            Color3.fromRGB(90, 24, 154),
+        },
+        ParticleStyle = "orbs",
+        TitleGradient = {
+            ColorSequenceKeypoint.new(0,   Color3.fromRGB(199, 125, 255)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(224, 170, 255)),
+            ColorSequenceKeypoint.new(1,   Color3.fromRGB(157, 78, 221)),
+        },
+        LogoGradient = {
+            ColorSequenceKeypoint.new(0,   Color3.fromRGB(90, 24, 154)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(157, 78, 221)),
+            ColorSequenceKeypoint.new(1,   Color3.fromRGB(224, 170, 255)),
+        },
+        GradientStops = {
+            {0,    Color3.fromRGB(16, 0, 43)},
+            {0.25, Color3.fromRGB(36, 0, 70)},
+            {0.5,  Color3.fromRGB(60, 9, 108)},
+            {0.75, Color3.fromRGB(36, 0, 70)},
+            {1,    Color3.fromRGB(16, 0, 43)},
+        },
+        Accent       = Color3.fromRGB(157, 78, 221),
+        AccentDark   = Color3.fromRGB(123, 44, 191),
+        AccentLight  = Color3.fromRGB(199, 125, 255),
+        AccentGlow   = Color3.fromRGB(199, 125, 255),
+        AccentSub    = Color3.fromRGB(90, 24, 154),
+        Background   = Color3.fromRGB(16, 0, 43),
+        Surface      = Color3.fromRGB(36, 0, 70),
+        SurfaceLight = Color3.fromRGB(50, 4, 90),
+        SurfaceHover = Color3.fromRGB(60, 9, 108),
+        SurfaceActive= Color3.fromRGB(75, 16, 131),
+        Sidebar      = Color3.fromRGB(21, 0, 54),
+        SidebarActive= Color3.fromRGB(56, 8, 100),
+        Text         = Color3.fromRGB(244, 230, 255),
+        TextDim      = Color3.fromRGB(224, 170, 255),
+        TextMuted    = Color3.fromRGB(160, 120, 200),
+        Border       = Color3.fromRGB(60, 9, 108),
+        BorderLight  = Color3.fromRGB(90, 24, 154),
+        ToggleOff    = Color3.fromRGB(52, 12, 90),
+        SliderBg     = Color3.fromRGB(30, 2, 60),
+        InputBg      = Color3.fromRGB(12, 0, 34),
+    },
+    ["Pastel Rainbow Fantasy"] = {
+        Logo         = nil,
+        Animated     = true,
+        StarColor    = Color3.fromRGB(160, 145, 250),
+        StarColors   = {
+            Color3.fromRGB(255, 150, 150),
+            Color3.fromRGB(255, 196, 130),
+            Color3.fromRGB(240, 230, 120),
+            Color3.fromRGB(150, 225, 140),
+            Color3.fromRGB(110, 220, 235),
+            Color3.fromRGB(130, 170, 250),
+            Color3.fromRGB(160, 145, 250),
+            Color3.fromRGB(240, 150, 245),
+        },
+        ParticleStyle = "petals",
+        TitleGradient = {
+            ColorSequenceKeypoint.new(0,   Color3.fromRGB(236, 120, 160)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(140, 125, 235)),
+            ColorSequenceKeypoint.new(1,   Color3.fromRGB(60, 190, 215)),
+        },
+        LogoGradient = {
+            ColorSequenceKeypoint.new(0,   Color3.fromRGB(255, 150, 150)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(160, 145, 250)),
+            ColorSequenceKeypoint.new(1,   Color3.fromRGB(110, 220, 235)),
+        },
+        GradientStops = {
+            {0,     Color3.fromRGB(255, 227, 255)},
+            {0.125, Color3.fromRGB(255, 214, 214)},
+            {0.25,  Color3.fromRGB(255, 234, 210)},
+            {0.375, Color3.fromRGB(254, 255, 218)},
+            {0.5,   Color3.fromRGB(229, 255, 223)},
+            {0.625, Color3.fromRGB(205, 250, 255)},
+            {0.75,  Color3.fromRGB(207, 226, 255)},
+            {0.875, Color3.fromRGB(222, 216, 255)},
+            {1,     Color3.fromRGB(255, 227, 255)},
+        },
+        Accent       = Color3.fromRGB(126, 108, 230),
+        AccentDark   = Color3.fromRGB(96, 80, 206),
+        AccentLight  = Color3.fromRGB(160, 196, 255),
+        AccentGlow   = Color3.fromRGB(189, 178, 255),
+        AccentSub    = Color3.fromRGB(140, 126, 230),
+        Background   = Color3.fromRGB(246, 245, 252),
+        Surface      = Color3.fromRGB(255, 255, 252),
+        SurfaceLight = Color3.fromRGB(247, 246, 252),
+        SurfaceHover = Color3.fromRGB(239, 237, 250),
+        SurfaceActive= Color3.fromRGB(229, 226, 247),
+        Sidebar      = Color3.fromRGB(250, 249, 254),
+        SidebarActive= Color3.fromRGB(235, 232, 250),
+        Text         = Color3.fromRGB(40, 32, 84),
+        TextDim      = Color3.fromRGB(98, 88, 152),
+        TextMuted    = Color3.fromRGB(160, 150, 200),
+        Border       = Color3.fromRGB(226, 222, 244),
+        BorderLight  = Color3.fromRGB(208, 202, 238),
+        ToggleOff    = Color3.fromRGB(214, 210, 238),
+        SliderBg     = Color3.fromRGB(226, 222, 244),
+        InputBg      = Color3.fromRGB(255, 255, 252),
+    },
+    ["Soft Pink Delight"] = {
+        Logo         = nil,
+        Animated     = true,
+        StarColor    = Color3.fromRGB(251, 111, 146),
+        StarColors   = {
+            Color3.fromRGB(255, 179, 198),
+            Color3.fromRGB(255, 143, 171),
+            Color3.fromRGB(251, 111, 146),
+            Color3.fromRGB(232, 76, 118),
+        },
+        ParticleStyle = "hearts",
+        TitleGradient = {
+            ColorSequenceKeypoint.new(0,   Color3.fromRGB(232, 76, 118)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(251, 111, 146)),
+            ColorSequenceKeypoint.new(1,   Color3.fromRGB(206, 56, 104)),
+        },
+        LogoGradient = {
+            ColorSequenceKeypoint.new(0,   Color3.fromRGB(255, 179, 198)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(251, 111, 146)),
+            ColorSequenceKeypoint.new(1,   Color3.fromRGB(200, 50, 100)),
+        },
+        GradientStops = {
+            {0,   Color3.fromRGB(255, 229, 236)},
+            {0.5, Color3.fromRGB(255, 194, 209)},
+            {1,   Color3.fromRGB(255, 229, 236)},
+        },
+        Accent       = Color3.fromRGB(232, 76, 118),
+        AccentDark   = Color3.fromRGB(192, 44, 90),
+        AccentLight  = Color3.fromRGB(251, 111, 146),
+        AccentGlow   = Color3.fromRGB(255, 143, 171),
+        AccentSub    = Color3.fromRGB(214, 60, 104),
+        Background   = Color3.fromRGB(255, 229, 236),
+        Surface      = Color3.fromRGB(255, 244, 248),
+        SurfaceLight = Color3.fromRGB(255, 234, 241),
+        SurfaceHover = Color3.fromRGB(255, 222, 232),
+        SurfaceActive= Color3.fromRGB(255, 208, 221),
+        Sidebar      = Color3.fromRGB(255, 238, 243),
+        SidebarActive= Color3.fromRGB(255, 216, 228),
+        Text         = Color3.fromRGB(92, 24, 56),
+        TextDim      = Color3.fromRGB(150, 66, 100),
+        TextMuted    = Color3.fromRGB(196, 120, 148),
+        Border       = Color3.fromRGB(255, 204, 218),
+        BorderLight  = Color3.fromRGB(252, 184, 203),
+        ToggleOff    = Color3.fromRGB(246, 196, 212),
+        SliderBg     = Color3.fromRGB(252, 212, 224),
+        InputBg      = Color3.fromRGB(255, 246, 249),
+    },
 }
 
 function Hyperion._LiftText(t)
@@ -1588,7 +1792,7 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
         local W, H = getCanvasSize()
         local sz = math.random(4, 8)
         local petal = Instance.new("Frame")
-        petal.BackgroundColor3 = color; petal.BackgroundTransparency = math.random(15, 40) / 100
+        petal.BackgroundColor3 = getParticleColor(); petal.BackgroundTransparency = math.random(15, 40) / 100
         petal.BorderSizePixel = 0; petal.Rotation = math.random(0, 360)
         petal.Size = UDim2.fromOffset(sz, math.floor(sz * 0.6))
         petal.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1613,14 +1817,15 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
         local W, H = getCanvasSize()
         local sz = math.random(3, 8)
         local bubble = Instance.new("Frame")
-        bubble.BackgroundColor3 = color; bubble.BackgroundTransparency = math.random(50, 75) / 100
+        local bubbleColor = getParticleColor()
+        bubble.BackgroundColor3 = bubbleColor; bubble.BackgroundTransparency = math.random(50, 75) / 100
         bubble.BorderSizePixel = 0
         bubble.Size = UDim2.fromOffset(sz, sz)
         bubble.AnchorPoint = Vector2.new(0.5, 0.5)
         bubble.Position = UDim2.fromOffset(math.random(10, W - 10), H + sz)
         bubble.ZIndex = 4; bubble.Parent = mParent
         Instance.new("UICorner", bubble).CornerRadius = UDim.new(1, 0)
-        local stroke = Instance.new("UIStroke"); stroke.Color = color
+        local stroke = Instance.new("UIStroke"); stroke.Color = bubbleColor
         stroke.Thickness = 1; stroke.Transparency = 0.5; stroke.Parent = bubble
         table.insert(Hyperion._starFrames, bubble)
 
@@ -1639,7 +1844,7 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
         local W, H = getCanvasSize()
         local sz = math.random(2, 4)
         local ember = Instance.new("Frame")
-        ember.BackgroundColor3 = color; ember.BackgroundTransparency = math.random(20, 50) / 100
+        ember.BackgroundColor3 = getParticleColor(); ember.BackgroundTransparency = math.random(20, 50) / 100
         ember.BorderSizePixel = 0
         ember.Size = UDim2.fromOffset(sz, sz)
         ember.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1665,7 +1870,7 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
         local wispH = math.random(30, 80)
         local wispW = math.random(2, 4)
         local wisp = Instance.new("Frame")
-        wisp.BackgroundColor3 = color; wisp.BackgroundTransparency = math.random(55, 80) / 100
+        wisp.BackgroundColor3 = getParticleColor(); wisp.BackgroundTransparency = math.random(55, 80) / 100
         wisp.BorderSizePixel = 0
         wisp.Size = UDim2.fromOffset(wispW, wispH)
         wisp.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1693,7 +1898,7 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
         local W, H = getCanvasSize()
         local sz = math.random(5, 14)
         local orb = Instance.new("Frame")
-        orb.BackgroundColor3 = color; orb.BackgroundTransparency = math.random(60, 82) / 100
+        orb.BackgroundColor3 = getParticleColor(); orb.BackgroundTransparency = math.random(60, 82) / 100
         orb.BorderSizePixel = 0
         orb.Size = UDim2.fromOffset(sz, sz)
         orb.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -1720,7 +1925,7 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
         local heart = Instance.new("ImageLabel")
         heart.BackgroundTransparency = 1
         heart.Image = "rbxassetid://10723406885"   -- lucide-heart
-        heart.ImageColor3 = color
+        heart.ImageColor3 = getParticleColor()
         heart.ImageTransparency = math.random(20, 45) / 100
         heart.Size = UDim2.fromOffset(sz, sz)
         heart.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -2067,6 +2272,41 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
         _shapeDrift(c, sz, H, tr, 20, 38)
     end
 
+    local function spawnSpring()
+        if not isAlive() then return end
+        local pick = math.random(1, 10)
+        if pick <= 4 then
+            spawnEgg()
+            return
+        end
+        local sz = math.random(20, 32)
+        local c, _, H = _shapeContainer(sz)
+        local tr = math.random(6, 18) / 100
+        local base = getParticleColor()
+        if pick <= 7 then
+            local petal = base:Lerp(Color3.new(1, 1, 1), 0.2)
+            for k = 0, 4 do
+                local a = math.rad(k * 72 - 90)
+                _shape(c, petal, tr, 0.36, 0.36, 0.5 + math.cos(a) * 0.25, 0.5 + math.sin(a) * 0.25, 0, 0.5)
+            end
+            _shape(c, Color3.fromRGB(255, 205, 70), tr, 0.26, 0.26, 0.5, 0.5, 0, 0.5)
+        else
+            local fur = base:Lerp(Color3.new(1, 1, 1), 0.15)
+            local ear = fur:Lerp(Color3.fromRGB(255, 190, 205), 0.6)
+            local eye = base:Lerp(Color3.new(0, 0, 0), 0.65)
+            _shape(c, fur, tr, 0.17, 0.46, 0.38, 0.25, -10, 0.5)
+            _shape(c, fur, tr, 0.17, 0.46, 0.62, 0.25, 10, 0.5)
+            _shape(c, ear, tr, 0.07, 0.3, 0.38, 0.25, -10, 0.5)
+            _shape(c, ear, tr, 0.07, 0.3, 0.62, 0.25, 10, 0.5)
+            _shape(c, fur, tr, 0.64, 0.4, 0.5, 0.8, 0, 0.5)
+            _shape(c, fur, tr, 0.5, 0.44, 0.5, 0.56, 0, 0.5)
+            _shape(c, Color3.new(1, 1, 1), tr, 0.2, 0.2, 0.84, 0.82, 0, 0.5)
+            _shape(c, eye, tr, 0.07, 0.07, 0.4, 0.54, 0, 0.5)
+            _shape(c, eye, tr, 0.07, 0.07, 0.6, 0.54, 0, 0.5)
+        end
+        _shapeDrift(c, sz, H, tr, 20, 38)
+    end
+
     -- CHRISTMAS LIGHTS: strung wire with bulbs that glow and flicker.
     -- Built once as a decoration (not spawned on the particle timer); snow
     -- keeps falling underneath it.
@@ -2176,7 +2416,7 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
         gridlines = spawnGridline, hearts = spawnHeart, paws = spawnPaw,
         snowflakes = spawnSnowflake,
         halloween = spawnHalloween, strawberry = spawnStrawberry,
-        sparks = spawnSpark, easter = spawnEgg,
+        sparks = spawnSpark, easter = spawnEgg, spring = spawnSpring,
         christmaslights = spawnSnowflake, -- snow falls under the light string
     }
     local spawnFunc = spawnFn[pStyle] or spawnStar
@@ -2201,6 +2441,7 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
         strawberry = {4, 9},
         sparks = {2, 5},
         easter = {6, 12},
+        spring = {5, 10},
         christmaslights = {4, 9},
     }
     local iRange = intervalRange[pStyle] or {14, 28}
@@ -7880,7 +8121,7 @@ function Hyperion:CreateWindow(config)
         {key="GradB",        label="Grad 2", anim=true, default=Color3.fromRGB(30, 42, 96)},
         {key="StarColor",    label="Stars",  anim=true, default=Color3.fromRGB(180, 205, 255)},
     }
-    local THEME_STYLES = { "stars", "petals", "hearts", "snowflakes", "embers", "bubbles", "paws", "wisps", "orbs", "gridlines", "halloween", "strawberry", "christmaslights", "sparks", "easter" }
+    local THEME_STYLES = { "stars", "petals", "hearts", "snowflakes", "embers", "bubbles", "paws", "wisps", "orbs", "gridlines", "halloween", "strawberry", "christmaslights", "sparks", "easter", "spring" }
     local working = {}
     for _, f in ipairs(THEME_FIELDS) do working[f.key] = Theme[f.key] or f.default end
     working.Animated = Theme.Animated == true
@@ -12241,7 +12482,7 @@ function Hyperion:CreateWindow(config)
         })
 
         local CATEGORIES = {
-            { "Easter",      { "Fiery Sunset", "Soft Lavender" } },
+            { "Easter",      { "Easter", "Pastel Rainbow Fantasy", "Soft Pink Delight", "Soft Lavender", "Vivid Nightfall", "Fiery Sunset" } },
             { "Signature",   { "Hyperion", "Purple", "Midnight", "Nebula", "Dracula" } },
             { "Cool",        { "Ocean", "StarryNight", "Aurora", "Nord", "Mint", "Christmas" } },
             { "Warm",        { "Sunset", "Crimson", "Royal Gold", "Coffee", "Halloween" } },
