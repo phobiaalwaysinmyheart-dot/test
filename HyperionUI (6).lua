@@ -3103,27 +3103,39 @@ function Util.SectionChrome(p, cfg)
         Chevron = chev,
         PadY = p.PadY or 16,
     }, false)
+    Util.GlassRegisterHeader(p.Header, p.BottomFix)
     if cfg.Collapsed == true then ctl:Set(true, true) end
 
     if hit then
         hit.MouseButton1Click:Connect(function() ctl:Toggle() end)
         hit.MouseEnter:Connect(function()
-            Util.TweenFast(p.Header, {BackgroundTransparency = 0.2})
+            Util.TweenFast(p.Header, {BackgroundTransparency = Util.GlassHeaderAlpha(0.2)})
             Util.TweenFast(chev, {ImageColor3 = Hyperion.Theme.Text})
         end)
         hit.MouseLeave:Connect(function()
-            Util.TweenFast(p.Header, {BackgroundTransparency = 0.5})
+            Util.TweenFast(p.Header, {BackgroundTransparency = Util.GlassHeaderAlpha(0.5)})
             Util.TweenFast(chev, {ImageColor3 = Hyperion.Theme.TextMuted})
         end)
     end
 
     return ctl
 end
-Util._glass = { value = 0, set = setmetatable({}, { __mode = "k" }) }
+Util._glass = { value = 0, set = setmetatable({}, { __mode = "k" }), headers = setmetatable({}, { __mode = "k" }) }
+
+function Util.GlassHeaderAlpha(base)
+    return base + (1 - base) * Util._glass.value
+end
 
 function Util.GlassRegister(f)
     Util._glass.set[f] = true
     f.BackgroundTransparency = Util._glass.value
+end
+
+function Util.GlassRegisterHeader(header, fix)
+    Util._glass.headers[header] = fix or false
+    local a = Util.GlassHeaderAlpha(0.5)
+    header.BackgroundTransparency = a
+    if fix then fix.BackgroundTransparency = a end
 end
 
 function Util.GlassApply(value)
@@ -3132,10 +3144,38 @@ function Util.GlassApply(value)
     for f in pairs(g.set) do
         if f.Parent then f.BackgroundTransparency = value else g.set[f] = nil end
     end
+    local a = Util.GlassHeaderAlpha(0.5)
+    for h, fix in pairs(g.headers) do
+        if h.Parent then
+            h.BackgroundTransparency = a
+            if fix then fix.BackgroundTransparency = a end
+        else
+            g.headers[h] = nil
+        end
+    end
+end
+
+function Util.PanelsApply(value, on)
+    local main = Hyperion._mainFrame
+    if not main then return end
+    local side, head = main:FindFirstChild("Sidebar"), main:FindFirstChild("Header")
+    local shown = on and value or 0
+    local fixT = on and 1 or 0
+    if side then
+        side.BackgroundTransparency = shown
+        local fix = side:FindFirstChild("RightFix")
+        if fix then fix.BackgroundTransparency = fixT end
+    end
+    if head then
+        head.BackgroundTransparency = shown
+        local bottom, left = head:FindFirstChild("BottomFix"), head:FindFirstChild("LeftFix")
+        if bottom then bottom.BackgroundTransparency = fixT end
+        if left then left.BackgroundTransparency = fixT end
+    end
 end
 
 Util._bgi = {
-    on = false, src = "", tint = 0.45, glass = 0.25, asset = nil,
+    on = false, full = false, src = "", tint = 0.45, glass = 0.25, asset = nil,
     ready = false, used = false, gen = 0, saveToken = 0, restored = false,
     file = "Hyperion/bg_image.json", folder = "Hyperion/Backgrounds",
     maxBytes = 15 * 1024 * 1024,
@@ -3237,6 +3277,7 @@ function Util.BgSync()
         Hyperion._ApplyThemeBackground(Hyperion._currentPreset or (Hyperion._currentThemeName and Hyperion.Themes[Hyperion._currentThemeName]))
     end
     Util.GlassApply(live and v.glass or 0)
+    Util.PanelsApply(live and v.glass or 0, live and v.full)
 end
 Hyperion._bgSync = Util.BgSync
 
@@ -3302,8 +3343,9 @@ function Util.BgRestore()
     if not okD or type(data) ~= "table" then return end
     if type(data.src) == "string" then v.src = data.src end
     if type(data.on) == "boolean" then v.on = data.on end
+    if type(data.full) == "boolean" then v.full = data.full end
     if type(data.tint) == "number" then v.tint = math.clamp(data.tint, 0, 0.9) end
-    if type(data.glass) == "number" then v.glass = math.clamp(data.glass, 0, 0.8) end
+    if type(data.glass) == "number" then v.glass = math.clamp(data.glass, 0, 1) end
 end
 
 function Util.BgSave()
@@ -3314,7 +3356,7 @@ function Util.BgSave()
         if token ~= v.saveToken then return end
         pcall(function()
             if not _rawIsfolder("Hyperion") then _rawMakefolder("Hyperion") end
-            _rawWritefile(v.file, HttpService:JSONEncode({ on = v.on, src = v.src, tint = v.tint, glass = v.glass }))
+            _rawWritefile(v.file, HttpService:JSONEncode({ on = v.on, full = v.full, src = v.src, tint = v.tint, glass = v.glass }))
         end)
     end)
 end
@@ -13015,9 +13057,19 @@ function Hyperion:CreateWindow(config)
             end,
         })
         sec:AddSlider({
-            Name = "Card Transparency", Min = 0, Max = 80, Default = math.floor(v.glass * 100 + 0.5), Suffix = "%",
+            Name = "Card Transparency", Min = 0, Max = 100, Default = math.floor(v.glass * 100 + 0.5), Suffix = "%",
             Callback = function(n)
                 v.glass = n / 100
+                Util.BgSync()
+                Util.BgSave()
+            end,
+        })
+        sec:AddToggle({
+            Name = "Full Background",
+            Desc = "The sidebar and top bar show the image too (uses Card Transparency).",
+            Default = v.full,
+            Callback = function(on)
+                v.full = on
                 Util.BgSync()
                 Util.BgSave()
             end,
