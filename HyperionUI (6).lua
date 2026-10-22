@@ -2701,7 +2701,6 @@ function Hyperion:SetTheme(nameOrTable)
             if Hyperion._bgTintFrame then Hyperion._bgTintFrame.Visible = false end
         end
     end
-    if Hyperion._videoSync then Hyperion._videoSync() end
     -- Apply gradient directly onto MainFrame's UIGradient
     if Hyperion._bgGradient then
         if preset and preset.Animated then
@@ -3116,217 +3115,6 @@ function Util.SectionChrome(p, cfg)
 
     return ctl
 end
-Util._glass = { value = 0, set = setmetatable({}, { __mode = "k" }) }
-
-function Util.GlassRegister(f)
-    Util._glass.set[f] = true
-    f.BackgroundTransparency = Util._glass.value
-end
-
-function Util.GlassApply(value)
-    local g = Util._glass
-    g.value = value
-    for f in pairs(g.set) do
-        if f.Parent then f.BackgroundTransparency = value else g.set[f] = nil end
-    end
-end
-
-Util._vid = {
-    frame = nil, conn = nil, on = false, src = "", tint = 0.45, glass = 0.25,
-    ready = false, gen = 0, saveToken = 0, restored = false,
-    file = "Hyperion/video_bg.json", folder = "Hyperion/Backgrounds",
-    maxBytes = 40 * 1024 * 1024,
-}
-
-function Util.VideoHash(s)
-    local h = 5381
-    for i = 1, #s do
-        h = (h * 33 + string.byte(s, i)) % 4294967296
-    end
-    return string.format("%08x", h)
-end
-
-function Util.VideoExt(s)
-    local clean = string.gsub(s, "[%?#].*$", "")
-    local ext = string.lower(string.match(clean, "%.(%w+)$") or "")
-    if ext == "mp4" or ext == "ogv" or ext == "webm" then return ext end
-    return "webm"
-end
-
-function Util.VideoDownload(url)
-    local ok, body = pcall(function() return game:HttpGet(url) end)
-    if ok and type(body) == "string" and #body > 0 then return body end
-    local req = (syn and syn.request) or http_request or request
-    if req then
-        local ok2, res = pcall(req, { Url = url, Method = "GET" })
-        if ok2 and type(res) == "table" and type(res.Body) == "string" and #res.Body > 0 then return res.Body end
-    end
-    return nil
-end
-
-function Util.VideoResolve(src)
-    if type(src) == "number" then return "rbxassetid://" .. src end
-    if type(src) ~= "string" then return nil, "Enter a file name or link first" end
-    src = string.match(src, "^%s*(.-)%s*$")
-    if src == "" then return nil, "Enter a file name or link first" end
-    if string.match(src, "^%d+$") then return "rbxassetid://" .. src end
-    if string.find(src, "^rbxasset") then return src end
-    if not getcustomasset then return nil, "This executor can't play local video files" end
-    local v = Util._vid
-    local path
-    if string.find(src, "^https?://") then
-        path = v.folder .. "/bg_" .. Util.VideoHash(src) .. "." .. Util.VideoExt(src)
-        local okF, cached = pcall(_rawIsfile, path)
-        if not (okF and cached) then
-            local body = Util.VideoDownload(src)
-            if not body or #body < 1024 then return nil, "Couldn't download that link" end
-            if #body > v.maxBytes then return nil, "That clip is over 40 MB, use a shorter or smaller one" end
-            pcall(function()
-                if not _rawIsfolder("Hyperion") then _rawMakefolder("Hyperion") end
-                if not _rawIsfolder(v.folder) then _rawMakefolder(v.folder) end
-            end)
-            if not pcall(_rawWritefile, path, body) then return nil, "Couldn't save the clip to your workspace folder" end
-        end
-    else
-        if string.find(src, "..", 1, true) then return nil, "That file name isn't allowed" end
-        local candidates = { src, src .. ".webm", v.folder .. "/" .. src, v.folder .. "/" .. src .. ".webm" }
-        for i = 1, #candidates do
-            local okF, exists = pcall(_rawIsfile, candidates[i])
-            if okF and exists then path = candidates[i]; break end
-        end
-        if not path then return nil, "File not found in your workspace folder" end
-    end
-    local okA, asset = pcall(getcustomasset, path)
-    if not okA or not asset then return nil, "Couldn't load that file as an asset" end
-    return asset
-end
-
-function Util.VideoFrame()
-    local v = Util._vid
-    if v.frame and v.frame.Parent then return v.frame end
-    local main = Hyperion._mainFrame
-    if not (main and main.Parent) then return nil end
-    if v.conn then v.conn:Disconnect(); v.conn = nil end
-    local f = Instance.new("VideoFrame")
-    f.Name = "BgVideo"
-    f.BackgroundTransparency = 1
-    f.BorderSizePixel = 0
-    f.Size = UDim2.new(1, 0, 1, 0)
-    f.ZIndex = 0
-    f.Looped = true
-    f.Volume = 0
-    f.Visible = false
-    f.Parent = main
-    Util.AddCorner(f, Hyperion.Theme.CornerLarge)
-    v.conn = main:GetPropertyChangedSignal("Visible"):Connect(Util.VideoSync)
-    v.frame = f
-    return f
-end
-
-function Util.VideoSync()
-    local v = Util._vid
-    if not (v.frame or v.on) then return end
-    local f = v.frame
-    local live = (v.on and v.ready and f ~= nil and f.Parent ~= nil) and true or false
-    if f and f.Parent then
-        f.Visible = live
-        local main = Hyperion._mainFrame
-        local shown = live and main ~= nil and main.Visible
-        pcall(function() if shown then f:Play() else f:Pause() end end)
-    end
-    local img, tint = Hyperion._bgImageLabel, Hyperion._bgTintFrame
-    if live then
-        if img then img.Visible = false end
-        if tint then
-            tint.BackgroundTransparency = 1 - v.tint
-            tint.Visible = v.tint > 0
-        end
-    else
-        local p = Hyperion._currentPreset or (Hyperion._currentThemeName and Hyperion.Themes[Hyperion._currentThemeName])
-        local hasImg = p ~= nil and p.BackgroundImage ~= nil and p.BackgroundImage ~= ""
-        if img then img.Visible = hasImg end
-        if tint then
-            if hasImg then
-                local ta = p.BackgroundTint
-                if ta == nil then ta = 0.45 end
-                tint.BackgroundTransparency = 1 - ta
-                tint.Visible = ta > 0
-            else
-                tint.Visible = false
-            end
-        end
-    end
-    Util.GlassApply(live and v.glass or 0)
-end
-Hyperion._videoSync = Util.VideoSync
-
-function Util.VideoApply(silent)
-    local v = Util._vid
-    v.gen = v.gen + 1
-    local gen = v.gen
-    v.ready = false
-    if not (v.on and v.src ~= "") then
-        Util.VideoSync()
-        return
-    end
-    task.spawn(function()
-        local content, err = Util.VideoResolve(v.src)
-        if gen ~= v.gen then return end
-        local f = content and Util.VideoFrame() or nil
-        if not f then
-            Util.VideoSync()
-            Hyperion:Notify({ Title = "Video Background", Content = err or "The window isn't ready yet", Type = "Error" })
-            return
-        end
-        f.Video = content
-        local function isLoaded()
-            local okL, res = pcall(function() return f.IsLoaded end)
-            return okL and res == true
-        end
-        local started = os.clock()
-        while not isLoaded() and os.clock() - started < 10 and gen == v.gen and f.Parent do
-            task.wait(0.1)
-        end
-        if gen ~= v.gen then return end
-        v.ready = isLoaded()
-        Util.VideoSync()
-        if v.ready then
-            if not silent then Hyperion:Notify({ Title = "Video Background", Content = "Clip loaded", Type = "Success" }) end
-        else
-            Hyperion:Notify({ Title = "Video Background", Content = "That clip wouldn't play. Try a short .webm (VP8 or VP9)", Type = "Error" })
-        end
-    end)
-end
-
-function Util.VideoRestore()
-    local v = Util._vid
-    if v.restored then return end
-    v.restored = true
-    local okF, exists = pcall(_rawIsfile, v.file)
-    if not (okF and exists) then return end
-    local okR, raw = pcall(_rawReadfile, v.file)
-    if not okR then return end
-    local okD, data = pcall(function() return HttpService:JSONDecode(raw) end)
-    if not okD or type(data) ~= "table" then return end
-    if type(data.src) == "string" then v.src = data.src end
-    if type(data.on) == "boolean" then v.on = data.on end
-    if type(data.tint) == "number" then v.tint = math.clamp(data.tint, 0, 0.9) end
-    if type(data.glass) == "number" then v.glass = math.clamp(data.glass, 0, 0.8) end
-end
-
-function Util.VideoSave()
-    local v = Util._vid
-    v.saveToken = v.saveToken + 1
-    local token = v.saveToken
-    task.delay(0.6, function()
-        if token ~= v.saveToken then return end
-        pcall(function()
-            if not _rawIsfolder("Hyperion") then _rawMakefolder("Hyperion") end
-            _rawWritefile(v.file, HttpService:JSONEncode({ on = v.on, src = v.src, tint = v.tint, glass = v.glass }))
-        end)
-    end)
-end
-
 function Util.B64Decode(s)
     local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     local lookup = {}
@@ -3854,6 +3642,63 @@ function Util._pvDummy()
     return model
 end
 
+Util._pvAnimOrder = { "Idle", "Walk", "Run", "Wave", "Point", "Cheer", "Laugh", "Dance", "Dance 2", "Dance 3" }
+
+Util._pvAnimPaths = {
+    Idle = { "idle", "Animation1" }, Walk = { "walk", "WalkAnim" }, Run = { "run", "RunAnim" },
+    Wave = { "wave", "WaveAnim" }, Point = { "point", "PointAnim" }, Cheer = { "cheer", "CheerAnim" },
+    Laugh = { "laugh", "LaughAnim" }, Dance = { "dance", "Animation1" },
+    ["Dance 2"] = { "dance2", "Animation1" }, ["Dance 3"] = { "dance3", "Animation1" },
+}
+
+Util._pvAnimDefaults = {
+    Idle = "rbxassetid://507766388", Walk = "rbxassetid://507777826", Run = "rbxassetid://507767714",
+    Wave = "rbxassetid://507770239", Point = "rbxassetid://507770453", Cheer = "rbxassetid://507770677",
+    Laugh = "rbxassetid://507770818", Dance = "rbxassetid://507771019",
+    ["Dance 2"] = "rbxassetid://507776043", ["Dance 3"] = "rbxassetid://507777268",
+}
+
+function Util._pvAnimIds(char, r15)
+    local ids = {}
+    local animate = char and char:FindFirstChild("Animate")
+    for _, name in ipairs(Util._pvAnimOrder) do
+        local id
+        if animate then
+            local path = Util._pvAnimPaths[name]
+            local folder = animate:FindFirstChild(path[1])
+            local anim = folder and folder:FindFirstChild(path[2])
+            if anim and anim:IsA("Animation") and anim.AnimationId ~= "" then id = anim.AnimationId end
+        end
+        if not id and r15 then id = Util._pvAnimDefaults[name] end
+        ids[name] = id
+    end
+    return ids
+end
+
+function Util._pvAnimator(model)
+    local host = model:FindFirstChildOfClass("Humanoid") or model:FindFirstChildOfClass("AnimationController")
+    if not host then return nil end
+    local animator = host:FindFirstChildOfClass("Animator")
+    if animator then return animator end
+    local ok, made = pcall(function()
+        local a = Instance.new("Animator")
+        a.Parent = host
+        return a
+    end)
+    return ok and made or nil
+end
+
+function Util._pvWorld(vp)
+    local world = vp:FindFirstChildOfClass("WorldModel")
+    if world then return world end
+    local ok, made = pcall(function()
+        local w = Instance.new("WorldModel")
+        w.Parent = vp
+        return w
+    end)
+    return ok and made or vp
+end
+
 function Util._pvCloneCharacter()
     local char = LocalPlayer.Character
     if not char then return nil end
@@ -3865,15 +3710,23 @@ function Util._pvCloneCharacter()
         return c
     end)
     if not ok or not clone then return nil end
+    local ids = Util._pvAnimIds(clone, clone:FindFirstChild("UpperTorso") ~= nil)
+    local root = clone.PrimaryPart or clone:FindFirstChild("HumanoidRootPart")
     for _, d in ipairs(clone:GetDescendants()) do
-        if d:IsA("LuaSourceContainer") or d:IsA("Sound") or d:IsA("Humanoid") or d:IsA("BillboardGui") or d:IsA("Highlight") or d:IsA("ForceField") then
+        if d:IsA("LuaSourceContainer") or d:IsA("Sound") or d:IsA("BillboardGui") or d:IsA("Highlight") or d:IsA("ForceField") then
             d:Destroy()
         elseif d:IsA("BasePart") then
-            d.Anchored = true
+            d.Anchored = root == nil or d == root
             d.CanCollide = false
         end
     end
-    return clone
+    local hum = clone:FindFirstChildOfClass("Humanoid")
+    if hum then
+        pcall(function() hum.EvaluateStateMachine = false end)
+        pcall(function() hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None end)
+        pcall(function() hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff end)
+    end
+    return clone, ids
 end
 
 function Util._pvBounds(model)
@@ -3901,8 +3754,21 @@ end
 function Util._pvFlat(model, inflate)
     local c = model:Clone()
     if not c then return nil end
-    for _, d in ipairs(c:GetDescendants()) do
-        if d:IsA("BasePart") then
+    local linked = {}
+    local from, to = model:GetDescendants(), c:GetDescendants()
+    if #from == #to then
+        for i = 1, #to do
+            local s, d = from[i], to[i]
+            if s.Name == d.Name and s.ClassName == d.ClassName and d:IsA("BasePart") then
+                linked[#linked + 1] = { s, d }
+            end
+        end
+    end
+    for _, d in ipairs(to) do
+        if d:IsA("Humanoid") then
+            d:Destroy()
+        elseif d:IsA("BasePart") then
+            d.Anchored = true
             d.Material = Enum.Material.SmoothPlastic
             d.Color = Color3.new(1, 1, 1)
             if d:IsA("MeshPart") then d.TextureID = "" end
@@ -3916,7 +3782,7 @@ function Util._pvFlat(model, inflate)
             d:Destroy()
         end
     end
-    return c
+    return c, linked
 end
 
 function Util._pvBg(t)
@@ -3938,6 +3804,8 @@ function Util.BuildPreview(parent, cfg)
     local dragging, lastPos, autoRotate = false, nil, cfg.AutoRotate ~= false
     local visible, nextVis, nextText, rotAngle = false, 0, 0, -45
     local model, isR15, boneParts, fillModel, outModel
+    local fillLinks, outLinks, animator, animIds, curTrack, trackCache
+    local animName, animVisible = cfg.Animation or "Idle", false
     local chamsMin = cfg.ChamsMinTransparency or 0.4
     local sample = { hp = 1 }
     local conns = {}
@@ -4197,34 +4065,81 @@ function Util.BuildPreview(parent, cfg)
         end
     end
 
-    local function setModel(m)
+    local function stopAnim()
+        local t = curTrack
+        curTrack = nil
+        if t then pcall(function() t:Stop(0.15) end) end
+    end
+
+    local function playAnim(name)
+        animName = name
+        stopAnim()
+        local id = animator and animIds and animIds[name]
+        if not id then return false end
+        local track = trackCache[name]
+        if not track then
+            local okT, made = pcall(function()
+                local a = Instance.new("Animation")
+                a.AnimationId = id
+                local tr = animator:LoadAnimation(a)
+                tr.Looped = true
+                return tr
+            end)
+            if not (okT and made) then return false end
+            track = made
+            trackCache[name] = track
+        end
+        local okP = pcall(function()
+            track:Play(0.2)
+            if not visible then track:AdjustSpeed(0) end
+        end)
+        if not okP then return false end
+        curTrack = track
+        return true
+    end
+
+    local function setModel(m, ids)
         if not alive then return end
         if model then
             if fillModel then fillModel:Destroy() end
             if outModel then outModel:Destroy() end
-            fillModel, outModel = nil, nil
+            fillModel, outModel, fillLinks, outLinks = nil, nil, nil, nil
             model:Destroy()
             model = nil
         end
+        animator, curTrack, trackCache = nil, nil, {}
         if not m then m = Util._pvDummy() end
         model = m
         if model.PrimaryPart then model:PivotTo(CFrame.new(0, 0, 0)) end
-        model.Parent = ui.vp
+        model.Parent = Util._pvWorld(ui.vp)
         local top, bot, cx, cz = Util._pvBounds(model)
         center = Vector3.new(cx, (top + bot) / 2, cz)
         topPt, botPt = Vector3.new(cx, top, cz), Vector3.new(cx, bot, cz)
         baseDist = (top - bot) / (2 * 0.7 * math.tan(math.rad(fov) * 0.5))
         dist = baseDist
         indexModel()
-        fillModel = Util._pvFlat(model, 0)
-        outModel = Util._pvFlat(model, cfg.OutlineSize or 0.14)
+        fillModel, fillLinks = Util._pvFlat(model, 0)
+        outModel, outLinks = Util._pvFlat(model, cfg.OutlineSize or 0.14)
         if fillModel then fillModel.Parent = ui.fillVp end
         if outModel then outModel.Parent = ui.outVp end
+        animIds = ids or Util._pvAnimIds(nil, isR15)
+        local okA, found = pcall(Util._pvAnimator, model)
+        animator = okA and found or nil
+        if animator then playAnim(animName) end
     end
 
     local function loadCharacter()
         if not alive then return end
-        setModel(Util._pvCloneCharacter())
+        local clone, ids = Util._pvCloneCharacter()
+        setModel(clone, ids)
+    end
+
+    local function syncLinks(list)
+        if not list then return end
+        for i = 1, #list do
+            local pair = list[i]
+            pair[2].CFrame = pair[1].CFrame
+        end
     end
 
     local function isShown()
@@ -4445,11 +4360,13 @@ function Util.BuildPreview(parent, cfg)
             fillOn, outOn = fT < 1, oT < 1
             if fillOn then
                 ui.fillCam.CFrame = cf
+                if animator then syncLinks(fillLinks) end
                 put(ui.fillVp, "ImageColor3", rbCF or ch.FillRGB or Color3.new(1, 1, 1))
                 ui.fillVp.ImageTransparency = fT
             end
             if outOn then
                 ui.outCam.CFrame = cf
+                if animator then syncLinks(outLinks) end
                 put(ui.outVp, "ImageColor3", rbCO or ch.OutlineRGB or ch.FillRGB or Color3.new(1, 1, 1))
                 ui.outVp.ImageTransparency = oT
             end
@@ -4464,6 +4381,11 @@ function Util.BuildPreview(parent, cfg)
         if now >= nextVis then
             nextVis = now + 0.15
             visible = isShown()
+        end
+        if visible ~= animVisible then
+            animVisible = visible
+            local t = curTrack
+            if t then pcall(function() t:AdjustSpeed(visible and 1 or 0) end) end
         end
         if not visible then return end
         if autoRotate and not dragging then yaw = yaw + dt * 0.6 end
@@ -4506,6 +4428,17 @@ function Util.BuildPreview(parent, cfg)
     end
     function api:Refresh() loadCharacter() end
     function api:SetModel(m) setModel(m) end
+    function api:SetAnimation(name) return playAnim(name) end
+    function api:GetAnimation() return animName end
+    function api:GetAnimations()
+        local list = {}
+        if animator and animIds then
+            for _, n in ipairs(Util._pvAnimOrder) do
+                if animIds[n] then list[#list + 1] = n end
+            end
+        end
+        return list
+    end
     function api:SetAutoRotate(v) autoRotate = v == true end
     api.Frame = ui.holder
 
@@ -10405,7 +10338,6 @@ function Hyperion:CreateWindow(config)
                 end
             end)
             Util.AddCorner(SectionFrame, Theme.CornerRadius)
-            Util.GlassRegister(SectionFrame)
             local _secStroke = Util.AddStroke(SectionFrame, Theme.Border, 1, 0.62)
             Themed(SectionFrame, { BackgroundColor3 = function(t) return t.Surface end })
             Themed(_secStroke, { Color = function(t) return t.Border end })
@@ -10629,6 +10561,7 @@ function Hyperion:CreateWindow(config)
                 end
                 for swIndex, ccfg in ipairs(colorCfgs) do
                     local ccol = ccfg.Default or Color3.fromRGB(255, 255, 255)
+                    local shownCol
                     if ccfg.Flag then Hyperion.Flags[ccfg.Flag] = ccol end
                     local Sw = Util.Create("TextButton", {
                         Name = swIndex == 1 and "Swatch" or ("Swatch" .. swIndex), BackgroundColor3 = ccol, Text = "",
@@ -10641,16 +10574,21 @@ function Hyperion:CreateWindow(config)
                     local _swStroke = Util.AddStroke(Sw, Theme.BorderLight, 1, 0.3)
                     Themed(_swStroke, { Color = function(t) return t.BorderLight end })
                     local function applyCol(c2)
-                        Sw.BackgroundColor3 = c2
+                        ccol = c2
+                        Sw.BackgroundColor3 = shownCol or c2
                         if ccfg.Flag then Hyperion.Flags[ccfg.Flag] = c2 end
                         if ccfg.Callback then task.spawn(ccfg.Callback, c2) end
                     end
-                    Util.AttachColorSwatch(Sw, function() return Sw.BackgroundColor3 end, applyCol, ccfg.Name and { Title = ccfg.Name } or nil)
+                    Util.AttachColorSwatch(Sw, function() return ccol end, applyCol, ccfg.Name and { Title = ccfg.Name } or nil)
                     if ccfg.Flag then
                         Hyperion.FlagCallbacks[ccfg.Flag] = applyCol
                         local cAPI = { Kind = "color" }
                         function cAPI:Set(v2) applyCol(v2) end
-                        function cAPI:Get() return Sw.BackgroundColor3 end
+                        function cAPI:Get() return ccol end
+                        function cAPI:SetDisplay(v2)
+                            shownCol = v2
+                            Sw.BackgroundColor3 = v2 or ccol
+                        end
                         Hyperion.FlagAPIs[ccfg.Flag] = cAPI
                     end
                     accOffset = accOffset - 46
@@ -12045,8 +11983,9 @@ function Hyperion:CreateWindow(config)
                     Parent = Frame
                 })
 
+                local shownColor
                 local function Paint()
-                    Preview.BackgroundColor3 = color
+                    Preview.BackgroundColor3 = shownColor or color
                 end
                 Paint()
 
@@ -12094,6 +12033,10 @@ function Hyperion:CreateWindow(config)
                     Emit()
                 end
                 function API:Get() return color, alpha end
+                function API:SetDisplay(c)
+                    shownColor = c
+                    Paint()
+                end
                 API.Kind = "color"
                 if flag then Hyperion.FlagAPIs[flag] = API end
                 Util.AddDesc(Elements, cfg)
@@ -12796,56 +12739,6 @@ function Hyperion:CreateWindow(config)
 
         paint(Hyperion._currentThemeName or "Hyperion")
         pcall(function() Hyperion:OnThemeChanged(function() paint(Hyperion._currentThemeName) end) end)
-        return sec
-    end
-
-    function WindowObj:AddVideoBackground(sec)
-        Util.VideoRestore()
-        local v = Util._vid
-        sec:AddToggle({
-            Name = "Video Background",
-            Desc = "Plays a looping clip behind the window.",
-            Default = v.on,
-            Callback = function(on)
-                v.on = on
-                Util.VideoApply()
-                Util.VideoSave()
-            end,
-        })
-        sec:AddTextbox({
-            Name = "Clip",
-            Placeholder = "clip.webm  or  https://link/to/clip.webm",
-            Desc = "A .webm in your executor's workspace folder, or a direct link.",
-            Default = v.src,
-            Callback = function(text)
-                v.src = string.match(text or "", "^%s*(.-)%s*$")
-                if v.on then Util.VideoApply() end
-                Util.VideoSave()
-            end,
-        })
-        sec:AddSlider({
-            Name = "Darkness", Min = 0, Max = 90, Default = math.floor(v.tint * 100 + 0.5), Suffix = "%",
-            Callback = function(n)
-                v.tint = n / 100
-                Util.VideoSync()
-                Util.VideoSave()
-            end,
-        })
-        sec:AddSlider({
-            Name = "Card Transparency", Min = 0, Max = 80, Default = math.floor(v.glass * 100 + 0.5), Suffix = "%",
-            Callback = function(n)
-                v.glass = n / 100
-                Util.VideoSync()
-                Util.VideoSave()
-            end,
-        })
-        sec:AddButton({
-            Name = "Reload Clip", Icon = Hyperion.Lucide.RefreshCw,
-            Callback = function() Util.VideoApply() end,
-        })
-        if v.on and v.src ~= "" then
-            task.defer(function() Util.VideoApply(true) end)
-        end
         return sec
     end
 
