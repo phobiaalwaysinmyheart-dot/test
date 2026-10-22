@@ -3658,6 +3658,16 @@ Util._pvAnimDefaults = {
     ["Dance 2"] = "rbxassetid://507776043", ["Dance 3"] = "rbxassetid://507777268",
 }
 
+Util._pvAnimExtras = {
+    { "Bodybuilder", 10713990381 }, { "Dolphin Dance", 10714068222 }, { "Floss Dance", 10714340543 },
+    { "Hype Dance", 10714369624 }, { "Line Dance", 10714383856 }, { "Samba", 10714386947 },
+    { "Twirl", 10714293450 }, { "Take Me Under", 10714345459 }, { "Flare", 10214311282 },
+    { "Still Standing", 11444443576 }, { "MGD2", 15963314052 }, { "Hugo", 17360699557 },
+    { "RXBB", 18225053113 }, { "Hip Bounce", 103606174140721 }, { "Worm", 112024753958948 },
+    { "Pole", 136418721245851 }, { "Hyper Circle Scootin'", 73171328255147 }, { "Cute", 80754582835479 },
+    { "L Dance", 84744842499780 }, { "Style 4", 129764254213842 },
+}
+
 function Util._pvAnimIds(char, r15)
     local ids = {}
     local animate = char and char:FindFirstChild("Animate")
@@ -3671,6 +3681,11 @@ function Util._pvAnimIds(char, r15)
         end
         if not id and r15 then id = Util._pvAnimDefaults[name] end
         ids[name] = id
+    end
+    if r15 then
+        for _, extra in ipairs(Util._pvAnimExtras) do
+            ids[extra[1]] = "rbxassetid://" .. extra[2]
+        end
     end
     return ids
 end
@@ -3804,7 +3819,7 @@ function Util.BuildPreview(parent, cfg)
     local dragging, lastPos, autoRotate = false, nil, cfg.AutoRotate ~= false
     local visible, nextVis, nextText, rotAngle = false, 0, 0, -45
     local model, isR15, boneParts, fillModel, outModel
-    local fillLinks, outLinks, animator, animIds, curTrack, trackCache
+    local fillLinks, outLinks, animator, animIds, curTrack, trackCache, failedNote
     local animName, animVisible = cfg.Animation or "Idle", false
     local chamsMin = cfg.ChamsMinTransparency or 0.4
     local sample = { hp = 1 }
@@ -4095,6 +4110,17 @@ function Util.BuildPreview(parent, cfg)
         end)
         if not okP then return false end
         curTrack = track
+        task.delay(4, function()
+            if not alive or curTrack ~= track then return end
+            local okL, len = pcall(function() return track.Length end)
+            if okL and len == 0 then
+                trackCache[name] = nil
+                if not failedNote[name] then
+                    failedNote[name] = true
+                    Hyperion:Notify({ Title = "ESP Preview", Content = name .. " could not be loaded in this game", Type = "Warning" })
+                end
+            end
+        end)
         return true
     end
 
@@ -4107,7 +4133,7 @@ function Util.BuildPreview(parent, cfg)
             model:Destroy()
             model = nil
         end
-        animator, curTrack, trackCache = nil, nil, {}
+        animator, curTrack, trackCache, failedNote = nil, nil, {}, {}
         if not m then m = Util._pvDummy() end
         model = m
         if model.PrimaryPart then model:PivotTo(CFrame.new(0, 0, 0)) end
@@ -4436,7 +4462,16 @@ function Util.BuildPreview(parent, cfg)
             for _, n in ipairs(Util._pvAnimOrder) do
                 if animIds[n] then list[#list + 1] = n end
             end
+            for _, extra in ipairs(Util._pvAnimExtras) do
+                if animIds[extra[1]] then list[#list + 1] = extra[1] end
+            end
         end
+        return list
+    end
+    function api:GetAllAnimations()
+        local list = {}
+        for _, n in ipairs(Util._pvAnimOrder) do list[#list + 1] = n end
+        for _, extra in ipairs(Util._pvAnimExtras) do list[#list + 1] = extra[1] end
         return list
     end
     function api:SetAutoRotate(v) autoRotate = v == true end
