@@ -3229,11 +3229,10 @@ function Util.ChromeApply(hidden)
 end
 
 Util._bgi = {
-    on = false, full = false, src = "", tint = 0.45, glass = 0.25, asset = nil, kind = "image",
-    frame = nil, conn = nil,
+    on = false, full = false, src = "", tint = 0.45, glass = 0.25, asset = nil,
     ready = false, used = false, gen = 0, saveToken = 0, restored = false,
     file = "Hyperion/bg_image.json", folder = "Hyperion/Backgrounds",
-    maxBytes = 15 * 1024 * 1024, maxVideoBytes = 80 * 1024 * 1024,
+    maxBytes = 15 * 1024 * 1024,
 }
 
 function Util.BgHash(s)
@@ -3247,18 +3246,6 @@ end
 function Util.BgKind(body)
     if string.sub(body, 1, 8) == "\137PNG\r\n\26\n" then return "png" end
     if string.sub(body, 1, 3) == "\255\216\255" then return "jpg" end
-    if string.sub(body, 5, 8) == "ftyp" then return "mp4" end
-    if string.sub(body, 1, 4) == "\26\69\223\163" then return "webm" end
-    return nil
-end
-
-function Util.BgIsVideo(kind)
-    return kind == "mp4" or kind == "webm"
-end
-
-function Util.BgExtKind(path)
-    local ext = string.lower(string.match(path, "%.(%w+)$") or "")
-    if ext == "mp4" or ext == "webm" then return ext end
     return nil
 end
 
@@ -3282,8 +3269,8 @@ function Util.BgResolve(src)
     if string.find(src, "^rbxasset") then return src, "image" end
     if not getcustomasset then return nil, "This executor can't load local files" end
     local v = Util._bgi
-    local notMedia = "That isn't a PNG, JPG, MP4 or WEBM file (a web page link will not work, use a direct link ending in .png, .jpg, .mp4 or .webm)"
-    local exts = { "png", "jpg", "mp4", "webm" }
+    local notMedia = "That isn't a PNG or JPG file (a web page link will not work, use a direct link ending in .png or .jpg)"
+    local exts = { "png", "jpg" }
     local path, kind
     if string.find(src, "^https?://") then
         local base = v.folder .. "/bg_" .. Util.BgHash(src)
@@ -3296,11 +3283,7 @@ function Util.BgResolve(src)
             if not body or #body < 64 then return nil, "Couldn't download that link" end
             kind = Util.BgKind(body)
             if not kind then return nil, notMedia end
-            if Util.BgIsVideo(kind) then
-                if #body > v.maxVideoBytes then return nil, "That video is over 80 MB, use a shorter or smaller one" end
-            elseif #body > v.maxBytes then
-                return nil, "That image is over 15 MB, use a smaller one"
-            end
+            if #body > v.maxBytes then return nil, "That image is over 15 MB, use a smaller one" end
             pcall(function()
                 if not _rawIsfolder("Hyperion") then _rawMakefolder("Hyperion") end
                 if not _rawIsfolder(v.folder) then _rawMakefolder(v.folder) end
@@ -3319,13 +3302,10 @@ function Util.BgResolve(src)
             if okF and exists then path = candidates[i]; break end
         end
         if not path then return nil, "File not found in your workspace folder" end
-        kind = Util.BgExtKind(path)
-        if not kind then
-            local okR, body = pcall(_rawReadfile, path)
-            kind = okR and type(body) == "string" and Util.BgKind(body) or nil
-            if not kind then return nil, notMedia end
-            if not Util.BgIsVideo(kind) and #body > v.maxBytes then return nil, "That image is over 15 MB, use a smaller one" end
-        end
+        local okR, body = pcall(_rawReadfile, path)
+        kind = okR and type(body) == "string" and Util.BgKind(body) or nil
+        if not kind then return nil, notMedia end
+        if #body > v.maxBytes then return nil, "That image is over 15 MB, use a smaller one" end
     end
     local okA, asset = pcall(getcustomasset, path)
     if not okA or not asset then
@@ -3334,26 +3314,33 @@ function Util.BgResolve(src)
     return asset, kind
 end
 
-function Util.BgVideoFrame()
+function Util.BgList()
     local v = Util._bgi
-    if v.frame and v.frame.Parent then return v.frame end
-    local main = Hyperion._mainFrame
-    if not (main and main.Parent) then return nil end
-    if v.conn then v.conn:Disconnect(); v.conn = nil end
-    local f = Instance.new("VideoFrame")
-    f.Name = "BgVideo"
-    f.BackgroundTransparency = 1
-    f.BorderSizePixel = 0
-    f.Size = UDim2.new(1, 0, 1, 0)
-    f.ZIndex = 0
-    f.Looped = true
-    f.Volume = 0
-    f.Visible = false
-    f.Parent = main
-    Util.AddCorner(f, Hyperion.Theme.CornerLarge)
-    v.conn = main:GetPropertyChangedSignal("Visible"):Connect(Util.BgSync)
-    v.frame = f
-    return f
+    pcall(function()
+        if not _rawIsfolder("Hyperion") then _rawMakefolder("Hyperion") end
+        if not _rawIsfolder(v.folder) then _rawMakefolder(v.folder) end
+    end)
+    local names, seen = {}, {}
+    local okL, list = pcall(listfiles, v.folder)
+    if okL and type(list) == "table" then
+        for i = 1, #list do
+            local path = string.gsub(tostring(list[i]), "\\", "/")
+            local name = string.match(path, "([^/]+)$")
+            local ext = name and string.lower(string.match(name, "%.(%w+)$") or "") or ""
+            if (ext == "png" or ext == "jpg" or ext == "jpeg") and not seen[name] and not string.match(name, "^bg_%x%x%x%x%x%x%x%x%.") and #names < 100 then
+                seen[name] = true
+                names[#names + 1] = name
+            end
+        end
+    end
+    table.sort(names, function(a, b) return string.lower(a) < string.lower(b) end)
+    return names
+end
+
+function Util.BgNameOf(src)
+    local prefix = Util._bgi.folder .. "/"
+    if string.sub(src, 1, #prefix) == prefix then return string.sub(src, #prefix + 1) end
+    return nil
 end
 
 function Util.BgSync()
@@ -3361,24 +3348,11 @@ function Util.BgSync()
     if not v.used then return end
     local img, tint = Hyperion._bgImageLabel, Hyperion._bgTintFrame
     local live = (v.on and v.ready and v.asset ~= nil and img ~= nil) and true or false
-    local isVideo = live and v.kind == "video"
-    local vf = v.frame
-    if vf and vf.Parent then
-        vf.Visible = isVideo
-        local main = Hyperion._mainFrame
-        pcall(function()
-            if isVideo and main and main.Visible then vf:Play() else vf:Pause() end
-        end)
-    end
     if live then
-        if isVideo then
-            img.Visible = false
-        else
-            if img.Image ~= v.asset then img.Image = v.asset end
-            img.ImageTransparency = 0
-            img.ImageColor3 = Color3.new(1, 1, 1)
-            img.Visible = true
-        end
+        if img.Image ~= v.asset then img.Image = v.asset end
+        img.ImageTransparency = 0
+        img.ImageColor3 = Color3.new(1, 1, 1)
+        img.Visible = true
         if tint then
             tint.BackgroundTransparency = 1 - v.tint
             tint.Visible = v.tint > 0
@@ -3411,57 +3385,31 @@ function Util.BgApply(silent)
             Hyperion:Notify({ Title = "Background", Content = (not asset and info) or "The window isn't ready yet", Type = "Error" })
             return
         end
-        local isVideo = Util.BgIsVideo(info)
-        local target = img
-        if isVideo then
-            target = Util.BgVideoFrame()
-            if not target then
-                Util.BgSync()
-                Hyperion:Notify({ Title = "Background", Content = "The window isn't ready yet", Type = "Error" })
-                return
-            end
-            target.Video = asset
-        end
         v.asset = asset
-        v.kind = isVideo and "video" or "image"
         v.ready = true
         Util.BgSync()
         local status
         task.spawn(function()
             pcall(function()
-                game:GetService("ContentProvider"):PreloadAsync({ target }, function(_, st) status = st end)
+                game:GetService("ContentProvider"):PreloadAsync({ img }, function(_, st) status = st end)
             end)
         end)
         local function isLoaded()
-            local okL, res = pcall(function() return target.IsLoaded end)
+            local okL, res = pcall(function() return img.IsLoaded end)
             return okL and res == true
         end
         local started = os.clock()
-        while status == nil and not isLoaded() and os.clock() - started < 8 and gen == v.gen and target.Parent do
+        while status == nil and not isLoaded() and os.clock() - started < 8 and gen == v.gen and img.Parent do
             task.wait(0.1)
         end
         if gen ~= v.gen then return end
         local sname = status ~= nil and tostring(status) or ""
-        local noun = isVideo and "video" or "image"
         if string.find(sname, "Failure", 1, true) or string.find(sname, "TimedOut", 1, true) then
             v.ready = false
             Util.BgSync()
             local label = string.match(sname, "(%w+)$") or sname
-            Hyperion:Notify({ Title = "Background", Content = "Roblox couldn't load that " .. noun .. " (" .. label .. "). Try a " .. (isVideo and "shorter .webm or .mp4" or "smaller PNG or JPG"), Type = "Error" })
+            Hyperion:Notify({ Title = "Background", Content = "Roblox couldn't load that image (" .. label .. "). Try a smaller PNG or JPG", Type = "Error" })
             return
-        end
-        if isVideo and not isLoaded() and string.find(sname, "Success", 1, true) then
-            local waited = os.clock()
-            while not isLoaded() and os.clock() - waited < 6 and gen == v.gen and target.Parent do
-                task.wait(0.1)
-            end
-            if gen ~= v.gen then return end
-            if not isLoaded() then
-                v.ready = false
-                Util.BgSync()
-                Hyperion:Notify({ Title = "Background", Content = "Roblox accepted the video but could not play it. Try a short .webm (VP9) instead of an .mp4", Type = "Error" })
-                return
-            end
         end
         if not silent then
             local confirmed = isLoaded() or string.find(sname, "Success", 1, true) ~= nil
@@ -13270,19 +13218,37 @@ function Hyperion:CreateWindow(config)
             Default = v.on,
             Callback = function(on)
                 v.on = on
+                if on and v.src == "" then
+                    Hyperion:Notify({ Title = "Background", Content = "Pick an image from the list first", Type = "Info" })
+                end
                 Util.BgApply()
                 Util.BgSave()
             end,
         })
-        sec:AddTextbox({
-            Name = "File",
-            Placeholder = "background.png or clip.mp4, or a direct link",
-            Desc = "A PNG, JPG, MP4 or WEBM in your executor's workspace folder, or a direct link.",
-            Default = v.src,
-            Callback = function(text)
-                v.src = string.match(text or "", "^%s*(.-)%s*$")
+        local pickCfg = {
+            Name = "Image",
+            Desc = "PNG or JPG files from workspace/Hyperion/Backgrounds.",
+            Values = {},
+            Search = true,
+            Default = Util.BgNameOf(v.src) or (v.src ~= "" and v.src or nil),
+            Callback = function(name)
+                v.src = v.folder .. "/" .. name
                 if v.on then Util.BgApply() end
                 Util.BgSave()
+            end,
+        }
+        local pick = sec:AddDropdown(pickCfg)
+        local function fillList()
+            local names = Util.BgList()
+            pickCfg.Placeholder = #names > 0 and "Select an image..." or "No images found"
+            pick:Refresh(names)
+        end
+        fillList()
+        sec:AddButton({
+            Name = "Refresh", Icon = Hyperion.Lucide.RefreshCw,
+            Callback = function()
+                fillList()
+                Util.BgApply()
             end,
         })
         sec:AddSlider({
@@ -13310,10 +13276,6 @@ function Hyperion:CreateWindow(config)
                 Util.BgSync()
                 Util.BgSave()
             end,
-        })
-        sec:AddButton({
-            Name = "Reload", Icon = Hyperion.Lucide.RefreshCw,
-            Callback = function() Util.BgApply() end,
         })
         if v.on and v.src ~= "" then
             task.defer(function() Util.BgApply(true) end)
