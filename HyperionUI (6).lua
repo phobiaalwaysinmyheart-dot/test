@@ -3331,7 +3331,7 @@ function Util.BgResolve(src)
     if not okA or not asset then
         return nil, "Couldn't load that file as an asset" .. (okA and "" or (" (" .. tostring(asset) .. ")"))
     end
-    return asset, kind
+    return asset, kind, path
 end
 
 function Util.BgVideoFrame()
@@ -3436,37 +3436,150 @@ function Util.BgApply(silent)
             local okL, res = pcall(function() return target.IsLoaded end)
             return okL and res == true
         end
+        if isVideo then
+            local function playing()
+                local okP, pos = pcall(function() return target.TimePosition end)
+                return isLoaded() or (okP and type(pos) == "number" and pos > 0.05)
+            end
+            local started = os.clock()
+            while not playing() and os.clock() - started < 12 and gen == v.gen and target.Parent do
+                task.wait(0.1)
+            end
+            if gen ~= v.gen then return end
+            if playing() then
+                if not silent then Hyperion:Notify({ Title = "Background", Content = "Background applied", Type = "Success" }) end
+                return
+            end
+            v.ready = false
+            Util.BgSync()
+            local shown = status ~= nil and (string.match(tostring(status), "(%w+)$") or tostring(status)) or "no answer"
+            Hyperion:Notify({ Title = "Background", Content = "The video never started playing (Roblox said: " .. shown .. "). Press Video Test to see why", Type = "Error" })
+            return
+        end
         local started = os.clock()
         while status == nil and not isLoaded() and os.clock() - started < 8 and gen == v.gen and target.Parent do
             task.wait(0.1)
         end
         if gen ~= v.gen then return end
         local sname = status ~= nil and tostring(status) or ""
-        local noun = isVideo and "video" or "image"
         if string.find(sname, "Failure", 1, true) or string.find(sname, "TimedOut", 1, true) then
             v.ready = false
             Util.BgSync()
             local label = string.match(sname, "(%w+)$") or sname
-            Hyperion:Notify({ Title = "Background", Content = "Roblox couldn't load that " .. noun .. " (" .. label .. "). Try a " .. (isVideo and "shorter .webm or .mp4" or "smaller PNG or JPG"), Type = "Error" })
+            Hyperion:Notify({ Title = "Background", Content = "Roblox couldn't load that image (" .. label .. "). Try a smaller PNG or JPG", Type = "Error" })
             return
-        end
-        if isVideo and not isLoaded() and string.find(sname, "Success", 1, true) then
-            local waited = os.clock()
-            while not isLoaded() and os.clock() - waited < 6 and gen == v.gen and target.Parent do
-                task.wait(0.1)
-            end
-            if gen ~= v.gen then return end
-            if not isLoaded() then
-                v.ready = false
-                Util.BgSync()
-                Hyperion:Notify({ Title = "Background", Content = "Roblox accepted the video but could not play it. Try a short .webm (VP9) instead of an .mp4", Type = "Error" })
-                return
-            end
         end
         if not silent then
             local confirmed = isLoaded() or string.find(sname, "Success", 1, true) ~= nil
             Hyperion:Notify({ Title = "Background", Content = confirmed and "Background applied" or "Background applied, still loading", Type = "Success" })
         end
+    end)
+end
+
+function Util.BgDiagnose()
+    local v = Util._bgi
+    if v.diagBusy then return end
+    v.diagBusy = true
+    task.spawn(function()
+        local out = {}
+        local function add(s) out[#out + 1] = s end
+        local okBody, errBody = pcall(function()
+            local okE, name, ver = pcall(function() if identifyexecutor then return identifyexecutor() end end)
+            add("executor: " .. ((okE and name) and (tostring(name) .. " " .. tostring(ver or "")) or "unknown"))
+            add("getcustomasset: " .. tostring(getcustomasset ~= nil) .. ", readfile: " .. tostring(readfile ~= nil) .. ", writefile: " .. tostring(writefile ~= nil))
+            local classes = {}
+            for _, c in ipairs({ "VideoFrame", "VideoPlayer", "VideoDisplay" }) do
+                local okC, inst = pcall(Instance.new, c)
+                if okC and inst then pcall(function() inst:Destroy() end) end
+                classes[#classes + 1] = c .. "=" .. tostring(okC)
+            end
+            add("classes: " .. table.concat(classes, ", "))
+            add("source: " .. tostring(v.src))
+            local asset, kind, path = Util.BgResolve(v.src)
+            if not asset then
+                add("resolve failed: " .. tostring(kind))
+                return
+            end
+            add("resolved: kind=" .. tostring(kind) .. ", path=" .. tostring(path) .. ", asset=" .. tostring(asset))
+            if not Util.BgIsVideo(kind) then
+                add("that source is an image, put an mp4 or webm in the File box first")
+                return
+            end
+            local okR, body = pcall(_rawReadfile, path)
+            if okR and type(body) == "string" then
+                local head = {}
+                for i = 1, math.min(12, #body) do head[i] = string.format("%02x", string.byte(body, i)) end
+                add("file: " .. #body .. " bytes, header " .. table.concat(head, " ") .. ", detected " .. tostring(Util.BgKind(body)))
+            else
+                add("file: couldn't read it back (" .. tostring(body) .. ")")
+            end
+            local main = Hyperion._mainFrame
+            local variants = { { "asset as returned", asset } }
+            local okN, alt = pcall(getcustomasset, path, true)
+            variants[2] = { "getcustomasset(path, true)", okN and alt or nil, tostring(alt) }
+            local worked
+            for i = 1, #variants do
+                local label, id, err = variants[i][1], variants[i][2], variants[i][3]
+                if not id then
+                    add(label .. ": unavailable (" .. err .. ")")
+                elseif not (main and main.Parent) then
+                    add(label .. ": the window isn't ready")
+                else
+                    local okF, f = pcall(Instance.new, "VideoFrame")
+                    if not okF then
+                        add(label .. ": a VideoFrame can't be created (" .. tostring(f) .. ")")
+                    else
+                        f.BackgroundTransparency = 1
+                        f.Size = UDim2.new(0, 2, 0, 2)
+                        f.Volume = 0
+                        f.Looped = true
+                        f.ZIndex = 0
+                        f.Parent = main
+                        local okS, errS = pcall(function() f.Video = id end)
+                        if not okS then
+                            add(label .. ": setting Video failed (" .. tostring(errS) .. ")")
+                        else
+                            local status
+                            task.spawn(function()
+                                pcall(function()
+                                    game:GetService("ContentProvider"):PreloadAsync({ f }, function(_, st) status = st end)
+                                end)
+                            end)
+                            pcall(function() f:Play() end)
+                            local function read(prop)
+                                local okP, val = pcall(function() return f[prop] end)
+                                return okP and val or nil
+                            end
+                            local loadedAt, moved
+                            local started = os.clock()
+                            while os.clock() - started < 8 and not moved do
+                                task.wait(0.2)
+                                if not loadedAt and read("IsLoaded") == true then loadedAt = os.clock() - started end
+                                local pos = read("TimePosition")
+                                moved = type(pos) == "number" and pos > 0.05
+                            end
+                            if moved then worked = worked or label end
+                            add(label .. ": loaded=" .. (loadedAt and string.format("%.1fs", loadedAt) or "never")
+                                .. ", moved=" .. tostring(moved == true)
+                                .. ", length=" .. tostring(read("TimeLength"))
+                                .. ", position=" .. tostring(read("TimePosition"))
+                                .. ", playing=" .. tostring(read("Playing"))
+                                .. ", resolution=" .. tostring(read("Resolution"))
+                                .. ", preload=" .. tostring(status))
+                        end
+                        pcall(function() f:Destroy() end)
+                    end
+                end
+            end
+            add(worked and ("verdict: playback works with " .. worked) or "verdict: the video did not play with any method")
+        end)
+        if not okBody then add("test crashed: " .. tostring(errBody)) end
+        local text = table.concat(out, "\n")
+        print("[Hyperion video test]\n" .. text)
+        local copied = false
+        if setclipboard then copied = pcall(setclipboard, text) end
+        v.diagBusy = false
+        Hyperion:Notify({ Title = "Video Test", Content = copied and "Report copied to your clipboard (also in the F9 console)" or "Report printed in the F9 console", Type = "Info" })
     end)
 end
 
@@ -13314,6 +13427,10 @@ function Hyperion:CreateWindow(config)
         sec:AddButton({
             Name = "Reload", Icon = Hyperion.Lucide.RefreshCw,
             Callback = function() Util.BgApply() end,
+        })
+        sec:AddButton({
+            Name = "Video Test",
+            Callback = function() Util.BgDiagnose() end,
         })
         if v.on and v.src ~= "" then
             task.defer(function() Util.BgApply(true) end)
