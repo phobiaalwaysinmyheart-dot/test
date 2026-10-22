@@ -3120,7 +3120,10 @@ function Util.SectionChrome(p, cfg)
 
     return ctl
 end
-Util._glass = { value = 0, set = setmetatable({}, { __mode = "k" }), headers = setmetatable({}, { __mode = "k" }) }
+Util._glass = {
+    value = 0, set = setmetatable({}, { __mode = "k" }),
+    headers = setmetatable({}, { __mode = "k" }), strokes = setmetatable({}, { __mode = "k" }),
+}
 
 function Util.GlassHeaderAlpha(base)
     return base + (1 - base) * Util._glass.value
@@ -3138,11 +3141,19 @@ function Util.GlassRegisterHeader(header, fix)
     if fix then fix.BackgroundTransparency = a end
 end
 
+function Util.GlassRegisterStroke(stroke, base)
+    Util._glass.strokes[stroke] = base
+    stroke.Transparency = base + (1 - base) * Util._glass.value
+end
+
 function Util.GlassApply(value)
     local g = Util._glass
     g.value = value
     for f in pairs(g.set) do
         if f.Parent then f.BackgroundTransparency = value else g.set[f] = nil end
+    end
+    for s, base in pairs(g.strokes) do
+        if s.Parent then s.Transparency = base + (1 - base) * value else g.strokes[s] = nil end
     end
     local a = Util.GlassHeaderAlpha(0.5)
     for h, fix in pairs(g.headers) do
@@ -3155,22 +3166,24 @@ function Util.GlassApply(value)
     end
 end
 
-function Util.PanelsApply(value, on)
-    local main = Hyperion._mainFrame
-    if not main then return end
-    local side, head = main:FindFirstChild("Sidebar"), main:FindFirstChild("Header")
-    local shown = on and value or 0
-    local fixT = on and 1 or 0
-    if side then
-        side.BackgroundTransparency = shown
-        local fix = side:FindFirstChild("RightFix")
-        if fix then fix.BackgroundTransparency = fixT end
-    end
-    if head then
-        head.BackgroundTransparency = shown
-        local bottom, left = head:FindFirstChild("BottomFix"), head:FindFirstChild("LeftFix")
-        if bottom then bottom.BackgroundTransparency = fixT end
-        if left then left.BackgroundTransparency = fixT end
+Util._chrome = { hidden = false, items = setmetatable({}, { __mode = "k" }) }
+
+function Util.ChromeAdd(obj, prop, hideTo)
+    if not obj then return end
+    local c = Util._chrome
+    c.items[obj] = { prop = prop, orig = obj[prop], hide = hideTo }
+    if c.hidden then obj[prop] = hideTo end
+end
+
+function Util.ChromeApply(hidden)
+    local c = Util._chrome
+    c.hidden = hidden and true or false
+    for obj, item in pairs(c.items) do
+        if obj.Parent then
+            if c.hidden then obj[item.prop] = item.hide else obj[item.prop] = item.orig end
+        else
+            c.items[obj] = nil
+        end
     end
 end
 
@@ -3277,7 +3290,7 @@ function Util.BgSync()
         Hyperion._ApplyThemeBackground(Hyperion._currentPreset or (Hyperion._currentThemeName and Hyperion.Themes[Hyperion._currentThemeName]))
     end
     Util.GlassApply(live and v.glass or 0)
-    Util.PanelsApply(live and v.glass or 0, live and v.full)
+    Util.ChromeApply(live and v.full)
 end
 Hyperion._bgSync = Util.BgSync
 
@@ -6065,6 +6078,10 @@ function Hyperion:CreateWindow(config)
         return line
     end
     local AccentLine = _gradLine("AccentLine", Header, UDim2.new(0, 0, 1, -1), UDim2.new(1, 0, 0, 1), 6)
+    Util.ChromeAdd(AccentLine, "BackgroundTransparency", 1)
+    Util.ChromeAdd(Header, "BackgroundTransparency", 1)
+    Util.ChromeAdd(_headerBottomFix, "BackgroundTransparency", 1)
+    Util.ChromeAdd(Header:FindFirstChild("LeftFix"), "BackgroundTransparency", 1)
 
     -- Logo + Title container
     local LogoContainer = Util.Create("Frame", {
@@ -6075,6 +6092,8 @@ function Hyperion:CreateWindow(config)
         ZIndex = 6,
         Parent = Header
     })
+
+    Util.ChromeAdd(LogoContainer, "Visible", false)
 
     local hasLogo = windowConfig.Logo ~= nil
     local LogoImage = Util.Create("ImageLabel", {
@@ -6206,6 +6225,7 @@ function Hyperion:CreateWindow(config)
         Parent = Header
     })
     Util.AddCorner(TopRightInfo, Theme.CornerSmall)
+    Util.ChromeAdd(TopRightInfo, "Visible", false)
     local _topInfoStroke = Util.AddStroke(TopRightInfo, Theme.BorderLight, 1, 0.18)
     Themed(TopRightInfo, { BackgroundColor3 = function(t) return t.SurfaceLight end })
     Themed(_topInfoStroke, { Color = function(t) return t.BorderLight end })
@@ -6417,10 +6437,12 @@ function Hyperion:CreateWindow(config)
 
     LogoContainer.Parent = Sidebar
     LogoContainer.ZIndex = 5
+    Util.ChromeAdd(Sidebar, "BackgroundTransparency", 1)
+    Util.ChromeAdd(Sidebar:FindFirstChild("RightFix"), "BackgroundTransparency", 1)
 
 
 
-    _gradLine("TopSep", Sidebar, UDim2.new(0, 10, 0, HeaderHeight - 1), UDim2.new(1, -20, 0, 1), 5)
+    Util.ChromeAdd(_gradLine("TopSep", Sidebar, UDim2.new(0, 10, 0, HeaderHeight - 1), UDim2.new(1, -20, 0, 1), 5), "BackgroundTransparency", 1)
 
     -- Right border line
     local _sidebarBorder = Util.Create("Frame", {
@@ -6434,6 +6456,7 @@ function Hyperion:CreateWindow(config)
         Parent = Sidebar
     })
     Themed(_sidebarBorder, { BackgroundColor3 = function(t) return t.Border end })
+    Util.ChromeAdd(_sidebarBorder, "BackgroundTransparency", 1)
 
     -- ── Tabs scroll (leaves 40px at bottom for folder button) ──────────────
     local TabContainer = Util.Create("ScrollingFrame", {
@@ -6475,6 +6498,7 @@ function Hyperion:CreateWindow(config)
         Parent = BottomBar,
     })
     Themed(_bottomSep, { BackgroundColor3 = function(t) return t.Border end })
+    Util.ChromeAdd(_bottomSep, "BackgroundTransparency", 1)
 
     local BottomRow = Util.Create("Frame", {
         BackgroundTransparency = 1,
@@ -9934,6 +9958,7 @@ function Hyperion:CreateWindow(config)
                 Parent = CatLabel
             })
             Themed(sep, { BackgroundColor3 = function(t) return t.Border end })
+            Util.ChromeAdd(sep, "BackgroundTransparency", 1)
         end
 
         return CatLabel
@@ -10038,6 +10063,7 @@ function Hyperion:CreateWindow(config)
         })
         Util.AddCorner(TabButton, Theme.CornerSmall)
         Themed(TabButton, { BackgroundColor3 = function(t) return t.Sidebar end })
+        Util.ChromeAdd(TabButton, "BackgroundTransparency", 1)
 
         TabObj._nav = WindowObj._navCurrent
         if TabObj._nav then
@@ -10239,6 +10265,7 @@ function Hyperion:CreateWindow(config)
                 Parent = Header
             })
             Themed(fade, { BackgroundColor3 = function(t) return t.Sidebar end })
+            Util.ChromeAdd(fade, "BackgroundTransparency", 1)
             Util.Create("UIGradient", {
                 Transparency = NumberSequence.new(rightSide
                     and { NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.6, 0.15), NumberSequenceKeypoint.new(1, 0) }
@@ -10621,6 +10648,7 @@ function Hyperion:CreateWindow(config)
             Util.AddCorner(SectionFrame, Theme.CornerRadius)
             Util.GlassRegister(SectionFrame)
             local _secStroke = Util.AddStroke(SectionFrame, Theme.Border, 1, 0.62)
+            Util.GlassRegisterStroke(_secStroke, 0.62)
             Themed(SectionFrame, { BackgroundColor3 = function(t) return t.Surface end })
             Themed(_secStroke, { Color = function(t) return t.Border end })
 
@@ -10675,6 +10703,7 @@ function Hyperion:CreateWindow(config)
                 Parent = SecHeader
             })
             Themed(_secDivider, { BackgroundColor3 = function(t) return t.Border end })
+            Util.ChromeAdd(_secDivider, "BackgroundTransparency", 1)
 
             -- Element container
             local Elements = Util.Create("Frame", {
@@ -12399,6 +12428,7 @@ function Hyperion:CreateWindow(config)
                     Parent = DivFrame
                 })
                 Themed(Line, { BackgroundColor3 = function(t) return t.Border end })
+                Util.ChromeAdd(Line, "BackgroundTransparency", 1)
                 if title then
                     local Cap = Util.Create("TextLabel", {
                         Name = "T",
@@ -13066,7 +13096,7 @@ function Hyperion:CreateWindow(config)
         })
         sec:AddToggle({
             Name = "Full Background",
-            Desc = "The sidebar and top bar show the image too (uses Card Transparency).",
+            Desc = "Hides the logo, info card, top bar, tab cards and divider lines.",
             Default = v.full,
             Callback = function(on)
                 v.full = on
