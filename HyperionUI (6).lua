@@ -3476,104 +3476,192 @@ function Util.BgApply(silent)
     end)
 end
 
+function Util.BgTrialStart(t, kind, id, parent)
+    local objs = t.objs
+    if kind == "frame" then
+        local f = Instance.new("VideoFrame")
+        objs[#objs + 1] = f
+        f.BackgroundTransparency = 1
+        f.Size = UDim2.new(0, 160, 0, 90)
+        f.Volume = 0
+        f.Looped = true
+        f.Parent = parent
+        f.Video = id
+        t.node = f
+        t.names = { loaded = "IsLoaded", pos = "TimePosition", len = "TimeLength", playing = "Playing", res = "Resolution" }
+        task.spawn(function()
+            pcall(function()
+                game:GetService("ContentProvider"):PreloadAsync({ f }, function(_, st) t.status = st end)
+            end)
+        end)
+        f:Play()
+        return
+    end
+    local p = Instance.new("VideoPlayer")
+    objs[#objs + 1] = p
+    p.Looping = true
+    p.Volume = 0
+    p.Parent = parent
+    p.VideoContent = Content.fromUri(id)
+    local d = Instance.new("VideoDisplay")
+    objs[#objs + 1] = d
+    d.BackgroundTransparency = 1
+    d.Size = UDim2.new(0, 160, 0, 90)
+    d.Parent = parent
+    local w = Instance.new("Wire")
+    objs[#objs + 1] = w
+    w.SourceInstance = p
+    w.TargetInstance = d
+    w.Parent = p
+    t.node = p
+    t.names = { loaded = "IsLoaded", pos = "TimePosition", len = "TimeLength", playing = "IsPlaying", res = "Resolution" }
+    pcall(function() p.PlayFailed:Connect(function(e) t.fail = tostring(e) end) end)
+    task.spawn(function()
+        local okL, st = pcall(function() return p:LoadAsync() end)
+        t.status = okL and st or ("LoadAsync error: " .. tostring(st))
+    end)
+    p:Play()
+end
+
+function Util.BgTrialRead(t, key)
+    local okP, val = pcall(function() return t.node[t.names[key]] end)
+    if okP then return val end
+    return "n/a"
+end
+
 function Util.BgDiagnose()
     local v = Util._bgi
     if v.diagBusy then return end
     v.diagBusy = true
+    Hyperion:Notify({ Title = "Video Test", Content = "Running, this takes about 10 seconds", Type = "Info" })
     task.spawn(function()
-        local out = {}
+        local out, all, trials, extra = {}, {}, {}, {}
         local function add(s) out[#out + 1] = s end
         local okBody, errBody = pcall(function()
             local okE, name, ver = pcall(function() if identifyexecutor then return identifyexecutor() end end)
             add("executor: " .. ((okE and name) and (tostring(name) .. " " .. tostring(ver or "")) or "unknown"))
-            add("getcustomasset: " .. tostring(getcustomasset ~= nil) .. ", readfile: " .. tostring(readfile ~= nil) .. ", writefile: " .. tostring(writefile ~= nil))
+            add("getcustomasset: " .. tostring(getcustomasset ~= nil) .. ", readfile: " .. tostring(readfile ~= nil) .. ", writefile: " .. tostring(writefile ~= nil) .. ", listfiles: " .. tostring(listfiles ~= nil))
             local classes = {}
-            for _, c in ipairs({ "VideoFrame", "VideoPlayer", "VideoDisplay" }) do
+            for _, c in ipairs({ "VideoFrame", "VideoPlayer", "VideoDisplay", "Wire" }) do
                 local okC, inst = pcall(Instance.new, c)
                 if okC and inst then pcall(function() inst:Destroy() end) end
                 classes[#classes + 1] = c .. "=" .. tostring(okC)
             end
             add("classes: " .. table.concat(classes, ", "))
+            local main = Hyperion._mainFrame
+            local okG, where = pcall(function() return main:FindFirstAncestorOfClass("ScreenGui").Parent:GetFullName() end)
+            add("window lives in: " .. (okG and tostring(where) or "unknown"))
+            local pgui
+            pcall(function()
+                local pg = game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui")
+                if pg then
+                    pgui = Instance.new("ScreenGui")
+                    pgui.Name = "HyperionVideoTest"
+                    pgui.ResetOnSpawn = false
+                    pgui.Parent = pg
+                    extra[#extra + 1] = pgui
+                end
+            end)
+            local function try(label, kind, id, parent, why)
+                if not id then
+                    add(label .. ": no asset (" .. tostring(why) .. ")")
+                    return
+                end
+                if not parent then
+                    add(label .. ": nowhere to put it")
+                    return
+                end
+                local t = { label = label, objs = {} }
+                all[#all + 1] = t
+                local okT, errT = pcall(Util.BgTrialStart, t, kind, id, parent)
+                if okT then
+                    trials[#trials + 1] = t
+                else
+                    add(label .. ": can't start (" .. tostring(errT) .. ")")
+                end
+            end
             add("source: " .. tostring(v.src))
             local asset, kind, path = Util.BgResolve(v.src)
-            if not asset then
-                add("resolve failed: " .. tostring(kind))
-                return
-            end
-            add("resolved: kind=" .. tostring(kind) .. ", path=" .. tostring(path) .. ", asset=" .. tostring(asset))
-            if not Util.BgIsVideo(kind) then
-                add("that source is an image, put an mp4 or webm in the File box first")
-                return
-            end
-            local okR, body = pcall(_rawReadfile, path)
-            if okR and type(body) == "string" then
-                local head = {}
-                for i = 1, math.min(12, #body) do head[i] = string.format("%02x", string.byte(body, i)) end
-                add("file: " .. #body .. " bytes, header " .. table.concat(head, " ") .. ", detected " .. tostring(Util.BgKind(body)))
-            else
-                add("file: couldn't read it back (" .. tostring(body) .. ")")
-            end
-            local main = Hyperion._mainFrame
-            local variants = { { "asset as returned", asset } }
-            local okN, alt = pcall(getcustomasset, path, true)
-            variants[2] = { "getcustomasset(path, true)", okN and alt or nil, tostring(alt) }
-            local worked
-            for i = 1, #variants do
-                local label, id, err = variants[i][1], variants[i][2], variants[i][3]
-                if not id then
-                    add(label .. ": unavailable (" .. err .. ")")
-                elseif not (main and main.Parent) then
-                    add(label .. ": the window isn't ready")
-                else
-                    local okF, f = pcall(Instance.new, "VideoFrame")
-                    if not okF then
-                        add(label .. ": a VideoFrame can't be created (" .. tostring(f) .. ")")
+            local seen = {}
+            if asset then
+                add("resolved: kind=" .. tostring(kind) .. ", path=" .. tostring(path) .. ", asset=" .. tostring(asset))
+                if Util.BgIsVideo(kind) then
+                    seen[path] = true
+                    local okR, body = pcall(_rawReadfile, path)
+                    if okR and type(body) == "string" then
+                        local head = {}
+                        for i = 1, math.min(12, #body) do head[i] = string.format("%02x", string.byte(body, i)) end
+                        add("file: " .. #body .. " bytes, header " .. table.concat(head, " ") .. ", detected " .. tostring(Util.BgKind(body)))
                     else
-                        f.BackgroundTransparency = 1
-                        f.Size = UDim2.new(0, 2, 0, 2)
-                        f.Volume = 0
-                        f.Looped = true
-                        f.ZIndex = 0
-                        f.Parent = main
-                        local okS, errS = pcall(function() f.Video = id end)
-                        if not okS then
-                            add(label .. ": setting Video failed (" .. tostring(errS) .. ")")
-                        else
-                            local status
-                            task.spawn(function()
-                                pcall(function()
-                                    game:GetService("ContentProvider"):PreloadAsync({ f }, function(_, st) status = st end)
-                                end)
-                            end)
-                            pcall(function() f:Play() end)
-                            local function read(prop)
-                                local okP, val = pcall(function() return f[prop] end)
-                                return okP and val or nil
-                            end
-                            local loadedAt, moved
-                            local started = os.clock()
-                            while os.clock() - started < 8 and not moved do
-                                task.wait(0.2)
-                                if not loadedAt and read("IsLoaded") == true then loadedAt = os.clock() - started end
-                                local pos = read("TimePosition")
-                                moved = type(pos) == "number" and pos > 0.05
-                            end
-                            if moved then worked = worked or label end
-                            add(label .. ": loaded=" .. (loadedAt and string.format("%.1fs", loadedAt) or "never")
-                                .. ", moved=" .. tostring(moved == true)
-                                .. ", length=" .. tostring(read("TimeLength"))
-                                .. ", position=" .. tostring(read("TimePosition"))
-                                .. ", playing=" .. tostring(read("Playing"))
-                                .. ", resolution=" .. tostring(read("Resolution"))
-                                .. ", preload=" .. tostring(status))
+                        add("file: couldn't read it back (" .. tostring(body) .. ")")
+                    end
+                    local okN, alt = pcall(getcustomasset, path, true)
+                    try("source, VideoFrame in the window", "frame", asset, main)
+                    try("source, VideoFrame in PlayerGui", "frame", asset, pgui)
+                    try("source, VideoFrame, getcustomasset(path, true)", "frame", okN and alt or nil, main, alt)
+                    try("source, VideoPlayer + VideoDisplay in the window", "player", asset, main)
+                    try("source, VideoPlayer + VideoDisplay in PlayerGui", "player", asset, pgui)
+                else
+                    add("the source is an image, so only the sample video and the other videos in your workspace are tested")
+                end
+            else
+                add("source not usable: " .. tostring(kind))
+            end
+            try("control: Roblox sample video, VideoFrame", "frame", "rbxassetid://5608359401", main)
+            try("control: Roblox sample video, VideoPlayer", "player", "rbxassetid://5608359401", main)
+            local count = 0
+            for _, dir in ipairs({ "", v.folder }) do
+                local okL, list = pcall(listfiles, dir)
+                if not (okL and type(list) == "table") and dir == "" then okL, list = pcall(listfiles, ".") end
+                if okL and type(list) == "table" then
+                    for i = 1, #list do
+                        local item = string.gsub(tostring(list[i]), "\\", "/")
+                        item = string.gsub(item, "^%./", "")
+                        local ext = string.lower(string.match(item, "%.(%w+)$") or "")
+                        if (ext == "mp4" or ext == "webm") and not seen[item] and count < 8 then
+                            seen[item] = true
+                            count = count + 1
+                            local okA, a = pcall(getcustomasset, item)
+                            try("workspace file " .. item .. ", VideoFrame", "frame", okA and a or nil, main, a)
                         end
-                        pcall(function() f:Destroy() end)
                     end
                 end
             end
-            add(worked and ("verdict: playback works with " .. worked) or "verdict: the video did not play with any method")
+            local started = os.clock()
+            while os.clock() - started < 8 do
+                task.wait(0.2)
+                local pending = false
+                for i = 1, #trials do
+                    local t = trials[i]
+                    if not t.moved then
+                        if not t.loadedAt and Util.BgTrialRead(t, "loaded") == true then t.loadedAt = os.clock() - started end
+                        local pos = Util.BgTrialRead(t, "pos")
+                        t.moved = type(pos) == "number" and pos > 0.05
+                        if not t.moved then pending = true end
+                    end
+                end
+                if not pending then break end
+            end
+            local worked = {}
+            for i = 1, #trials do
+                local t = trials[i]
+                if t.moved then worked[#worked + 1] = t.label end
+                add(t.label .. ": loaded=" .. (t.loadedAt and string.format("%.1fs", t.loadedAt) or "never")
+                    .. ", moved=" .. tostring(t.moved == true)
+                    .. ", length=" .. tostring(Util.BgTrialRead(t, "len"))
+                    .. ", position=" .. tostring(Util.BgTrialRead(t, "pos"))
+                    .. ", playing=" .. tostring(Util.BgTrialRead(t, "playing"))
+                    .. ", resolution=" .. tostring(Util.BgTrialRead(t, "res"))
+                    .. ", status=" .. tostring(t.status)
+                    .. ", failed=" .. tostring(t.fail))
+            end
+            add(#worked > 0 and ("verdict: these played: " .. table.concat(worked, "; ")) or "verdict: nothing played")
         end)
         if not okBody then add("test crashed: " .. tostring(errBody)) end
+        for i = 1, #all do
+            for j = 1, #all[i].objs do pcall(function() all[i].objs[j]:Destroy() end) end
+        end
+        for i = 1, #extra do pcall(function() extra[i]:Destroy() end) end
         local text = table.concat(out, "\n")
         print("[Hyperion video test]\n" .. text)
         local copied = false
