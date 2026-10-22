@@ -2657,25 +2657,7 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
     end
 end
 
--- Hook into SetTheme to start/stop animation
-local _originalSetTheme = Hyperion.SetTheme
-function Hyperion:SetTheme(nameOrTable)
-    -- Resolve preset and stamp extras onto Hyperion.Theme BEFORE _originalSetTheme
-    -- fires ThemeListeners, so every callback (ApplyWindowLogo, _titleGradient, etc.)
-    -- already sees the new theme's values rather than the previous theme's stale ones.
-    local preset = type(nameOrTable) == "string" and Hyperion.Themes[nameOrTable] or nameOrTable
-    Hyperion.Theme.TitleGradient = preset and preset.TitleGradient or nil
-    Hyperion.Theme.LogoGradient  = preset and preset.LogoGradient  or nil
-    Hyperion.Theme.StarColors    = preset and preset.StarColors     or nil
-    _originalSetTheme(self, nameOrTable)
-    Hyperion._currentThemeName = type(nameOrTable) == "string" and nameOrTable or nil
-    Hyperion._currentPreset = preset
-    -- Update title text (e.g. cat ears for Neko)
-    if Hyperion._titleLabel then
-        local _tt = preset and preset.TitleText
-        Hyperion._titleLabel.Text = _tt or (Hyperion._windowConfigTitle or "Hyperion")
-    end
-    -- Apply / clear background image
+function Hyperion._ApplyThemeBackground(preset)
     local _bgImg  = preset and preset.BackgroundImage or nil
     local _bgTint = preset and preset.BackgroundTint
     if Hyperion._bgImageLabel then
@@ -2701,6 +2683,28 @@ function Hyperion:SetTheme(nameOrTable)
             if Hyperion._bgTintFrame then Hyperion._bgTintFrame.Visible = false end
         end
     end
+end
+
+-- Hook into SetTheme to start/stop animation
+local _originalSetTheme = Hyperion.SetTheme
+function Hyperion:SetTheme(nameOrTable)
+    -- Resolve preset and stamp extras onto Hyperion.Theme BEFORE _originalSetTheme
+    -- fires ThemeListeners, so every callback (ApplyWindowLogo, _titleGradient, etc.)
+    -- already sees the new theme's values rather than the previous theme's stale ones.
+    local preset = type(nameOrTable) == "string" and Hyperion.Themes[nameOrTable] or nameOrTable
+    Hyperion.Theme.TitleGradient = preset and preset.TitleGradient or nil
+    Hyperion.Theme.LogoGradient  = preset and preset.LogoGradient  or nil
+    Hyperion.Theme.StarColors    = preset and preset.StarColors     or nil
+    _originalSetTheme(self, nameOrTable)
+    Hyperion._currentThemeName = type(nameOrTable) == "string" and nameOrTable or nil
+    Hyperion._currentPreset = preset
+    -- Update title text (e.g. cat ears for Neko)
+    if Hyperion._titleLabel then
+        local _tt = preset and preset.TitleText
+        Hyperion._titleLabel.Text = _tt or (Hyperion._windowConfigTitle or "Hyperion")
+    end
+    Hyperion._ApplyThemeBackground(preset)
+    if Hyperion._bgSync then Hyperion._bgSync() end
     -- Apply gradient directly onto MainFrame's UIGradient
     if Hyperion._bgGradient then
         if preset and preset.Animated then
@@ -3115,6 +3119,197 @@ function Util.SectionChrome(p, cfg)
 
     return ctl
 end
+Util._glass = { value = 0, set = setmetatable({}, { __mode = "k" }) }
+
+function Util.GlassRegister(f)
+    Util._glass.set[f] = true
+    f.BackgroundTransparency = Util._glass.value
+end
+
+function Util.GlassApply(value)
+    local g = Util._glass
+    g.value = value
+    for f in pairs(g.set) do
+        if f.Parent then f.BackgroundTransparency = value else g.set[f] = nil end
+    end
+end
+
+Util._bgi = {
+    on = false, src = "", tint = 0.45, glass = 0.25, asset = nil,
+    ready = false, used = false, gen = 0, saveToken = 0, restored = false,
+    file = "Hyperion/bg_image.json", folder = "Hyperion/Backgrounds",
+    maxBytes = 15 * 1024 * 1024,
+}
+
+function Util.BgHash(s)
+    local h = 5381
+    for i = 1, #s do
+        h = (h * 33 + string.byte(s, i)) % 4294967296
+    end
+    return string.format("%08x", h)
+end
+
+function Util.BgKind(body)
+    if string.sub(body, 1, 8) == "\137PNG\r\n\26\n" then return "png" end
+    if string.sub(body, 1, 3) == "\255\216\255" then return "jpg" end
+    return nil
+end
+
+function Util.BgDownload(url)
+    local ok, body = pcall(function() return game:HttpGet(url) end)
+    if ok and type(body) == "string" and #body > 0 then return body end
+    local req = (syn and syn.request) or http_request or request
+    if req then
+        local ok2, res = pcall(req, { Url = url, Method = "GET" })
+        if ok2 and type(res) == "table" and type(res.Body) == "string" and #res.Body > 0 then return res.Body end
+    end
+    return nil
+end
+
+function Util.BgResolve(src)
+    if type(src) == "number" then return "rbxassetid://" .. src end
+    if type(src) ~= "string" then return nil, "Enter a file name or link first" end
+    src = string.match(src, "^%s*(.-)%s*$")
+    if src == "" then return nil, "Enter a file name or link first" end
+    if string.match(src, "^%d+$") then return "rbxassetid://" .. src end
+    if string.find(src, "^rbxasset") then return src end
+    if not getcustomasset then return nil, "This executor can't load local image files" end
+    local v = Util._bgi
+    local notImage = "That isn't a PNG or JPG image (a web page link will not work, use a direct link ending in .png or .jpg)"
+    local path
+    if string.find(src, "^https?://") then
+        local base = v.folder .. "/bg_" .. Util.BgHash(src)
+        local exts = { "png", "jpg" }
+        for i = 1, #exts do
+            local okF, cached = pcall(_rawIsfile, base .. "." .. exts[i])
+            if okF and cached then path = base .. "." .. exts[i]; break end
+        end
+        if not path then
+            local body = Util.BgDownload(src)
+            if not body or #body < 64 then return nil, "Couldn't download that link" end
+            local kind = Util.BgKind(body)
+            if not kind then return nil, notImage end
+            if #body > v.maxBytes then return nil, "That image is over 15 MB, use a smaller one" end
+            pcall(function()
+                if not _rawIsfolder("Hyperion") then _rawMakefolder("Hyperion") end
+                if not _rawIsfolder(v.folder) then _rawMakefolder(v.folder) end
+            end)
+            path = base .. "." .. kind
+            if not pcall(_rawWritefile, path, body) then return nil, "Couldn't save the image to your workspace folder" end
+        end
+    else
+        if string.find(src, "..", 1, true) then return nil, "That file name isn't allowed" end
+        local candidates = {
+            src, src .. ".png", src .. ".jpg",
+            v.folder .. "/" .. src, v.folder .. "/" .. src .. ".png", v.folder .. "/" .. src .. ".jpg",
+        }
+        for i = 1, #candidates do
+            local okF, exists = pcall(_rawIsfile, candidates[i])
+            if okF and exists then path = candidates[i]; break end
+        end
+        if not path then return nil, "File not found in your workspace folder" end
+        local okR, body = pcall(_rawReadfile, path)
+        if not okR or type(body) ~= "string" or not Util.BgKind(body) then return nil, notImage end
+        if #body > v.maxBytes then return nil, "That image is over 15 MB, use a smaller one" end
+    end
+    local okA, asset = pcall(getcustomasset, path)
+    if not okA or not asset then return nil, "Couldn't load that file as an asset" end
+    return asset
+end
+
+function Util.BgSync()
+    local v = Util._bgi
+    if not v.used then return end
+    local img, tint = Hyperion._bgImageLabel, Hyperion._bgTintFrame
+    local live = (v.on and v.ready and v.asset ~= nil and img ~= nil) and true or false
+    if live then
+        if img.Image ~= v.asset then img.Image = v.asset end
+        img.ImageTransparency = 0
+        img.ImageColor3 = Color3.new(1, 1, 1)
+        img.Visible = true
+        if tint then
+            tint.BackgroundTransparency = 1 - v.tint
+            tint.Visible = v.tint > 0
+        end
+    else
+        Hyperion._ApplyThemeBackground(Hyperion._currentPreset or (Hyperion._currentThemeName and Hyperion.Themes[Hyperion._currentThemeName]))
+    end
+    Util.GlassApply(live and v.glass or 0)
+end
+Hyperion._bgSync = Util.BgSync
+
+function Util.BgApply(silent)
+    local v = Util._bgi
+    v.used = true
+    v.gen = v.gen + 1
+    local gen = v.gen
+    v.ready = false
+    if not (v.on and v.src ~= "") then
+        Util.BgSync()
+        return
+    end
+    task.spawn(function()
+        local asset, err = Util.BgResolve(v.src)
+        if gen ~= v.gen then return end
+        local img = Hyperion._bgImageLabel
+        if not (asset and img) then
+            Util.BgSync()
+            Hyperion:Notify({ Title = "Background Image", Content = err or "The window isn't ready yet", Type = "Error" })
+            return
+        end
+        v.asset = asset
+        img.Image = asset
+        task.spawn(function()
+            pcall(function() game:GetService("ContentProvider"):PreloadAsync({ img }) end)
+        end)
+        local function isLoaded()
+            local okL, res = pcall(function() return img.IsLoaded end)
+            return okL and res == true
+        end
+        local started = os.clock()
+        while not isLoaded() and os.clock() - started < 8 and gen == v.gen and img.Parent do
+            task.wait(0.1)
+        end
+        if gen ~= v.gen then return end
+        v.ready = isLoaded()
+        Util.BgSync()
+        if v.ready then
+            if not silent then Hyperion:Notify({ Title = "Background Image", Content = "Background applied", Type = "Success" }) end
+        else
+            Hyperion:Notify({ Title = "Background Image", Content = "That image wouldn't load. Try a PNG or JPG under about 2000 pixels wide", Type = "Error" })
+        end
+    end)
+end
+
+function Util.BgRestore()
+    local v = Util._bgi
+    if v.restored then return end
+    v.restored = true
+    local okF, exists = pcall(_rawIsfile, v.file)
+    if not (okF and exists) then return end
+    local okR, raw = pcall(_rawReadfile, v.file)
+    if not okR then return end
+    local okD, data = pcall(function() return HttpService:JSONDecode(raw) end)
+    if not okD or type(data) ~= "table" then return end
+    if type(data.src) == "string" then v.src = data.src end
+    if type(data.on) == "boolean" then v.on = data.on end
+    if type(data.tint) == "number" then v.tint = math.clamp(data.tint, 0, 0.9) end
+    if type(data.glass) == "number" then v.glass = math.clamp(data.glass, 0, 0.8) end
+end
+
+function Util.BgSave()
+    local v = Util._bgi
+    v.saveToken = v.saveToken + 1
+    local token = v.saveToken
+    task.delay(0.6, function()
+        if token ~= v.saveToken then return end
+        pcall(function()
+            if not _rawIsfolder("Hyperion") then _rawMakefolder("Hyperion") end
+            _rawWritefile(v.file, HttpService:JSONEncode({ on = v.on, src = v.src, tint = v.tint, glass = v.glass }))
+        end)
+    end)
+end
+
 function Util.B64Decode(s)
     local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     local lookup = {}
@@ -10373,6 +10568,7 @@ function Hyperion:CreateWindow(config)
                 end
             end)
             Util.AddCorner(SectionFrame, Theme.CornerRadius)
+            Util.GlassRegister(SectionFrame)
             local _secStroke = Util.AddStroke(SectionFrame, Theme.Border, 1, 0.62)
             Themed(SectionFrame, { BackgroundColor3 = function(t) return t.Surface end })
             Themed(_secStroke, { Color = function(t) return t.Border end })
@@ -12774,6 +12970,56 @@ function Hyperion:CreateWindow(config)
 
         paint(Hyperion._currentThemeName or "Hyperion")
         pcall(function() Hyperion:OnThemeChanged(function() paint(Hyperion._currentThemeName) end) end)
+        return sec
+    end
+
+    function WindowObj:AddBackgroundImage(sec)
+        Util.BgRestore()
+        local v = Util._bgi
+        sec:AddToggle({
+            Name = "Custom Background",
+            Desc = "Shows your own image behind the window.",
+            Default = v.on,
+            Callback = function(on)
+                v.on = on
+                Util.BgApply()
+                Util.BgSave()
+            end,
+        })
+        sec:AddTextbox({
+            Name = "Image",
+            Placeholder = "background.png  or  https://link/to/image.png",
+            Desc = "A PNG or JPG in your executor's workspace folder, or a direct link.",
+            Default = v.src,
+            Callback = function(text)
+                v.src = string.match(text or "", "^%s*(.-)%s*$")
+                if v.on then Util.BgApply() end
+                Util.BgSave()
+            end,
+        })
+        sec:AddSlider({
+            Name = "Darkness", Min = 0, Max = 90, Default = math.floor(v.tint * 100 + 0.5), Suffix = "%",
+            Callback = function(n)
+                v.tint = n / 100
+                Util.BgSync()
+                Util.BgSave()
+            end,
+        })
+        sec:AddSlider({
+            Name = "Card Transparency", Min = 0, Max = 80, Default = math.floor(v.glass * 100 + 0.5), Suffix = "%",
+            Callback = function(n)
+                v.glass = n / 100
+                Util.BgSync()
+                Util.BgSave()
+            end,
+        })
+        sec:AddButton({
+            Name = "Reload Image", Icon = Hyperion.Lucide.RefreshCw,
+            Callback = function() Util.BgApply() end,
+        })
+        if v.on and v.src ~= "" then
+            task.defer(function() Util.BgApply(true) end)
+        end
         return sec
     end
 
