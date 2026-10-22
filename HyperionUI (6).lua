@@ -3213,7 +3213,9 @@ function Util.BgResolve(src)
         if #body > v.maxBytes then return nil, "That image is over 15 MB, use a smaller one" end
     end
     local okA, asset = pcall(getcustomasset, path)
-    if not okA or not asset then return nil, "Couldn't load that file as an asset" end
+    if not okA or not asset then
+        return nil, "Couldn't load that file as an asset" .. (okA and "" or (" (" .. tostring(asset) .. ")"))
+    end
     return asset
 end
 
@@ -3258,25 +3260,32 @@ function Util.BgApply(silent)
             return
         end
         v.asset = asset
-        img.Image = asset
+        v.ready = true
+        Util.BgSync()
+        local status
         task.spawn(function()
-            pcall(function() game:GetService("ContentProvider"):PreloadAsync({ img }) end)
+            pcall(function()
+                game:GetService("ContentProvider"):PreloadAsync({ img }, function(_, st) status = st end)
+            end)
         end)
         local function isLoaded()
             local okL, res = pcall(function() return img.IsLoaded end)
             return okL and res == true
         end
         local started = os.clock()
-        while not isLoaded() and os.clock() - started < 8 and gen == v.gen and img.Parent do
+        while status == nil and not isLoaded() and os.clock() - started < 8 and gen == v.gen and img.Parent do
             task.wait(0.1)
         end
         if gen ~= v.gen then return end
-        v.ready = isLoaded()
-        Util.BgSync()
-        if v.ready then
-            if not silent then Hyperion:Notify({ Title = "Background Image", Content = "Background applied", Type = "Success" }) end
-        else
-            Hyperion:Notify({ Title = "Background Image", Content = "That image wouldn't load. Try a PNG or JPG under about 2000 pixels wide", Type = "Error" })
+        local sname = status ~= nil and tostring(status) or ""
+        if string.find(sname, "Failure", 1, true) or string.find(sname, "TimedOut", 1, true) then
+            v.ready = false
+            Util.BgSync()
+            local label = string.match(sname, "(%w+)$") or sname
+            Hyperion:Notify({ Title = "Background Image", Content = "Roblox couldn't load that image (" .. label .. "). Try a smaller PNG or JPG", Type = "Error" })
+        elseif not silent then
+            local confirmed = isLoaded() or string.find(sname, "Success", 1, true) ~= nil
+            Hyperion:Notify({ Title = "Background Image", Content = confirmed and "Background applied" or "Background applied, still loading", Type = "Success" })
         end
     end)
 end
