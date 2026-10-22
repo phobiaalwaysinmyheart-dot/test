@@ -6093,8 +6093,6 @@ function Hyperion:CreateWindow(config)
         Parent = Header
     })
 
-    Util.ChromeAdd(LogoContainer, "Visible", false)
-
     local hasLogo = windowConfig.Logo ~= nil
     local LogoImage = Util.Create("ImageLabel", {
         Name = "Logo",
@@ -6329,6 +6327,7 @@ function Hyperion:CreateWindow(config)
             Parent = Header
         })
         Util.AddCorner(MinBtn, Theme.CornerSmall)
+        Util.ChromeAdd(MinBtn, "Visible", false)
         Themed(MinBtn, {
             BackgroundColor3 = function(t) return t.SurfaceLight end,
             TextColor3 = function(t) return t.TextDim end,
@@ -6356,6 +6355,7 @@ function Hyperion:CreateWindow(config)
             Parent = Header
         })
         Util.AddCorner(FullscreenBtn, Theme.CornerSmall)
+        Util.ChromeAdd(FullscreenBtn, "Visible", false)
         Themed(FullscreenBtn, { BackgroundColor3 = function(t) return t.SurfaceLight end })
 
         local FsIcon = Util.Create("Frame", {
@@ -6487,6 +6487,7 @@ function Hyperion:CreateWindow(config)
         ZIndex           = 6,
         Parent           = Sidebar,
     })
+    Util.ChromeAdd(BottomBar, "Visible", false)
     -- Separator above bar
     local _bottomSep = Util.Create("Frame", {
         BackgroundColor3 = Theme.Border,
@@ -10384,6 +10385,8 @@ function Hyperion:CreateWindow(config)
                 Util.AddCorner(GroupButton, Theme.CornerSmall)
                 Util.AddPadding(GroupButton, 0, 14, 0, 14)
                 local GroupButtonStroke = Util.AddStroke(GroupButton, Theme.BorderLight, 1, 0.28)
+                Util.ChromeAdd(GroupButton, "BackgroundTransparency", 1)
+                Util.ChromeAdd(GroupButtonStroke, "Enabled", false)
                 Themed(GroupButton, {
                     BackgroundColor3 = function(t)
                         if TabObj.ActiveGroup and TabObj.ActiveGroup.Button == GroupButton then
@@ -10475,12 +10478,12 @@ function Hyperion:CreateWindow(config)
             if GroupButton then
                 GroupButton.MouseEnter:Connect(function()
                     if TabObj.ActiveGroup ~= groupData then
-                        Util.TweenFast(GroupButton, {TextColor3 = Hyperion.Theme.Text, BackgroundTransparency = 0, BackgroundColor3 = Hyperion.Theme.SurfaceHover})
+                        Util.TweenFast(GroupButton, {TextColor3 = Hyperion.Theme.Text, BackgroundTransparency = Util._chrome.hidden and 1 or 0, BackgroundColor3 = Hyperion.Theme.SurfaceHover})
                     end
                 end)
                 GroupButton.MouseLeave:Connect(function()
                     if TabObj.ActiveGroup ~= groupData then
-                        Util.TweenFast(GroupButton, {TextColor3 = Hyperion.Theme.TextDim, BackgroundTransparency = 0.08, BackgroundColor3 = Hyperion.Theme.SurfaceLight})
+                        Util.TweenFast(GroupButton, {TextColor3 = Hyperion.Theme.TextDim, BackgroundTransparency = Util._chrome.hidden and 1 or 0.08, BackgroundColor3 = Hyperion.Theme.SurfaceLight})
                     end
                 end)
             end
@@ -13096,7 +13099,7 @@ function Hyperion:CreateWindow(config)
         })
         sec:AddToggle({
             Name = "Full Background",
-            Desc = "Hides the logo, info card, top bar, tab cards and divider lines.",
+            Desc = "Hides the info card, bars, tab and sub-tab boxes, window buttons, bottom icons and divider lines.",
             Default = v.full,
             Callback = function(on)
                 v.full = on
