@@ -4109,16 +4109,7 @@ function Util._pvFlat(model, inflate)
     return c, linked
 end
 
-function Util._pvRim(t)
-    return ColorSequence.new({
-        ColorSequenceKeypoint.new(0, t.AccentLight),
-        ColorSequenceKeypoint.new(0.5, t.Accent),
-        ColorSequenceKeypoint.new(1, t.BorderLight),
-    })
-end
-
 Util._pvAutoPool = { "Hip Bounce", "L Dance", "Worm", "Flare", "Wave", "Cute", "Style 4", "RXBB" }
-Util._pvAnimLabel = { ["L Dance"] = "Take the L" }
 
 function Util._pvBg(t)
     return ColorSequence.new({
@@ -4162,14 +4153,9 @@ function Util.BuildPreview(parent, cfg)
         ZIndex = 2,
         Parent = parent,
     })
-    Util.AddCorner(ui.holder, UDim.new(0, 10))
+    Util.AddCorner(ui.holder, UDim.new(0, 8))
     Util.ControlAdd(ui.holder, "BackgroundTransparency")
-    ui.stroke = Util.AddStroke(ui.holder, Color3.new(1, 1, 1), 1.5, 0.3)
-    ui.strokeGrad = Util.Create("UIGradient", {
-        Color = Util._pvRim(T0),
-        Rotation = 90,
-        Parent = ui.stroke,
-    })
+    ui.stroke = Util.AddStroke(ui.holder, T0.BorderLight, 1, 0.3)
     ui.bgGrad = Util.Create("UIGradient", {
         Color = Util._pvBg(T0),
         Rotation = 90,
@@ -4238,25 +4224,6 @@ function Util.BuildPreview(parent, cfg)
     edge(UDim2.new(0, 0, 0.7, 0), UDim2.new(1, 0, 0.3, 0), -90)
     edge(UDim2.new(0, 0, 0, 0), UDim2.new(0.18, 0, 1, 0), 0)
     edge(UDim2.new(0.82, 0, 0, 0), UDim2.new(0.18, 0, 1, 0), 180)
-
-    ui.topLine = Util.Create("Frame", {
-        Name = "TopLine",
-        BackgroundColor3 = Color3.new(1, 1, 1),
-        BorderSizePixel = 0,
-        Size = UDim2.new(1, -28, 0, 2),
-        Position = UDim2.new(0, 14, 0, 0),
-        ZIndex = 8,
-        Parent = ui.holder,
-    })
-    ui.topLineGrad = Util.Create("UIGradient", {
-        Color = Util._pvRim(T0),
-        Transparency = NumberSequence.new({
-            NumberSequenceKeypoint.new(0, 1),
-            NumberSequenceKeypoint.new(0.5, 0.05),
-            NumberSequenceKeypoint.new(1, 1),
-        }),
-        Parent = ui.topLine,
-    })
 
     local function flatViewport(z)
         local v = Util.Create("ViewportFrame", {
@@ -4399,54 +4366,6 @@ function Util.BuildPreview(parent, cfg)
         Parent = ui.holder,
     })
 
-    local function chip(name, pos, anchor, text, withDot)
-        local f = Util.Create("Frame", {
-            Name = name,
-            BackgroundColor3 = Color3.new(0, 0, 0),
-            BackgroundTransparency = 0.45,
-            AnchorPoint = anchor,
-            Position = pos,
-            Size = UDim2.new(0, 0, 0, 18),
-            AutomaticSize = Enum.AutomaticSize.X,
-            BorderSizePixel = 0,
-            ZIndex = 8,
-            Parent = ui.holder,
-        })
-        Util.AddCorner(f, UDim.new(1, 0))
-        Util.AddPadding(f, 0, 9, 0, 9)
-        Util.AddList(f, Enum.FillDirection.Horizontal, 5, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Center)
-        local dot
-        if withDot then
-            dot = Util.Create("Frame", {
-                Name = "Dot",
-                BackgroundColor3 = T0.Accent,
-                Size = UDim2.fromOffset(6, 6),
-                LayoutOrder = 1,
-                BorderSizePixel = 0,
-                ZIndex = 9,
-                Parent = f,
-            })
-            Util.AddCorner(dot, UDim.new(1, 0))
-        end
-        local lbl = Util.Create("TextLabel", {
-            Name = "Text",
-            BackgroundTransparency = 1,
-            Size = UDim2.new(0, 0, 1, 0),
-            AutomaticSize = Enum.AutomaticSize.X,
-            Text = text,
-            TextColor3 = Color3.new(1, 1, 1),
-            FontFace = T0.FontBold,
-            TextSize = 9,
-            LayoutOrder = 2,
-            ZIndex = 9,
-            Parent = f,
-        })
-        return f, lbl, dot
-    end
-    ui.badge, ui.badgeText, ui.dot = chip("Badge", UDim2.new(0, 10, 0, 10), Vector2.new(0, 0), "LIVE PREVIEW", true)
-    ui.animChip, ui.animText = chip("AnimChip", UDim2.new(1, -10, 1, -10), Vector2.new(1, 1), "Idle", false)
-    ui.animChip.Visible = false
-
     ui.area = Util.Create("TextButton", {
         Name = "Area",
         BackgroundTransparency = 1,
@@ -4459,9 +4378,7 @@ function Util.BuildPreview(parent, cfg)
 
     local unTheme = Hyperion:OnThemeChanged(function(t)
         if not ui.holder.Parent then return end
-        ui.strokeGrad.Color = Util._pvRim(t)
-        ui.topLineGrad.Color = Util._pvRim(t)
-        ui.dot.BackgroundColor3 = t.Accent
+        ui.stroke.Color = t.BorderLight
         ui.bgGrad.Color = Util._pvBg(t)
         ui.hint.TextColor3 = t.TextMuted
         if ui.spot then
@@ -4486,12 +4403,6 @@ function Util.BuildPreview(parent, cfg)
         if t then pcall(function() t:Stop(0.15) end) end
     end
 
-    local function setChip(name)
-        local show = animator ~= nil and name ~= nil and name ~= "None"
-        ui.animChip.Visible = show
-        if show then ui.animText.Text = Util._pvAnimLabel[name] or name end
-    end
-
     local function autoIdle(afterLen)
         autoSpecial = nil
         local idleLen = 5 + 5 * math.random()
@@ -4503,10 +4414,7 @@ function Util.BuildPreview(parent, cfg)
         animName = name
         stopAnim()
         local id = animator and animIds and animIds[name]
-        if not id then
-            setChip(nil)
-            return false
-        end
+        if not id then return false end
         local track = trackCache[name]
         if not track then
             local okT, made = pcall(function()
@@ -4526,7 +4434,6 @@ function Util.BuildPreview(parent, cfg)
         end)
         if not okP then return false end
         curTrack = track
-        setChip(name)
         task.delay(4, function()
             if not alive or curTrack ~= track then return end
             local okL, len = pcall(function() return track.Length end)
@@ -4606,7 +4513,7 @@ function Util.BuildPreview(parent, cfg)
         local okA, found = pcall(Util._pvAnimator, model)
         animator = okA and found or nil
         autoSpecial, autoLast, autoClock = nil, nil, 0
-        if animator then playAnim(animName, autoOn) else setChip(nil) end
+        if animator then playAnim(animName, autoOn) end
         if autoOn then autoIdle(nil) end
     end
 
