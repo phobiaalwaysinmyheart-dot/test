@@ -6101,13 +6101,6 @@ function Hyperion:CreateWindow(config)
     Hyperion._startGradRot = _startGradientRotation
     Hyperion._stopGradRot  = _stopGradientRotation
 
-    do
-        local fxPreset = Hyperion._currentThemeName and Hyperion.Themes[Hyperion._currentThemeName]
-        if fxPreset and fxPreset.Animated and Hyperion.AnimatedEffects ~= false then
-            _startStarfield(StarCanvas, fxPreset.StarColor, MeteorCanvas, fxPreset.ParticleStyle, fxPreset.StarColors)
-        end
-    end
-
     Hyperion:OnThemeChanged(function()
         -- gradient driven by SetTheme override
     end)
@@ -7001,7 +6994,7 @@ function Hyperion:CreateWindow(config)
         ZIndex           = 31,
         Parent           = ConfigOverlay,
     })
-    Util.AddList(CfgScroll, Enum.FillDirection.Vertical, 4, Enum.HorizontalAlignment.Center)
+    Util.AddList(CfgScroll, Enum.FillDirection.Vertical, 0)
     Util.AddPadding(CfgScroll, 0, 8, 6, 8)
 
     -- ── Header strip ─────────────────────────────────────────────────────
@@ -7191,111 +7184,107 @@ function Hyperion:CreateWindow(config)
 
     local CfgRail = Util.Create("Frame", {
         BackgroundTransparency = 1,
-        Size     = UDim2.new(1, -24, 0, 68),
+        Size     = UDim2.new(1, 0, 0, 34),
         ZIndex   = 32,
         Parent   = CfgScroll,
     })
-    Util.Create("UIGridLayout", {
-        CellSize = UDim2.new(0.3333, -4, 0, 32),
-        CellPadding = UDim2.new(0, 6, 0, 4),
-        SortOrder = Enum.SortOrder.LayoutOrder,
-        HorizontalAlignment = Enum.HorizontalAlignment.Center,
-        VerticalAlignment = Enum.VerticalAlignment.Center,
-        Parent = CfgRail,
-    })
+    Util.AddList(CfgRail, Enum.FillDirection.Horizontal, 0,
+        Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Center)
 
-
-    local function MakeIconBtn(icon, label, danger, primary)
-        local btn = Util.Create("TextButton", {
-            BackgroundColor3 = Theme.SurfaceLight,
-            BackgroundTransparency = 0.35,
-            Size     = UDim2.new(1, 0, 1, 0),
-            Text     = "",
-            AutoButtonColor = false,
-            BorderSizePixel = 0,
-            ZIndex   = 34,
+    local function MakeIconBtn(icon, tooltip, danger)
+        local wrap = Util.Create("Frame", {
+            BackgroundTransparency = 1,
+            Size     = UDim2.new(0, 26, 0, 30),
+            ZIndex   = 33,
             Parent   = CfgRail,
         })
-        Util.AddCorner(btn, Theme.CornerSmall)
-        local _btnStroke = Util.AddStroke(btn, Theme.Border, 1, 0.4)
-        local ic = Util.Create("ImageLabel", {
-            BackgroundTransparency = 1,
-            Size     = UDim2.new(0, 12, 0, 12),
-            Position = UDim2.new(0, 10, 0.5, 0),
-            AnchorPoint = Vector2.new(0, 0.5),
+        local btn = Util.Create("ImageButton", {
+            BackgroundColor3 = danger and Color3.fromRGB(55,18,22) or Theme.SurfaceLight,
+            BackgroundTransparency = danger and 0 or 0.4,
+            Size     = UDim2.new(0, 18, 0, 18),
+            Position = UDim2.new(0.5, 0, 0.5, 0),
+            AnchorPoint = Vector2.new(0.5, 0.5),
             Image    = icon,
-            ImageColor3 = Theme.TextDim,
+            ImageColor3 = danger and Theme.Error or Theme.TextDim,
             ScaleType = Enum.ScaleType.Fit,
-            ZIndex   = 35,
-            Parent   = btn,
+            AutoButtonColor = false,
+            ZIndex   = 34,
+            Parent   = wrap,
         })
-        local lbl = Util.Create("TextLabel", {
-            BackgroundTransparency = 1,
-            Position = UDim2.new(0, 24, 0, 0),
-            Size     = UDim2.new(1, -28, 1, 0),
-            Text     = label,
-            TextColor3 = Theme.TextDim,
-            FontFace = Theme.FontMedium,
-            TextSize = 11,
-            TextXAlignment = Enum.TextXAlignment.Center,
-            ZIndex   = 35,
-            Parent   = btn,
-        })
+        Util.AddCorner(btn, Theme.CornerSmall)
+        local _btnStroke = Util.AddStroke(btn, danger and Theme.Error or Theme.Border, 1, danger and 0.5 or 0.4)
 
-        local function paintBtn(hover, instant)
-            local t = Hyperion.Theme
-            local bg, bgT, fg, line, lineT
-            if primary then
-                local a = t.Accent
-                bg, bgT = hover and t.AccentLight or a, 0
-                fg = (0.299 * a.R + 0.587 * a.G + 0.114 * a.B) > 0.6 and Color3.fromRGB(20, 20, 28) or Color3.new(1, 1, 1)
-                line, lineT = t.AccentLight, 0.4
-            elseif danger then
-                bg, bgT = t.Error, hover and 0.65 or 0.85
-                fg = t.Error
-                line, lineT = t.Error, hover and 0.2 or 0.5
-            else
-                bg, bgT = hover and t.SurfaceHover or t.SurfaceLight, hover and 0 or 0.35
-                fg = hover and t.Text or t.TextDim
-                line, lineT = hover and t.Accent or t.Border, hover and 0.3 or 0.4
-            end
-            if instant then
-                btn.BackgroundColor3, btn.BackgroundTransparency = bg, bgT
-                lbl.TextColor3, ic.ImageColor3 = fg, fg
-                _btnStroke.Color, _btnStroke.Transparency = line, lineT
-            else
-                Util.TweenFast(btn, { BackgroundColor3 = bg, BackgroundTransparency = bgT })
-                Util.TweenFast(lbl, { TextColor3 = fg })
-                Util.TweenFast(ic, { ImageColor3 = fg })
-                Util.TweenFast(_btnStroke, { Color = line, Transparency = lineT })
-            end
+        if not danger then
+            Themed(btn, {
+                BackgroundColor3 = function(t) return t.SurfaceLight end,
+                ImageColor3      = function(t) return t.TextDim end,
+            })
+            Themed(_btnStroke, { Color = function(t) return t.Border end })
+        else
+            Themed(_btnStroke, { Color = function(t) return t.Error end })
         end
-        paintBtn(false, true)
-        Hyperion:OnThemeChanged(function()
-            if btn.Parent then paintBtn(false, true) end
-        end)
 
-        btn.MouseEnter:Connect(function() paintBtn(true) end)
-        btn.MouseLeave:Connect(function() paintBtn(false) end)
+        -- Tooltip fades in above the button on hover
+        local tip = Util.Create("TextLabel", {
+            BackgroundColor3 = Theme.Background,
+            BackgroundTransparency = 1,
+            Size     = UDim2.new(0, 0, 0, 14),
+            AutomaticSize = Enum.AutomaticSize.X,
+            Position = UDim2.new(0.5, 0, 0, -2),
+            AnchorPoint = Vector2.new(0.5, 1),
+            Text     = tooltip,
+            TextColor3 = Theme.TextDim,
+            FontFace = Theme.Font,
+            TextSize = 10,
+            TextTransparency = 1,
+            ZIndex   = 42,
+            Parent   = wrap,
+        })
+        Util.AddCorner(tip, Theme.CornerSmall)
+        Util.AddPadding(tip, 1, 5, 1, 5)
+        Themed(tip, {
+            BackgroundColor3 = function(t) return t.Background end,
+            TextColor3       = function(t) return t.TextDim end,
+        })
+
+        local normalBg = danger and Color3.fromRGB(55,18,22) or Theme.SurfaceLight
+        local hoverBg  = danger and Color3.fromRGB(80,25,30)  or Theme.SurfaceHover
+
+        btn.MouseEnter:Connect(function()
+            Util.TweenFast(btn, {
+                BackgroundColor3 = hoverBg,
+                BackgroundTransparency = 0,
+                ImageColor3 = danger and Hyperion.Theme.Error or Hyperion.Theme.Accent,
+            })
+            Util.TweenFast(tip, {TextTransparency = 0, BackgroundTransparency = 0.15})
+        end)
+        btn.MouseLeave:Connect(function()
+            Util.TweenFast(btn, {
+                BackgroundColor3 = normalBg,
+                BackgroundTransparency = danger and 0 or 0.4,
+                ImageColor3 = danger and Hyperion.Theme.Error or Hyperion.Theme.TextDim,
+            })
+            Util.TweenFast(tip, {TextTransparency = 1, BackgroundTransparency = 1})
+        end)
         btn.MouseButton1Click:Connect(function()
-            Util.TweenFast(btn, { BackgroundColor3 = danger and Hyperion.Theme.Error or Hyperion.Theme.AccentDark, BackgroundTransparency = 0 })
+            Util.TweenFast(btn, {BackgroundColor3 = danger and Hyperion.Theme.Error or Hyperion.Theme.AccentDark})
             task.delay(0.1, function()
-                if btn.Parent then paintBtn(false) end
+                Util.TweenFast(btn, {BackgroundColor3 = normalBg})
             end)
         end)
         return btn
     end
-    local BtnSave    = MakeIconBtn(ICON_IDS.Save,    "Save",    false, true)
+
+    local BtnSave    = MakeIconBtn(ICON_IDS.Save,    "Save",    false)
     local BtnLoad    = MakeIconBtn(ICON_IDS.Load,    "Load",    false)
-    local BtnNew     = MakeIconBtn(ICON_IDS.New,     "New",     false)
     local BtnRename  = MakeIconBtn(ICON_IDS.Rename,  "Rename",  false)
+    local BtnNew     = MakeIconBtn(ICON_IDS.New,     "New",     false)
     local BtnRefresh = MakeIconBtn(ICON_IDS.Refresh, "Refresh", false)
     local BtnDelete  = MakeIconBtn(ICON_IDS.Delete,  "Delete",  true)
 
     -- ── Delete confirm bar (slides in at bottom) ──────────────────────────
     local DeleteConfirmBar = Util.Create("Frame", {
-        BackgroundColor3 = Theme.Error,
-        BackgroundTransparency = 0.88,
+        BackgroundColor3 = Color3.fromRGB(40, 14, 18),
         Size     = UDim2.new(1, 0, 0, 0),
         ZIndex   = 35,
         ClipsDescendants = true,
@@ -7303,9 +7292,7 @@ function Hyperion:CreateWindow(config)
         Parent   = CfgScroll,
     })
     Util.AddCorner(DeleteConfirmBar, Theme.CornerSmall)
-    local _delStroke = Util.AddStroke(DeleteConfirmBar, Theme.Error, 1, 0.5)
-    Themed(DeleteConfirmBar, { BackgroundColor3 = function(t) return t.Error end })
-    Themed(_delStroke, { Color = function(t) return t.Error end })
+    Util.AddStroke(DeleteConfirmBar, Theme.Error, 1, 0.5)
 
     local DeleteConfirmInner = Util.Create("Frame", {
         BackgroundTransparency = 1,
@@ -7347,8 +7334,7 @@ function Hyperion:CreateWindow(config)
     Util.AddList(DeleteBtnRow, Enum.FillDirection.Horizontal, 6)
 
     local BtnConfirmDelete = Util.Create("TextButton", {
-        BackgroundColor3 = Theme.Error,
-        BackgroundTransparency = 0.75,
+        BackgroundColor3 = Color3.fromRGB(70, 22, 26),
         Size     = UDim2.new(0.5, -3, 1, 0),
         Text     = "Confirm",
         TextColor3 = Theme.Error,
@@ -7377,9 +7363,8 @@ function Hyperion:CreateWindow(config)
     Util.AddCorner(BtnCancelDelete, Theme.CornerSmall)
     Util.AddStroke(BtnCancelDelete, Theme.Border, 1, 0.4)
 
-    Themed(BtnConfirmDelete, { BackgroundColor3 = function(t) return t.Error end, TextColor3 = function(t) return t.Error end })
-    BtnConfirmDelete.MouseEnter:Connect(function() Util.TweenFast(BtnConfirmDelete, {BackgroundTransparency = 0.5}) end)
-    BtnConfirmDelete.MouseLeave:Connect(function() Util.TweenFast(BtnConfirmDelete, {BackgroundTransparency = 0.75}) end)
+    BtnConfirmDelete.MouseEnter:Connect(function() Util.TweenFast(BtnConfirmDelete, {BackgroundColor3 = Color3.fromRGB(100,28,34)}) end)
+    BtnConfirmDelete.MouseLeave:Connect(function() Util.TweenFast(BtnConfirmDelete, {BackgroundColor3 = Color3.fromRGB(70,22,26)}) end)
     BtnCancelDelete.MouseEnter:Connect(function()  Util.TweenFast(BtnCancelDelete,  {BackgroundColor3 = Hyperion.Theme.SurfaceHover}) end)
     BtnCancelDelete.MouseLeave:Connect(function()  Util.TweenFast(BtnCancelDelete,  {BackgroundColor3 = Hyperion.Theme.SurfaceLight}) end)
 
@@ -7630,7 +7615,7 @@ function Hyperion:CreateWindow(config)
     -- Apply horizontal offset via Position since UIListLayout doesn't support
     -- per-item padding on the cross-axis.
     CfgListOuter.Position         = UDim2.new(0, 12, 0, 0)
-    CfgListOuter.Size             = UDim2.new(1, -24, 0, 140)
+    CfgListOuter.Size             = UDim2.new(1, -24, 0, 150)
     CfgActionDivider.Position     = UDim2.new(0, 12, 0, 0)
     CfgActionDivider.Size         = UDim2.new(1, -24, 0, 1)
 
@@ -7654,11 +7639,7 @@ function Hyperion:CreateWindow(config)
         end)
     end
 
-    local DoLoad
-    local _cfgClick = { name = nil, t = 0 }
-
     local function RefreshConfigList()
-        local autoName = _readAutoLoadFile()
         for _, ch in ipairs(CfgList:GetChildren()) do
             if not ch:IsA("UIListLayout") and not ch:IsA("UIPadding") then ch:Destroy() end
         end
@@ -7706,33 +7687,18 @@ function Hyperion:CreateWindow(config)
                 Parent   = Row,
             })
             Util.AddCorner(Pip, UDim.new(1, 0))
-            local isAuto = autoName ~= nil and autoName == cfgName
             Util.Create("TextLabel", {
                 BackgroundTransparency = 1,
-                Size     = UDim2.new(1, isAuto and -34 or -14, 1, 0),
+                Size     = UDim2.new(1, -14, 1, 0),
                 Position = UDim2.new(0, 8, 0, 0),
                 Text     = cfgName,
                 TextColor3 = isSel and Theme.Text or Theme.TextDim,
                 FontFace = isSel and Theme.FontMedium or Theme.Font,
                 TextSize = 12,
                 TextXAlignment = Enum.TextXAlignment.Left,
-                TextTruncate = Enum.TextTruncate.AtEnd,
                 ZIndex   = 35,
                 Parent   = Row,
             })
-            if isAuto then
-                Util.Create("ImageLabel", {
-                    BackgroundTransparency = 1,
-                    Size     = UDim2.new(0, 12, 0, 12),
-                    Position = UDim2.new(1, -20, 0.5, 0),
-                    AnchorPoint = Vector2.new(0, 0.5),
-                    Image    = AL_ICON_STAR,
-                    ImageColor3 = Theme.Accent,
-                    ScaleType = Enum.ScaleType.Fit,
-                    ZIndex   = 35,
-                    Parent   = Row,
-                })
-            end
             Row.MouseEnter:Connect(function()
                 if cfgName ~= selectedCfgName then
                     Util.TweenFast(Row, {BackgroundTransparency = 0.2, BackgroundColor3 = Hyperion.Theme.SurfaceHover})
@@ -7744,15 +7710,11 @@ function Hyperion:CreateWindow(config)
                 end
             end)
             Row.MouseButton1Click:Connect(function()
-                local now = os.clock()
-                local dbl = _cfgClick.name == cfgName and now - _cfgClick.t < 0.45
-                _cfgClick.name, _cfgClick.t = cfgName, now
                 selectedCfgName = cfgName
                 CfgNameBox.Text = cfgName
                 SetStatus("Selected: " .. cfgName, Hyperion.Theme.TextDim)
                 RefreshConfigList()
                 UpdateAutoLoadRow()
-                if dbl and DoLoad then DoLoad() end
             end)
         end
     end
@@ -7781,7 +7743,6 @@ function Hyperion:CreateWindow(config)
         if _px._closePlayers then _px._closePlayers() end
         HideDeleteConfirm()
         RefreshConfigList()
-        SetStatus(selectedCfgName and ("Selected: " .. selectedCfgName) or (#Config.List() .. " saved"), Hyperion.Theme.TextMuted)
 
         ConfigOverlay.Position = CLOSED_POS
         ConfigOverlay.BackgroundTransparency = 1
@@ -7893,7 +7854,7 @@ function Hyperion:CreateWindow(config)
     end)
 
     -- ── Button logic ──────────────────────────────────────────────────────
-    local function DoSave()
+    BtnSave.MouseButton1Click:Connect(function()
         local name = (CfgNameBox.Text ~= "" and CfgNameBox.Text) or "default"
         -- Reject names with characters that break filesystems on any executor
         if name:find("[<>:\"/\\|%?%*]") or name:match("^%s*$") then
@@ -7913,23 +7874,9 @@ function Hyperion:CreateWindow(config)
             SetStatus("Save failed", Hyperion.Theme.Error)
             Hyperion:Notify({Title="Config", Content="Save failed: " .. tostring(err or "unknown error"), Type="Error", Duration=5})
         end
-    end
-    BtnSave.MouseButton1Click:Connect(DoSave)
-    CfgNameBox.FocusLost:Connect(function(enter)
-        if enter then DoSave() end
-    end)
-    CfgNameBox:GetPropertyChangedSignal("Text"):Connect(function()
-        local nm = CfgNameBox.Text
-        if nm ~= "" and not nm:find("[<>:\"/\\|%?%*]") and _rawIsfile("Hyperion/Configs/" .. nm .. ".json") then
-            if nm == selectedCfgName then
-                SetStatus("Selected: " .. nm, Hyperion.Theme.TextDim)
-            else
-                SetStatus("Save will overwrite: " .. nm, Hyperion.Theme.Warning)
-            end
-        end
     end)
 
-    DoLoad = function()
+    BtnLoad.MouseButton1Click:Connect(function()
         local name = selectedCfgName or (CfgNameBox.Text ~= "" and CfgNameBox.Text) or nil
         if not name then SetStatus("Select a config first", Theme.Warning); return end
         local ok = Config.Load(name, Hyperion.Flags, Hyperion.FlagCallbacks)
@@ -7940,8 +7887,7 @@ function Hyperion:CreateWindow(config)
             SetStatus("Not found: " .. name, Theme.Error)
             Hyperion:Notify({Title = "Config", Content = "Not found: " .. name, Type = "Warning", Duration = 3})
         end
-    end
-    BtnLoad.MouseButton1Click:Connect(function() DoLoad() end)
+    end)
 
     BtnRename.MouseButton1Click:Connect(function()
         local oldName = selectedCfgName
@@ -8718,7 +8664,7 @@ function Hyperion:CreateWindow(config)
     -- THEME CREATOR PANEL  (slides in from the left, like Config/Chat)
     -- ================================================================
     ;(function()
-    local THEME_W        = 300
+    local THEME_W        = 280
     local themePanelOpen = false
 
     local function _lighten(c, f) return Color3.new(
@@ -8855,43 +8801,33 @@ function Hyperion:CreateWindow(config)
     Themed(ThemeOverlay, { BackgroundColor3 = function(t) return t.Sidebar end })
     Themed(_thStroke, { Color = function(t) return t.BorderLight end })
 
-    local function _onAccent(c)
-        return (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) > 0.6 and Color3.fromRGB(20, 20, 28) or Color3.new(1, 1, 1)
-    end
+    local ThemeScroll = Util.Create("ScrollingFrame", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 1, 0),
+        BorderSizePixel = 0,
+        ScrollBarThickness = 3,
+        ScrollBarImageColor3 = Theme.Accent,
+        ScrollBarImageTransparency = 0.4,
+        ScrollingDirection = Enum.ScrollingDirection.Y,
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        CanvasSize = UDim2.new(0,0,0,0),
+        ZIndex = 51,
+        Parent = ThemeOverlay,
+    })
+    Util.AddList(ThemeScroll, Enum.FillDirection.Vertical, 8)
+    Util.AddPadding(ThemeScroll, 0, 10, 10, 10)
+    Themed(ThemeScroll, { ScrollBarImageColor3 = function(t) return t.Accent end })
 
-    local dirty = false
-    local function SyncWorkingFromCurrent()
-        local p = Hyperion._currentPreset or (Hyperion._currentThemeName and Hyperion.Themes[Hyperion._currentThemeName]) or nil
-        for _, f in ipairs(THEME_FIELDS) do working[f.key] = Hyperion.Theme[f.key] or f.default end
-        working.Animated = p ~= nil and p.Animated == true
-        working.Particle = p and p.ParticleStyle or "stars"
-        if p and p.StarColor then working.StarColor = p.StarColor end
-        local gs = p and p.GradientStops
-        if gs and gs[1] then
-            working.GradA = gs[1][2]
-            local mid = gs[3] or gs[2]
-            if mid then working.GradB = mid[2] end
-        end
-    end
-    SyncWorkingFromCurrent()
-
+    -- Header strip
     local ThHeader = Util.Create("Frame", {
         BackgroundColor3 = Theme.SidebarActive,
         Size = UDim2.new(1, 0, 0, 42),
         BorderSizePixel = 0,
+        LayoutOrder = 0,
         ZIndex = 52,
-        Parent = ThemeOverlay,
+        Parent = ThemeScroll,
     })
     Themed(ThHeader, { BackgroundColor3 = function(t) return t.SidebarActive end })
-    do
-        local al = Util.Create("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), Size = UDim2.new(1, 0, 0, 1), BorderSizePixel = 0, ZIndex = 53, Parent = ThHeader })
-        local g = Util.Create("UIGradient", {
-            Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Theme.AccentDark), ColorSequenceKeypoint.new(0.5, Theme.Accent), ColorSequenceKeypoint.new(1, Theme.AccentDark) }),
-            Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(0.5, 0), NumberSequenceKeypoint.new(1, 0.5) }),
-            Parent = al,
-        })
-        Themed(g, { Color = function(t) return ColorSequence.new({ ColorSequenceKeypoint.new(0, t.AccentDark), ColorSequenceKeypoint.new(0.5, t.Accent), ColorSequenceKeypoint.new(1, t.AccentDark) }) end })
-    end
     local ThTitle = Util.Create("TextLabel", {
         BackgroundTransparency = 1,
         Position = UDim2.new(0, 14, 0, 7),
@@ -8914,7 +8850,6 @@ function Hyperion:CreateWindow(config)
         FontFace = Theme.Font,
         TextSize = 12,
         TextXAlignment = Enum.TextXAlignment.Left,
-        TextTruncate = Enum.TextTruncate.AtEnd,
         ZIndex = 53,
         Parent = ThHeader,
     })
@@ -8937,180 +8872,32 @@ function Hyperion:CreateWindow(config)
     ThCloseBtn.MouseEnter:Connect(function() Util.TweenFast(ThCloseBtn, {BackgroundTransparency = 0, ImageColor3 = Hyperion.Theme.Error}) end)
     ThCloseBtn.MouseLeave:Connect(function() Util.TweenFast(ThCloseBtn, {BackgroundTransparency = 0.4, ImageColor3 = Hyperion.Theme.TextDim}) end)
 
-    local FOOT_H = 84
-    local TABS_H = 36
-
-    local ThTabs = Util.Create("Frame", {
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0, 0, 0, 42),
-        Size = UDim2.new(1, 0, 0, TABS_H),
-        ZIndex = 52,
-        Parent = ThemeOverlay,
-    })
-    Util.Create("UIGridLayout", {
-        CellSize = UDim2.new(0.3333, -8, 0, 24),
-        CellPadding = UDim2.new(0, 6, 0, 0),
-        SortOrder = Enum.SortOrder.LayoutOrder,
-        HorizontalAlignment = Enum.HorizontalAlignment.Center,
-        VerticalAlignment = Enum.VerticalAlignment.Center,
-        Parent = ThTabs,
-    })
-
-    local ThPages = Util.Create("Frame", {
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0, 0, 0, 42 + TABS_H),
-        Size = UDim2.new(1, 0, 1, -(42 + TABS_H + FOOT_H)),
-        ClipsDescendants = true,
-        ZIndex = 51,
-        Parent = ThemeOverlay,
-    })
-
-    local pageOf, tabOf = {}, {}
-    local activePage = "Colors"
-    local function MakePage(name)
-        local pg = Util.Create("ScrollingFrame", {
-            BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 1, 0),
-            BorderSizePixel = 0,
-            ScrollBarThickness = 3,
-            ScrollBarImageColor3 = Theme.Accent,
-            ScrollBarImageTransparency = 0.4,
-            ScrollingDirection = Enum.ScrollingDirection.Y,
-            AutomaticCanvasSize = Enum.AutomaticSize.Y,
-            CanvasSize = UDim2.new(0, 0, 0, 0),
-            Visible = false,
-            ZIndex = 51,
-            Parent = ThPages,
-        })
-        Util.AddList(pg, Enum.FillDirection.Vertical, 8)
-        Util.AddPadding(pg, 4, 10, 8, 10)
-        Themed(pg, { ScrollBarImageColor3 = function(t) return t.Accent end })
-        pageOf[name] = pg
-        return pg
-    end
-    local PageColors, PageEffects, PageSaved = MakePage("Colors"), MakePage("Effects"), MakePage("Saved")
-
-    local function PaintTabs()
-        local t = Hyperion.Theme
-        for name, b in pairs(tabOf) do
-            local on = name == activePage
-            b.BackgroundColor3 = on and t.Accent or t.SurfaceLight
-            b.BackgroundTransparency = on and 0.1 or 0.4
-            b.TextColor3 = on and _onAccent(t.Accent) or t.TextDim
-        end
-    end
-    local function ShowPage(name)
-        if not pageOf[name] then return end
-        activePage = name
-        for n, pg in pairs(pageOf) do pg.Visible = (n == name) end
-        PaintTabs()
-    end
-    for i, name in ipairs({ "Colors", "Effects", "Saved" }) do
-        local tb = Util.Create("TextButton", {
-            BackgroundColor3 = Theme.SurfaceLight,
-            BackgroundTransparency = 0.4,
-            Text = name,
-            TextColor3 = Theme.TextDim,
-            FontFace = Theme.FontMedium,
-            TextSize = 11,
-            AutoButtonColor = false,
-            BorderSizePixel = 0,
-            LayoutOrder = i,
-            ZIndex = 53,
-            Parent = ThTabs,
-        })
-        Util.AddCorner(tb, UDim.new(1, 0))
-        tabOf[name] = tb
-        tb.MouseEnter:Connect(function()
-            if activePage ~= name then Util.TweenFast(tb, { BackgroundColor3 = Hyperion.Theme.SurfaceHover }) end
-        end)
-        tb.MouseLeave:Connect(function()
-            if activePage ~= name then Util.TweenFast(tb, { BackgroundColor3 = Hyperion.Theme.SurfaceLight }) end
-        end)
-        tb.MouseButton1Click:Connect(function() ShowPage(name) end)
-    end
-    Hyperion:OnThemeChanged(function() if ThemeOverlay.Parent then PaintTabs() end end)
-
-    local ThFooter = Util.Create("Frame", {
-        BackgroundColor3 = Theme.Sidebar,
-        Position = UDim2.new(0, 0, 1, -FOOT_H),
-        Size = UDim2.new(1, 0, 0, FOOT_H),
-        BorderSizePixel = 0,
-        ZIndex = 52,
-        Parent = ThemeOverlay,
-    })
-    Themed(ThFooter, { BackgroundColor3 = function(t) return t.Sidebar end })
-    local ThFootLine = Util.Create("Frame", {
-        BackgroundColor3 = Theme.Border, BackgroundTransparency = 0.3,
-        Size = UDim2.new(1, -20, 0, 1), Position = UDim2.new(0, 10, 0, 0),
-        BorderSizePixel = 0, ZIndex = 53, Parent = ThFooter,
-    })
-    Themed(ThFootLine, { BackgroundColor3 = function(t) return t.Border end })
-
+    -- Name box
+    local ThNameWrap = Util.Create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 30), LayoutOrder = 1, ZIndex = 52, Parent = ThemeScroll })
     local ThNameBox = Util.Create("TextBox", {
         BackgroundColor3 = Theme.InputBg,
-        Position = UDim2.new(0, 10, 0, 12),
-        Size = UDim2.new(1, -96, 0, 30),
+        Size = UDim2.new(1, 0, 1, 0),
         Text = "", PlaceholderText = "theme name...",
         TextColor3 = Theme.Text, PlaceholderColor3 = Theme.TextMuted,
-        FontFace = Theme.FontMedium, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left,
+        FontFace = Theme.FontMedium, TextSize = 12,
         ClearTextOnFocus = false, BorderSizePixel = 0,
-        ZIndex = 53, Parent = ThFooter,
+        ZIndex = 53, Parent = ThNameWrap,
     })
     Util.AddCorner(ThNameBox, Theme.CornerSmall)
     Util.AddPadding(ThNameBox, 0, 8, 0, 8)
     local _thNameStroke = Util.AddStroke(ThNameBox, Theme.Border, 1, 0.3)
     Themed(ThNameBox, { BackgroundColor3 = function(t) return t.InputBg end, TextColor3 = function(t) return t.Text end, PlaceholderColor3 = function(t) return t.TextMuted end })
     Themed(_thNameStroke, { Color = function(t) return t.Border end })
-    ThNameBox.Focused:Connect(function() Util.TweenFast(_thNameStroke, { Color = Hyperion.Theme.Accent, Transparency = 0 }) end)
-    ThNameBox.FocusLost:Connect(function() Util.TweenFast(_thNameStroke, { Color = Hyperion.Theme.Border, Transparency = 0.3 }) end)
 
-    local ThSaveBtn = Util.Create("TextButton", {
-        BackgroundColor3 = Theme.Accent,
-        Position = UDim2.new(1, -76, 0, 12),
-        Size = UDim2.new(0, 66, 0, 30),
-        Text = "Save", TextColor3 = _onAccent(Theme.Accent),
-        FontFace = Theme.FontSemiBold, TextSize = 12,
-        AutoButtonColor = false, BorderSizePixel = 0,
-        ZIndex = 53, Parent = ThFooter,
-    })
-    Util.AddCorner(ThSaveBtn, Theme.CornerSmall)
-    local function PaintSaveBtn(hover)
-        local t = Hyperion.Theme
-        ThSaveBtn.BackgroundColor3 = hover and t.AccentLight or t.Accent
-        ThSaveBtn.TextColor3 = _onAccent(t.Accent)
-    end
-    Hyperion:OnThemeChanged(function() if ThSaveBtn.Parent then PaintSaveBtn(false) end end)
-    ThSaveBtn.MouseEnter:Connect(function() PaintSaveBtn(true) end)
-    ThSaveBtn.MouseLeave:Connect(function() PaintSaveBtn(false) end)
-
-    local ThResetBtn = Util.Create("TextButton", {
-        BackgroundColor3 = Theme.SurfaceLight,
-        BackgroundTransparency = 0.4,
-        Position = UDim2.new(0, 10, 0, 50),
-        Size = UDim2.new(1, -20, 0, 26),
-        Text = "Reset to current theme", TextColor3 = Theme.TextDim,
-        FontFace = Theme.FontMedium, TextSize = 11,
-        AutoButtonColor = false, BorderSizePixel = 0,
-        ZIndex = 53, Parent = ThFooter,
-    })
-    Util.AddCorner(ThResetBtn, Theme.CornerSmall)
-    Themed(ThResetBtn, { BackgroundColor3 = function(t) return t.SurfaceLight end, TextColor3 = function(t) return t.TextDim end })
-    ThResetBtn.MouseEnter:Connect(function() Util.TweenFast(ThResetBtn, { BackgroundColor3 = Hyperion.Theme.SurfaceHover, TextColor3 = Hyperion.Theme.Text }) end)
-    ThResetBtn.MouseLeave:Connect(function() Util.TweenFast(ThResetBtn, { BackgroundColor3 = Hyperion.Theme.SurfaceLight, TextColor3 = Hyperion.Theme.TextDim }) end)
+    -- Swatch row
+    local ThSwatchWrap = Util.Create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 30), LayoutOrder = 2, ZIndex = 52, Parent = ThemeScroll })
+    Util.AddList(ThSwatchWrap, Enum.FillDirection.Horizontal, 6, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Center)
 
     local selectedField = "Accent"
     local swatches = {}
     local hueState = { h = 0, s = 0, v = 0 }
-    local FIELD_LABEL = {}
-    for _, f in ipairs(THEME_FIELDS) do FIELD_LABEL[f.key] = f.label end
-    local loadedName = nil
-    local savedNames = {}
-    for _, n in ipairs(ThemeStore.List()) do savedNames[n] = true end
 
-    local ThSwatchWrap = Util.Create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 30), LayoutOrder = 1, ZIndex = 52, Parent = PageColors })
-    Util.AddList(ThSwatchWrap, Enum.FillDirection.Horizontal, 6, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Center)
-
+    -- forward declares
     local SVBox, SVCursor, HueBar, HueCur, HexLabel
     local _applyLast, _applyQueued = 0, false
     local function ApplyLive()
@@ -9129,7 +8916,6 @@ function Hyperion:CreateWindow(config)
     end
     local function ToHex(c) return string.format("#%02X%02X%02X", math.floor(c.R*255+0.5), math.floor(c.G*255+0.5), math.floor(c.B*255+0.5)) end
 
-    local ThFieldLabel
     local function LoadFieldIntoPicker()
         local c = working[selectedField]
         hueState.h, hueState.s, hueState.v = Color3.toHSV(c)
@@ -9137,8 +8923,7 @@ function Hyperion:CreateWindow(config)
         Util.TweenFast(SVCursor, { Position = UDim2.new(hueState.s, 0, 1 - hueState.v, 0) })
         Util.TweenFast(HueCur, { Position = UDim2.new(0.5, 0, hueState.h, 0) })
         HexLabel.Text = ToHex(c)
-        ThFieldLabel.Text = FIELD_LABEL[selectedField] or selectedField
-        ThStatus.Text = "Editing: " .. (FIELD_LABEL[selectedField] or selectedField)
+        ThStatus.Text = "Editing: " .. selectedField
     end
 
     local function SelectField(key)
@@ -9154,7 +8939,7 @@ function Hyperion:CreateWindow(config)
         LoadFieldIntoPicker()
     end
 
-    local ThAnimToggleWrap = Util.Create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 26), LayoutOrder = 1, ZIndex = 52, Parent = PageEffects })
+    local ThAnimToggleWrap = Util.Create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 26), LayoutOrder = 5, ZIndex = 52, Parent = ThemeScroll })
     local ThAnimLabel = Util.Create("TextLabel", {
         BackgroundTransparency = 1, Size = UDim2.new(1, -48, 1, 0), Position = UDim2.new(0, 2, 0, 0),
         Text = "Animated Background", TextColor3 = Theme.Text,
@@ -9176,72 +8961,38 @@ function Hyperion:CreateWindow(config)
     })
     Util.AddCorner(ThAnimKnob, UDim.new(1, 0))
 
-    local ThAnimWrap = Util.Create("Frame", {
-        BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
-        LayoutOrder = 2, Visible = false, ZIndex = 52, Parent = PageEffects,
-    })
-    Util.Create("UIGridLayout", {
-        CellSize = UDim2.new(0.3333, -4, 0, 28), CellPadding = UDim2.new(0, 6, 0, 6),
-        SortOrder = Enum.SortOrder.LayoutOrder, Parent = ThAnimWrap,
-    })
-
-    local ThEffectWrap = Util.Create("Frame", {
-        BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
-        LayoutOrder = 3, Visible = false, ZIndex = 52, Parent = PageEffects,
-    })
-    Util.AddList(ThEffectWrap, Enum.FillDirection.Vertical, 6)
+    local ThEffectWrap = Util.Create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 26), LayoutOrder = 6, Visible = false, ZIndex = 52, Parent = ThemeScroll })
     local ThEffectLabel = Util.Create("TextLabel", {
-        BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 14), LayoutOrder = 1,
-        Text = "PARTICLE EFFECT", TextColor3 = Theme.TextMuted,
-        FontFace = Theme.FontSemiBold, TextSize = 10, TextXAlignment = Enum.TextXAlignment.Left,
+        BackgroundTransparency = 1, Size = UDim2.new(0, 50, 1, 0), Position = UDim2.new(0, 2, 0, 0),
+        Text = "Effect", TextColor3 = Theme.TextDim,
+        FontFace = Theme.FontMedium, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left,
         ZIndex = 53, Parent = ThEffectWrap,
     })
-    Themed(ThEffectLabel, { TextColor3 = function(t) return t.TextMuted end })
-    local ThEffectGrid = Util.Create("Frame", {
-        BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
-        LayoutOrder = 2, ZIndex = 52, Parent = ThEffectWrap,
+    Themed(ThEffectLabel, { TextColor3 = function(t) return t.TextDim end })
+    local ThEffectBtn = Util.Create("TextButton", {
+        BackgroundColor3 = Theme.SurfaceLight, BackgroundTransparency = 0.2,
+        Size = UDim2.new(1, -56, 1, 0), Position = UDim2.new(0, 54, 0, 0),
+        Text = "Stars", TextColor3 = Theme.Text,
+        FontFace = Theme.FontMedium, TextSize = 12,
+        AutoButtonColor = false, ZIndex = 53, Parent = ThEffectWrap,
     })
-    Util.Create("UIGridLayout", {
-        CellSize = UDim2.new(0.3333, -4, 0, 24), CellPadding = UDim2.new(0, 6, 0, 6),
-        SortOrder = Enum.SortOrder.LayoutOrder, Parent = ThEffectGrid,
-    })
-    local STYLE_LABEL = { christmaslights = "Xmas Lights", gridlines = "Grid Lines" }
-    local function _styleLabel(s) return STYLE_LABEL[s] or (s:sub(1, 1):upper() .. s:sub(2)) end
-    local effectChips = {}
-    local function SetEffectText()
-        local t = Hyperion.Theme
-        for style, c in pairs(effectChips) do
-            local on = working.Particle == style
-            c.BackgroundColor3 = on and t.Accent or t.SurfaceLight
-            c.BackgroundTransparency = on and 0.1 or 0.4
-            c.TextColor3 = on and _onAccent(t.Accent) or t.TextDim
-        end
-    end
-    for i, style in ipairs(THEME_STYLES) do
-        local chip = Util.Create("TextButton", {
-            BackgroundColor3 = Theme.SurfaceLight, BackgroundTransparency = 0.4,
-            Text = _styleLabel(style), TextColor3 = Theme.TextDim,
-            FontFace = Theme.FontMedium, TextSize = 10, TextTruncate = Enum.TextTruncate.AtEnd,
-            AutoButtonColor = false, BorderSizePixel = 0, LayoutOrder = i, ZIndex = 53, Parent = ThEffectGrid,
-        })
-        Util.AddCorner(chip, Theme.CornerSmall)
-        Util.AddPadding(chip, 0, 4, 0, 4)
-        effectChips[style] = chip
-        chip.MouseEnter:Connect(function()
-            if working.Particle ~= style then Util.TweenFast(chip, { BackgroundColor3 = Hyperion.Theme.SurfaceHover }) end
-        end)
-        chip.MouseLeave:Connect(function()
-            if working.Particle ~= style then Util.TweenFast(chip, { BackgroundColor3 = Hyperion.Theme.SurfaceLight }) end
-        end)
-        chip.MouseButton1Click:Connect(function()
-            working.Particle = style
-            dirty = true
-            SetEffectText()
-            if working.Animated then ApplyLive() end
-        end)
-    end
+    Util.AddCorner(ThEffectBtn, Theme.CornerSmall)
+    local _thEffStroke = Util.AddStroke(ThEffectBtn, Theme.Border, 1, 0.4)
+    Themed(ThEffectBtn, { BackgroundColor3 = function(t) return t.SurfaceLight end, TextColor3 = function(t) return t.Text end })
+    Themed(_thEffStroke, { Color = function(t) return t.Border end })
+    local function _styleLabel(s) return s:sub(1,1):upper() .. s:sub(2) end
+    local function SetEffectText() ThEffectBtn.Text = _styleLabel(working.Particle) .. "  ›" end
     SetEffectText()
-    Hyperion:OnThemeChanged(function() if ThemeOverlay.Parent then SetEffectText() end end)
+    ThEffectBtn.MouseButton1Click:Connect(function()
+        local idx = 1
+        for i = 1, #THEME_STYLES do if THEME_STYLES[i] == working.Particle then idx = i break end end
+        working.Particle = THEME_STYLES[(idx % #THEME_STYLES) + 1]
+        SetEffectText()
+        if working.Animated then ApplyLive() end
+    end)
+
+    local ThAnimWrap = Util.Create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 30), LayoutOrder = 7, Visible = false, ZIndex = 52, Parent = ThemeScroll })
+    Util.AddList(ThAnimWrap, Enum.FillDirection.Horizontal, 6, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Center)
 
     local function SetAnimVisual(on)
         Util.TweenFast(ThAnimToggle, { BackgroundColor3 = on and Hyperion.Theme.Accent or Hyperion.Theme.ToggleOff })
@@ -9251,48 +9002,20 @@ function Hyperion:CreateWindow(config)
     end
     ThAnimToggle.MouseButton1Click:Connect(function()
         working.Animated = not working.Animated
-        dirty = true
         SetAnimVisual(working.Animated)
         ApplyLive()
     end)
     SetAnimVisual(working.Animated)
 
     for _, f in ipairs(THEME_FIELDS) do
-        local Sw
-        if f.anim then
-            local Chip = Util.Create("TextButton", {
-                BackgroundColor3 = Theme.SurfaceLight, BackgroundTransparency = 0.4,
-                Text = "", AutoButtonColor = false, BorderSizePixel = 0, LayoutOrder = f.order or 0, ZIndex = 53, Parent = ThAnimWrap,
-            })
-            Util.AddCorner(Chip, Theme.CornerSmall)
-            Themed(Chip, { BackgroundColor3 = function(t) return t.SurfaceLight end })
-            Sw = Util.Create("Frame", {
-                BackgroundColor3 = working[f.key], Size = UDim2.new(0, 18, 0, 18),
-                Position = UDim2.new(0, 6, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5),
-                BorderSizePixel = 0, ZIndex = 54, Parent = Chip,
-            })
-            Util.Create("TextLabel", {
-                BackgroundTransparency = 1, Position = UDim2.new(0, 30, 0, 0), Size = UDim2.new(1, -34, 1, 0),
-                Text = f.label, TextColor3 = Theme.TextDim, FontFace = Theme.FontMedium, TextSize = 11,
-                TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 54, Parent = Chip,
-            })
-            Chip.MouseButton1Click:Connect(function() SelectField(f.key) end)
-            Chip.MouseEnter:Connect(function()
-                if selectedField ~= f.key then Util.TweenFast(Chip, { BackgroundColor3 = Hyperion.Theme.SurfaceHover }) end
-            end)
-            Chip.MouseLeave:Connect(function() Util.TweenFast(Chip, { BackgroundColor3 = Hyperion.Theme.SurfaceLight }) end)
-        else
-            Sw = Util.Create("TextButton", {
-                BackgroundColor3 = working[f.key],
-                Size = UDim2.new(0, 26, 0, 26),
-                Text = "",
-                AutoButtonColor = false,
-                ZIndex = 53,
-                Parent = ThSwatchWrap,
-            })
-            Sw.MouseButton1Click:Connect(function() SelectField(f.key) end)
-            Util.AttachTooltip(Sw, f.label)
-        end
+        local Sw = Util.Create("TextButton", {
+            BackgroundColor3 = working[f.key],
+            Size = UDim2.new(0, 26, 0, 26),
+            Text = "",
+            AutoButtonColor = false,
+            ZIndex = 53,
+            Parent = f.anim and ThAnimWrap or ThSwatchWrap,
+        })
         Util.AddCorner(Sw, Theme.CornerSmall)
         local swStroke = Util.AddStroke(Sw, Theme.BorderLight, 1, 0.1)
         swatches[f.key] = { Btn = Sw, Stroke = swStroke }
@@ -9303,12 +9026,14 @@ function Hyperion:CreateWindow(config)
         Sw.MouseLeave:Connect(function()
             if selectedField ~= f.key then Util.TweenFast(swStroke, { Transparency = 0.1, Color = Hyperion.Theme.BorderLight }) end
         end)
+        Sw.MouseButton1Click:Connect(function() SelectField(f.key) end)
     end
 
-    local ThPicker = Util.Create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 124), LayoutOrder = 2, ZIndex = 52, Parent = PageColors })
+    -- Picker (SV + Hue)
+    local ThPicker = Util.Create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 110), LayoutOrder = 3, ZIndex = 52, Parent = ThemeScroll })
     SVBox = Util.Create("ImageLabel", {
         BackgroundColor3 = Color3.fromHSV(0, 1, 1),
-        Size = UDim2.new(1, -34, 0, 116),
+        Size = UDim2.new(1, -34, 0, 100),
         Position = UDim2.new(0, 0, 0, 4),
         Image = "rbxassetid://4155801252",
         ZIndex = 53, Parent = ThPicker,
@@ -9323,7 +9048,7 @@ function Hyperion:CreateWindow(config)
     Util.AddStroke(SVCursor, Color3.new(0,0,0), 1, 0.4)
     HueBar = Util.Create("Frame", {
         BackgroundColor3 = Color3.new(1,1,1),
-        Size = UDim2.new(0, 18, 0, 116), Position = UDim2.new(1, -18, 0, 4),
+        Size = UDim2.new(0, 18, 0, 100), Position = UDim2.new(1, -18, 0, 4),
         ZIndex = 53, Parent = ThPicker,
     })
     Util.AddCorner(HueBar, Theme.CornerSmall)
@@ -9346,16 +9071,9 @@ function Hyperion:CreateWindow(config)
     })
     Util.AddCorner(HueCur, UDim.new(1, 0))
 
-    local ThHexWrap = Util.Create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 28), LayoutOrder = 3, ZIndex = 52, Parent = PageColors })
-    ThFieldLabel = Util.Create("TextLabel", {
-        BackgroundTransparency = 1, Size = UDim2.new(0.5, -6, 1, 0),
-        Text = "Accent", TextColor3 = Theme.Text,
-        FontFace = Theme.FontSemiBold, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left,
-        TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 53, Parent = ThHexWrap,
-    })
-    Themed(ThFieldLabel, { TextColor3 = function(t) return t.Text end })
+    local ThHexWrap = Util.Create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 28), LayoutOrder = 4, ZIndex = 52, Parent = ThemeScroll })
     HexLabel = Util.Create("TextBox", {
-        BackgroundColor3 = Theme.InputBg, Position = UDim2.new(0.5, 0, 0, 0), Size = UDim2.new(0.5, 0, 1, 0),
+        BackgroundColor3 = Theme.InputBg, Size = UDim2.new(1, 0, 1, 0),
         Text = "#000000", PlaceholderText = "#RRGGBB",
         TextColor3 = Theme.Text, PlaceholderColor3 = Theme.TextMuted,
         FontFace = Theme.Font, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left,
@@ -9371,7 +9089,6 @@ function Hyperion:CreateWindow(config)
 
     local function CommitPickerColor()
         local c = Color3.fromHSV(hueState.h, hueState.s, hueState.v)
-        dirty = true
         working[selectedField] = c
         SVBox.BackgroundColor3 = Color3.fromHSV(hueState.h, 1, 1)
         SVCursor.Position = UDim2.new(hueState.s, 0, 1 - hueState.v, 0)
@@ -9412,174 +9129,139 @@ function Hyperion:CreateWindow(config)
         end
     end)
 
+    -- Action buttons
+    local function ThemeActionBtn(text, order, danger)
+        local Btn = Util.Create("TextButton", {
+            BackgroundColor3 = danger and Color3.fromRGB(55,18,22) or Theme.SurfaceLight,
+            BackgroundTransparency = danger and 0 or 0.2,
+            Size = UDim2.new(1, 0, 0, 30),
+            Text = text,
+            TextColor3 = danger and Theme.Error or Theme.Text,
+            FontFace = Theme.FontMedium, TextSize = 12,
+            AutoButtonColor = false, LayoutOrder = order, ZIndex = 52, Parent = ThemeScroll,
+        })
+        Util.AddCorner(Btn, Theme.CornerSmall)
+        local st = Util.AddStroke(Btn, danger and Theme.Error or Theme.Border, 1, danger and 0.5 or 0.4)
+        if not danger then
+            Themed(Btn, { BackgroundColor3 = function(t) return t.SurfaceLight end, TextColor3 = function(t) return t.Text end })
+            Themed(st, { Color = function(t) return t.Border end })
+        else
+            Themed(st, { Color = function(t) return t.Error end })
+        end
+        local nbg = danger and Color3.fromRGB(55,18,22) or Theme.SurfaceLight
+        local hbg = danger and Color3.fromRGB(80,25,30) or Theme.SurfaceHover
+        Btn.MouseEnter:Connect(function() Util.TweenFast(Btn, {BackgroundColor3 = hbg, BackgroundTransparency = 0}) end)
+        Btn.MouseLeave:Connect(function() Util.TweenFast(Btn, {BackgroundColor3 = nbg, BackgroundTransparency = danger and 0 or 0.2}) end)
+        return Btn
+    end
+
+    local ThSaveBtn  = ThemeActionBtn("Save Theme", 8, false)
+    local ThResetBtn = ThemeActionBtn("Reset to Current", 9, false)
+
+    -- Saved themes list
     local ThListLabel = Util.Create("TextLabel", {
-        BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 14),
+        BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 16),
         Text = "SAVED THEMES", TextColor3 = Theme.TextMuted,
         FontFace = Theme.FontSemiBold, TextSize = 10, TextXAlignment = Enum.TextXAlignment.Left,
-        LayoutOrder = 1, ZIndex = 52, Parent = PageSaved,
+        LayoutOrder = 10, ZIndex = 52, Parent = ThemeScroll,
     })
     Themed(ThListLabel, { TextColor3 = function(t) return t.TextMuted end })
-    local ThList = Util.Create("Frame", {
-        BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
-        LayoutOrder = 2, ZIndex = 52, Parent = PageSaved,
+
+    local ThListOuter = Util.Create("Frame", {
+        BackgroundColor3 = Theme.Background, Size = UDim2.new(1, 0, 0, 120),
+        LayoutOrder = 11, ZIndex = 52, Parent = ThemeScroll,
     })
-    Util.AddList(ThList, Enum.FillDirection.Vertical, 4)
+    Util.AddPadding(ThListOuter, 6, 6, 6, 6)
+    Util.AddCorner(ThListOuter, Theme.CornerSmall)
+    local _thListStroke = Util.AddStroke(ThListOuter, Theme.Border, 1, 0.3)
+    Themed(ThListOuter, { BackgroundColor3 = function(t) return t.Background end })
+    Themed(_thListStroke, { Color = function(t) return t.Border end })
+    local ThList = Util.Create("ScrollingFrame", {
+        BackgroundTransparency = 1, Size = UDim2.new(1, -8, 1, -8), Position = UDim2.new(0, 4, 0, 4),
+        BorderSizePixel = 0, ScrollBarThickness = 0,
+        ScrollingDirection = Enum.ScrollingDirection.Y, AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        CanvasSize = UDim2.new(0,0,0,0), ZIndex = 53, Parent = ThListOuter,
+    })
+    Util.AddList(ThList, Enum.FillDirection.Vertical, 3)
 
-    local armedDelete, armedToken = nil, 0
-    local RefreshThemeList
-
-    local function GalleryRefresh()
-        if Hyperion._galleryRefresh then pcall(Hyperion._galleryRefresh) end
-    end
-
-    local function LoadSaved(n)
-        local w = ThemeStore.Load(n)
-        if not w then return end
-        for _, f in ipairs(THEME_FIELDS) do if w[f.key] then working[f.key] = w[f.key] end end
-        working.Animated = w.Animated == true
-        working.Particle = w.Particle or "stars"
-        SetEffectText()
-        SetAnimVisual(working.Animated)
-        for k, sw in pairs(swatches) do sw.Btn.BackgroundColor3 = working[k] end
-        ApplyLive()
-        LoadFieldIntoPicker()
-        ThNameBox.Text = n
-        loadedName = n
-        dirty = true
-        ThStatus.Text = "Loaded: " .. n
-        RefreshThemeList()
-    end
-
-    RefreshThemeList = function()
+    local function RefreshThemeList()
         for _, c in ipairs(ThList:GetChildren()) do if c:IsA("GuiObject") then c:Destroy() end end
         local names = ThemeStore.List()
-        table.sort(names, function(a, b) return string.lower(a) < string.lower(b) end)
-        ThListLabel.Text = "SAVED THEMES  (" .. #names .. ")"
         if #names == 0 then
-            Util.Create("TextLabel", {
-                BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 54),
-                Text = "Nothing saved yet.\nPick colours, name your theme below and press Save.",
-                TextColor3 = Theme.TextMuted, FontFace = Theme.Font, TextSize = 11, TextWrapped = true,
-                ZIndex = 53, Parent = ThList,
+            local Empty = Util.Create("TextLabel", {
+                BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 20),
+                Text = "No saved themes", TextColor3 = Theme.TextMuted,
+                FontFace = Theme.Font, TextSize = 11, ZIndex = 54, Parent = ThList,
             })
             return
         end
-        for i, n in ipairs(names) do
-            local isCur = n == loadedName
+        for _, n in ipairs(names) do
             local Row = Util.Create("Frame", {
-                BackgroundColor3 = isCur and Theme.SidebarActive or Theme.SurfaceLight,
-                BackgroundTransparency = isCur and 0 or 0.5,
-                Size = UDim2.new(1, 0, 0, 34), LayoutOrder = i, ZIndex = 53, Parent = ThList,
+                BackgroundColor3 = Theme.SurfaceLight, BackgroundTransparency = 0.5,
+                Size = UDim2.new(1, 0, 0, 26), ZIndex = 54, Parent = ThList,
             })
             Util.AddCorner(Row, Theme.CornerSmall)
-            if isCur then Util.AddStroke(Row, Theme.Accent, 1, 0.45) end
-            local preset = Hyperion.Themes[n]
-            local bgC = preset and preset.Background or Theme.Background
-            local acC = preset and preset.Accent or Theme.Accent
-            local Dot = Util.Create("Frame", {
-                BackgroundColor3 = bgC, Size = UDim2.new(0, 22, 0, 22),
-                Position = UDim2.new(0, 7, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BorderSizePixel = 0, ZIndex = 54, Parent = Row,
-            })
-            Util.AddCorner(Dot, UDim.new(0, 5))
-            Util.AddStroke(Dot, Theme.BorderLight, 1, 0.4)
-            local Core = Util.Create("Frame", {
-                BackgroundColor3 = acC, Size = UDim2.new(0, 10, 0, 10),
-                Position = UDim2.new(0.5, 0, 0.5, 0), AnchorPoint = Vector2.new(0.5, 0.5), BorderSizePixel = 0, ZIndex = 55, Parent = Dot,
-            })
-            Util.AddCorner(Core, UDim.new(1, 0))
             local Load = Util.Create("TextButton", {
-                BackgroundTransparency = 1, Size = UDim2.new(1, -78, 1, 0), Position = UDim2.new(0, 36, 0, 0),
-                Text = n, TextColor3 = Theme.Text, FontFace = isCur and Theme.FontMedium or Theme.Font, TextSize = 12,
-                TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd,
-                AutoButtonColor = false, ZIndex = 55, Parent = Row,
+                BackgroundTransparency = 1, Size = UDim2.new(1, -28, 1, 0), Position = UDim2.new(0, 8, 0, 0),
+                Text = n, TextColor3 = Theme.Text, FontFace = Theme.Font, TextSize = 12,
+                TextXAlignment = Enum.TextXAlignment.Left, AutoButtonColor = false, ZIndex = 55, Parent = Row,
             })
             Themed(Load, { TextColor3 = function(t) return t.Text end })
-            Load.MouseButton1Click:Connect(function() LoadSaved(n) end)
-            local armed = armedDelete == n
+            Load.MouseButton1Click:Connect(function()
+                local w = ThemeStore.Load(n)
+                if not w then return end
+                for _, f in ipairs(THEME_FIELDS) do if w[f.key] then working[f.key] = w[f.key] end end
+                working.Animated = w.Animated == true
+                working.Particle = w.Particle or "stars"
+                SetEffectText()
+                SetAnimVisual(working.Animated)
+                for k, sw in pairs(swatches) do sw.Btn.BackgroundColor3 = working[k] end
+                ApplyLive()
+                LoadFieldIntoPicker()
+                ThNameBox.Text = n
+                ThStatus.Text = "Loaded: " .. n
+            end)
             local Del = Util.Create("TextButton", {
-                BackgroundTransparency = armed and 0.7 or 1, BackgroundColor3 = Theme.Error,
-                Size = UDim2.new(0, armed and 52 or 24, 0, 22), Position = UDim2.new(1, -6, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5),
-                Text = armed and "Delete?" or "✕", TextColor3 = armed and Theme.Error or Theme.TextMuted,
-                FontFace = armed and Theme.FontSemiBold or Theme.FontBold, TextSize = armed and 10 or 12,
-                AutoButtonColor = false, BorderSizePixel = 0, ZIndex = 55, Parent = Row,
+                BackgroundTransparency = 1, Size = UDim2.new(0, 22, 1, 0), Position = UDim2.new(1, -22, 0, 0),
+                Text = "✕", TextColor3 = Theme.TextMuted, FontFace = Theme.FontBold, TextSize = 12,
+                AutoButtonColor = false, ZIndex = 55, Parent = Row,
             })
-            Util.AddCorner(Del, Theme.CornerSmall)
-            if not armed then
-                Del.MouseEnter:Connect(function() Del.TextColor3 = Hyperion.Theme.Error end)
-                Del.MouseLeave:Connect(function() Del.TextColor3 = Hyperion.Theme.TextMuted end)
-            end
+            Del.MouseEnter:Connect(function() Del.TextColor3 = Hyperion.Theme.Error end)
+            Del.MouseLeave:Connect(function() Del.TextColor3 = Hyperion.Theme.TextMuted end)
             Del.MouseButton1Click:Connect(function()
-                if armedDelete ~= n then
-                    armedDelete = n
-                    armedToken = armedToken + 1
-                    local token = armedToken
-                    RefreshThemeList()
-                    task.delay(2.5, function()
-                        if armedToken == token and armedDelete == n then
-                            armedDelete = nil
-                            RefreshThemeList()
-                        end
-                    end)
-                    return
-                end
-                armedDelete = nil
                 ThemeStore.Delete(n)
                 Hyperion.Themes[n] = nil
-                savedNames[n] = nil
-                if loadedName == n then loadedName = nil end
                 RefreshThemeList()
-                GalleryRefresh()
                 ThStatus.Text = "Deleted: " .. n
             end)
         end
     end
 
-    local function DoThemeSave()
-        local nm = (ThNameBox.Text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    ThSaveBtn.MouseButton1Click:Connect(function()
+        local nm = ThNameBox.Text
+        nm = (nm or ""):gsub("^%s+", ""):gsub("%s+$", "")
         if nm == "" then ThStatus.Text = "Enter a name first"; return end
-        if nm:find("[<>:\"/\\|%?%*]") then ThStatus.Text = "Name has invalid characters"; return end
-        if Hyperion.Themes[nm] and not savedNames[nm] then ThStatus.Text = "That name is a built-in theme"; return end
-        local overwrite = savedNames[nm] == true
         local ok = ThemeStore.Save(nm, working)
         if ok then
             Hyperion.Themes[nm] = BuildTheme(working)
-            savedNames[nm] = true
-            loadedName = nm
             RefreshThemeList()
-            GalleryRefresh()
-            ThStatus.Text = (overwrite and "Overwritten: " or "Saved: ") .. nm
-            Hyperion:Notify({ Title = "Theme", Content = (overwrite and "Overwritten: " or "Saved: ") .. nm, Type = "Success", Duration = 3 })
-            ThSaveBtn.BackgroundColor3 = Hyperion.Theme.Success
-            Util.Tween(ThSaveBtn, 0.45, { BackgroundColor3 = Hyperion.Theme.Accent }, Enum.EasingStyle.Quad)
+            ThStatus.Text = "Saved: " .. nm
+            Hyperion:Notify({ Title = "Theme", Content = "Saved: " .. nm, Type = "Success", Duration = 3 })
+            ThSaveBtn.BackgroundColor3 = Color3.fromRGB(60, 180, 90)
+            ThSaveBtn.BackgroundTransparency = 0
+            Util.Tween(ThSaveBtn, 0.45, { BackgroundColor3 = Hyperion.Theme.SurfaceLight, BackgroundTransparency = 0.2 }, Enum.EasingStyle.Quad)
         else
             ThStatus.Text = "Save failed"
         end
-    end
-    ThSaveBtn.MouseButton1Click:Connect(DoThemeSave)
-    ThNameBox.FocusLost:Connect(function(enter)
-        if enter then DoThemeSave() end
     end)
-    ThNameBox:GetPropertyChangedSignal("Text"):Connect(function()
-        local nm = string.match(ThNameBox.Text or "", "^%s*(.-)%s*$") or ""
-        if nm == "" then return end
-        if Hyperion.Themes[nm] and not savedNames[nm] then
-            ThStatus.Text = "Built-in theme name, pick another"
-        elseif savedNames[nm] and nm ~= loadedName then
-            ThStatus.Text = "Save will overwrite: " .. nm
-        end
-    end)
-    local function ResyncFromCurrent()
-        SyncWorkingFromCurrent()
-        dirty = false
-        loadedName = nil
+    ThResetBtn.MouseButton1Click:Connect(function()
+        for _, f in ipairs(THEME_FIELDS) do working[f.key] = Hyperion.Theme[f.key] or f.default end
+        working.Animated = Hyperion.Theme.Animated == true
+        working.Particle = Hyperion.Theme.ParticleStyle or "stars"
         SetEffectText()
         SetAnimVisual(working.Animated)
         for k, sw in pairs(swatches) do sw.Btn.BackgroundColor3 = working[k] end
         LoadFieldIntoPicker()
-        RefreshThemeList()
-    end
-    ThResetBtn.MouseButton1Click:Connect(function()
-        ResyncFromCurrent()
         ThStatus.Text = "Reset to current theme"
     end)
 
@@ -9587,7 +9269,7 @@ function Hyperion:CreateWindow(config)
         local i = 0
         for _, f in ipairs(THEME_FIELDS) do
             local sw = swatches[f.key]
-            if sw and not f.anim then
+            if sw then
                 i = i + 1
                 sw.Btn.BackgroundTransparency = 1
                 task.delay(i * 0.035, function()
@@ -9597,6 +9279,7 @@ function Hyperion:CreateWindow(config)
         end
     end
 
+    -- Open / close
     local TH_OPEN   = UDim2.new(0, 0, 0, HeaderHeight)
     local TH_CLOSED = UDim2.new(0, -THEME_W - 14, 0, HeaderHeight)
     local function OpenThemePanel()
@@ -9605,8 +9288,6 @@ function Hyperion:CreateWindow(config)
         if cfgPanelOpen then CloseConfigPanel() end
         if _px._closeChat then _px._closeChat() end
         if _px._closePlayers then _px._closePlayers() end
-        ShowPage(activePage)
-        if not dirty then ResyncFromCurrent() end
         SelectField(selectedField)
         RefreshThemeList()
         AnimateThemeOpen()
@@ -9645,8 +9326,6 @@ function Hyperion:CreateWindow(config)
     end)
 
     Themed(ThemeBtn, { ImageColor3 = function(t) return themePanelOpen and t.Accent or t.TextMuted end })
-
-    ShowPage("Colors")
 
     _px._openTheme   = OpenThemePanel
     _px._toggleTheme = function() if themePanelOpen then CloseThemePanel() else OpenThemePanel() end end
@@ -9719,96 +9398,15 @@ function Hyperion:CreateWindow(config)
     PlCloseBtn.MouseEnter:Connect(function() Util.TweenFast(PlCloseBtn, {BackgroundTransparency = 0, ImageColor3 = Hyperion.Theme.Error}) end)
     PlCloseBtn.MouseLeave:Connect(function() Util.TweenFast(PlCloseBtn, {BackgroundTransparency = 0.4, ImageColor3 = Hyperion.Theme.TextDim}) end)
 
-    local PlSearchWrap = Util.Create("Frame", {
-        BackgroundTransparency = 1, Position = UDim2.new(0, 0, 0, 42), Size = UDim2.new(1, 0, 0, 38),
-        ZIndex = 52, Parent = PlayersOverlay,
-    })
-    local PlSearch = Util.Create("TextBox", {
-        BackgroundColor3 = Theme.InputBg, Position = UDim2.new(0, 8, 0, 8), Size = UDim2.new(1, -16, 0, 26),
-        Text = "", PlaceholderText = "Search players...", TextColor3 = Theme.Text, PlaceholderColor3 = Theme.TextMuted,
-        FontFace = Theme.FontMedium, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left,
-        ClearTextOnFocus = false, BorderSizePixel = 0, ZIndex = 53, Parent = PlSearchWrap,
-    })
-    Util.AddCorner(PlSearch, Theme.CornerSmall)
-    Util.AddPadding(PlSearch, 0, 26, 0, 28)
-    local _plSearchStroke = Util.AddStroke(PlSearch, Theme.Border, 1, 0.3)
-    Util.ControlAdd(PlSearch, "BackgroundTransparency")
-    Themed(PlSearch, { BackgroundColor3 = function(t) return t.InputBg end, TextColor3 = function(t) return t.Text end, PlaceholderColor3 = function(t) return t.TextMuted end })
-    Themed(_plSearchStroke, { Color = function(t) return t.Border end })
-    local PlSearchIcon = Util.Create("ImageLabel", {
-        BackgroundTransparency = 1, Position = UDim2.new(0, 16, 0, 15), Size = UDim2.new(0, 12, 0, 12),
-        Image = "rbxassetid://10734943674", ImageColor3 = Theme.TextMuted, ScaleType = Enum.ScaleType.Fit,
-        ZIndex = 54, Parent = PlSearchWrap,
-    })
-    Themed(PlSearchIcon, { ImageColor3 = function(t) return t.TextMuted end })
-    local PlSearchClear = Util.Create("TextButton", {
-        BackgroundTransparency = 1, Position = UDim2.new(1, -30, 0, 8), Size = UDim2.new(0, 22, 0, 26),
-        Text = "✕", TextColor3 = Theme.TextMuted, FontFace = Theme.FontBold, TextSize = 11,
-        AutoButtonColor = false, Visible = false, ZIndex = 54, Parent = PlSearchWrap,
-    })
-    PlSearchClear.MouseEnter:Connect(function() PlSearchClear.TextColor3 = Hyperion.Theme.Error end)
-    PlSearchClear.MouseLeave:Connect(function() PlSearchClear.TextColor3 = Hyperion.Theme.TextMuted end)
-    PlSearch.Focused:Connect(function() Util.TweenFast(_plSearchStroke, { Color = Hyperion.Theme.Accent, Transparency = 0 }) end)
-    PlSearch.FocusLost:Connect(function() Util.TweenFast(_plSearchStroke, { Color = Hyperion.Theme.Border, Transparency = 0.3 }) end)
-
     local PlScroll = Util.Create("ScrollingFrame", {
-        BackgroundTransparency = 1, Position = UDim2.new(0, 0, 0, 80), Size = UDim2.new(1, 0, 1, -80),
+        BackgroundTransparency = 1, Position = UDim2.new(0, 0, 0, 42), Size = UDim2.new(1, 0, 1, -42),
         BorderSizePixel = 0, ScrollBarThickness = 3, ScrollBarImageColor3 = Theme.Accent, ScrollBarImageTransparency = 0.4,
         ScrollingDirection = Enum.ScrollingDirection.Y, AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(0,0,0,0),
         ZIndex = 51, Parent = PlayersOverlay,
     })
     Util.AddList(PlScroll, Enum.FillDirection.Vertical, 5)
-    Util.AddPadding(PlScroll, 2, 8, 8, 8)
+    Util.AddPadding(PlScroll, 8, 8, 8, 8)
     Themed(PlScroll, { ScrollBarImageColor3 = function(t) return t.Accent end })
-
-    local PlEmpty = Util.Create("TextLabel", {
-        BackgroundTransparency = 1, Position = UDim2.new(0, 16, 0, 96), Size = UDim2.new(1, -32, 0, 40),
-        Text = "No other players in this server", TextColor3 = Theme.TextMuted, FontFace = Theme.Font, TextSize = 12,
-        TextWrapped = true, ZIndex = 52, Parent = PlayersOverlay,
-    })
-    Themed(PlEmpty, { TextColor3 = function(t) return t.TextMuted end })
-
-    local plQuery, plFilterQueued = "", false
-    local function plRowMatches(row, q)
-        local all = row:GetDescendants()
-        for i = 1, #all do
-            local d = all[i]
-            if d:IsA("TextLabel") and d.Text ~= "" and string.find(string.lower(d.Text), q, 1, true) then return true end
-        end
-        return false
-    end
-    local function ApplyPlayerFilter()
-        local q = string.lower(plQuery)
-        local total, shown = 0, 0
-        local kids = PlScroll:GetChildren()
-        for i = 1, #kids do
-            local c = kids[i]
-            if c:IsA("Frame") then
-                total = total + 1
-                local show = q == "" or plRowMatches(c, q)
-                c.Visible = show
-                if show then shown = shown + 1 end
-            end
-        end
-        PlEmpty.Visible = shown == 0
-        PlEmpty.Text = total == 0 and "No other players in this server" or "No players match your search"
-    end
-    local function QueuePlayerFilter()
-        if plFilterQueued then return end
-        plFilterQueued = true
-        task.defer(function()
-            plFilterQueued = false
-            ApplyPlayerFilter()
-        end)
-    end
-    PlScroll.ChildAdded:Connect(QueuePlayerFilter)
-    PlScroll.ChildRemoved:Connect(QueuePlayerFilter)
-    PlSearch:GetPropertyChangedSignal("Text"):Connect(function()
-        plQuery = string.match(PlSearch.Text, "^%s*(.-)%s*$") or ""
-        PlSearchClear.Visible = PlSearch.Text ~= ""
-        ApplyPlayerFilter()
-    end)
-    PlSearchClear.MouseButton1Click:Connect(function() PlSearch.Text = "" end)
 
     local function doRefresh() if refreshHandler then task.spawn(refreshHandler, PlScroll, PlCount) end end
 
@@ -13515,16 +13113,8 @@ function Hyperion:CreateWindow(config)
             { "Pink & Soft", { "Rose", "Sakura", "Bunny", "Lavender", "Strawberry Milk", "Neko", "Love" } },
             { "Neon",        { "Vaporwave", "Matcha" } },
         }
-        local CUSTOM = "Custom"
-        local inCategory = {}
-        for _, cat in ipairs(CATEGORIES) do
-            for _, n in ipairs(cat[2]) do inCategory[n] = true end
-        end
 
-        local cards, blocks, pills = {}, {}, {}
-        local customNames = {}
-        local activeCat
-
+        local cards = {}
         local function paint(active)
             for n, c in pairs(cards) do
                 local sel = (n == active)
@@ -13535,176 +13125,90 @@ function Hyperion:CreateWindow(config)
             end
         end
 
-        local function onAccent()
-            local c = Hyperion.Theme.Accent
-            return (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) > 0.6 and Color3.fromRGB(20, 20, 28) or Color3.new(1, 1, 1)
-        end
-
-        local function paintPills()
-            local t = Hyperion.Theme
-            for name, p in pairs(pills) do
-                local on = name == activeCat
-                p.BackgroundColor3 = on and t.Accent or t.SurfaceLight
-                p.TextColor3 = on and onAccent() or t.TextDim
-                Util.ControlRefresh(p)
-            end
-        end
-
-        local function showCategory(name)
-            if not blocks[name] then return end
-            activeCat = name
-            Hyperion._galleryCat = name
-            for n, b in pairs(blocks) do b.Visible = (n == name) end
-            paintPills()
-        end
-
-        local function categoryOf(name)
-            if not name then return nil end
-            for _, cat in ipairs(CATEGORIES) do
-                if table.find(cat[2], name) then return cat[1] end
-            end
-            if Hyperion.Themes[name] then return CUSTOM end
-            return nil
-        end
-
-        local pillRow = Util.Create("Frame", {
-            BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0),
-            AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 0, Parent = cv,
-        })
-        Util.Create("UIGridLayout", {
-            CellSize = UDim2.new(0.25, -4, 0, 22), CellPadding = UDim2.new(0, 5, 0, 5),
-            SortOrder = Enum.SortOrder.LayoutOrder, Parent = pillRow,
-        })
-
-        local function addPill(name, order)
-            local pill = Util.Create("TextButton", {
-                BackgroundColor3 = Theme.SurfaceLight, BackgroundTransparency = 0.2,
-                Text = name, TextColor3 = Theme.TextDim, FontFace = Theme.FontMedium, TextSize = 11,
-                TextTruncate = Enum.TextTruncate.AtEnd, AutoButtonColor = false, BorderSizePixel = 0,
-                LayoutOrder = order, Parent = pillRow,
+        local order = 0
+        for _, cat in ipairs(CATEGORIES) do
+            order = order + 1
+            local block = Util.Create("Frame", {
+                BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0),
+                AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = order, Parent = cv,
             })
-            Util.AddCorner(pill, UDim.new(1, 0))
-            Util.AddPadding(pill, 0, 6, 0, 6)
-            Util.ControlAdd(pill, "BackgroundTransparency", { keep = function() return activeCat == name end })
-            pills[name] = pill
-            pill.MouseEnter:Connect(function()
-                if activeCat ~= name then Util.TweenFast(pill, { BackgroundColor3 = Hyperion.Theme.SurfaceHover }) end
-            end)
-            pill.MouseLeave:Connect(function()
-                if activeCat ~= name then Util.TweenFast(pill, { BackgroundColor3 = Hyperion.Theme.SurfaceLight }) end
-            end)
-            pill.MouseButton1Click:Connect(function() showCategory(name) end)
-            return pill
-        end
-
-        local function addGrid(name)
+            Util.Create("UIListLayout", {
+                FillDirection = Enum.FillDirection.Vertical, SortOrder = Enum.SortOrder.LayoutOrder,
+                Padding = UDim.new(0, 5), Parent = block,
+            })
+            local ch = Util.Create("TextLabel", {
+                BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 12), Text = string.upper(cat[1]),
+                TextColor3 = Theme.TextMuted, FontFace = Theme.FontSemiBold, TextSize = 10,
+                TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 0, Parent = block,
+            })
+            Themed(ch, { TextColor3 = function(t) return t.TextMuted end })
             local grid = Util.Create("Frame", {
                 BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0),
-                AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 1, Visible = false, Parent = cv,
+                AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 1, Parent = block,
             })
             Util.Create("UIGridLayout", {
                 CellSize = UDim2.new(0, 94, 0, 50), CellPadding = UDim2.new(0, 6, 0, 6),
                 SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Left,
                 Parent = grid,
             })
-            blocks[name] = grid
-            return grid
-        end
 
-        local function addCard(grid, name)
-            local preset = Hyperion.Themes[name]
-            if not preset then return end
-            local ac  = preset.Accent or Color3.fromRGB(150, 110, 255)
-            local acL = preset.AccentLight or ac
-            local card = Util.Create("TextButton", {
-                BackgroundColor3 = preset.Background or Theme.Background, Text = "",
-                AutoButtonColor = false, BorderSizePixel = 0, Parent = grid,
-            })
-            Util.AddCorner(card, UDim.new(0, 6))
-            local st = Util.AddStroke(card, Theme.BorderLight, 1, 0.5)
-            local bar = Util.Create("Frame", {
-                BackgroundColor3 = ac, Size = UDim2.new(1, -12, 0, 13),
-                Position = UDim2.new(0, 6, 0, 6), BorderSizePixel = 0, Parent = card,
-            })
-            Util.AddCorner(bar, UDim.new(0, 3))
-            Util.Create("UIGradient", { Color = ColorSequence.new(ac, acL), Rotation = 12, Parent = bar })
-            local chip = Util.Create("Frame", {
-                BackgroundColor3 = preset.SurfaceLight or preset.Surface or Theme.Surface,
-                Size = UDim2.new(0.55, 0, 0, 4), Position = UDim2.new(0, 6, 0, 23),
-                BorderSizePixel = 0, Parent = card,
-            })
-            Util.AddCorner(chip, UDim.new(0, 2))
-            Util.Create("TextLabel", {
-                BackgroundTransparency = 1, Size = UDim2.new(1, -24, 0, 13),
-                Position = UDim2.new(0, 6, 1, -17), Text = name,
-                TextColor3 = preset.Text or Theme.Text, FontFace = Theme.FontMedium, TextSize = 11,
-                TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Parent = card,
-            })
-            local check = Util.Create("TextLabel", {
-                BackgroundTransparency = 1, Size = UDim2.new(0, 13, 0, 13),
-                Position = UDim2.new(1, -15, 1, -17), Text = "✓", TextColor3 = ac,
-                FontFace = Theme.FontBold, TextSize = 12, TextTransparency = 1, Parent = card,
-            })
-            cards[name] = { stroke = st, check = check, accent = ac }
-            card.MouseEnter:Connect(function()
-                if Hyperion._currentThemeName ~= name then Util.TweenFast(st, { Transparency = 0.05, Color = ac }) end
-            end)
-            card.MouseLeave:Connect(function()
-                if Hyperion._currentThemeName ~= name then Util.TweenFast(st, { Transparency = 0.5, Color = Hyperion.Theme.BorderLight }) end
-            end)
-            card.MouseButton1Click:Connect(function()
-                Hyperion:SetTheme(name)
-                paint(name)
-                Hyperion:Notify({ Title = "Theme", Content = name .. " applied.", Type = "Info", Duration = 2 })
-            end)
-        end
-
-        for i, cat in ipairs(CATEGORIES) do
-            addPill(cat[1], i)
-            local grid = addGrid(cat[1])
-            for _, name in ipairs(cat[2]) do addCard(grid, name) end
-        end
-
-        local customPill = addPill(CUSTOM, 99)
-        local customGrid = addGrid(CUSTOM)
-
-        local function refreshCustom()
-            for _, n in ipairs(customNames) do cards[n] = nil end
-            for _, ch in ipairs(customGrid:GetChildren()) do
-                if ch:IsA("GuiObject") then ch:Destroy() end
+            for _, name in ipairs(cat[2]) do
+                local preset = Hyperion.Themes[name]
+                if preset then
+                    local ac  = preset.Accent or Color3.fromRGB(150, 110, 255)
+                    local acL = preset.AccentLight or ac
+                    local card = Util.Create("TextButton", {
+                        BackgroundColor3 = preset.Background or Theme.Background, Text = "",
+                        AutoButtonColor = false, BorderSizePixel = 0, Parent = grid,
+                    })
+                    Util.AddCorner(card, UDim.new(0, 6))
+                    local st = Util.AddStroke(card, Theme.BorderLight, 1, 0.5)
+                    -- accent "titlebar" (mini-window look) with a soft gradient
+                    local bar = Util.Create("Frame", {
+                        BackgroundColor3 = ac, Size = UDim2.new(1, -12, 0, 13),
+                        Position = UDim2.new(0, 6, 0, 6), BorderSizePixel = 0, Parent = card,
+                    })
+                    Util.AddCorner(bar, UDim.new(0, 3))
+                    Util.Create("UIGradient", { Color = ColorSequence.new(ac, acL), Rotation = 12, Parent = bar })
+                    -- content-line hint in the theme's surface color
+                    local chip = Util.Create("Frame", {
+                        BackgroundColor3 = preset.SurfaceLight or preset.Surface or Theme.Surface,
+                        Size = UDim2.new(0.55, 0, 0, 4), Position = UDim2.new(0, 6, 0, 23),
+                        BorderSizePixel = 0, Parent = card,
+                    })
+                    Util.AddCorner(chip, UDim.new(0, 2))
+                    Util.Create("TextLabel", {
+                        BackgroundTransparency = 1, Size = UDim2.new(1, -24, 0, 13),
+                        Position = UDim2.new(0, 6, 1, -17), Text = name,
+                        TextColor3 = preset.Text or Theme.Text, FontFace = Theme.FontMedium, TextSize = 11,
+                        TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Parent = card,
+                    })
+                    local check = Util.Create("TextLabel", {
+                        BackgroundTransparency = 1, Size = UDim2.new(0, 13, 0, 13),
+                        Position = UDim2.new(1, -15, 1, -17), Text = "✓", TextColor3 = ac,
+                        FontFace = Theme.FontBold, TextSize = 12, TextTransparency = 1, Parent = card,
+                    })
+                    cards[name] = { stroke = st, check = check, accent = ac }
+                    card.MouseEnter:Connect(function()
+                        if Hyperion._currentThemeName ~= name then Util.TweenFast(st, { Transparency = 0.05, Color = ac }) end
+                    end)
+                    card.MouseLeave:Connect(function()
+                        if Hyperion._currentThemeName ~= name then Util.TweenFast(st, { Transparency = 0.5, Color = Hyperion.Theme.BorderLight }) end
+                    end)
+                    card.MouseButton1Click:Connect(function()
+                        Hyperion:SetTheme(name)
+                        paint(name)
+                        Hyperion:Notify({ Title = "Theme", Content = name .. " applied.", Type = "Info", Duration = 2 })
+                    end)
+                end
             end
-            customNames = {}
-            for n in pairs(Hyperion.Themes) do
-                if not inCategory[n] then customNames[#customNames + 1] = n end
-            end
-            table.sort(customNames, function(a, b) return string.lower(a) < string.lower(b) end)
-            for _, n in ipairs(customNames) do addCard(customGrid, n) end
-            customPill.Visible = #customNames > 0
-            if activeCat == CUSTOM and #customNames == 0 then showCategory(CATEGORIES[1][1]) end
-            paint(Hyperion._currentThemeName)
         end
-        Hyperion._galleryRefresh = refreshCustom
-        refreshCustom()
 
-        local start = categoryOf(Hyperion._currentThemeName) or Hyperion._galleryCat
-        if not (start and blocks[start]) then start = CATEGORIES[1][1] end
-        showCategory(start)
         paint(Hyperion._currentThemeName or "Hyperion")
-
-        local repaintQueued = false
-        pcall(function()
-            Hyperion:OnThemeChanged(function()
-                if repaintQueued then return end
-                repaintQueued = true
-                task.defer(function()
-                    repaintQueued = false
-                    paint(Hyperion._currentThemeName)
-                    paintPills()
-                end)
-            end)
-        end)
+        pcall(function() Hyperion:OnThemeChanged(function() paint(Hyperion._currentThemeName) end) end)
         return sec
     end
+
     function WindowObj:AddBackgroundImage(sec)
         Util.BgRestore()
         local v = Util._bgi
