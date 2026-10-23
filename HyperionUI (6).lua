@@ -1307,6 +1307,58 @@ Hyperion.Themes = {
         SliderBg     = Color3.fromRGB(40, 41, 66),
         InputBg      = Color3.fromRGB(26, 26, 46),
     },
+    ["Windows XP"] = {
+        Logo         = nil,
+        Animated     = true,
+        TitleText    = "Hyperion XP",
+        StarColor    = Color3.fromRGB(255, 255, 255),
+        StarColors   = {
+            Color3.fromRGB(255, 255, 255),
+            Color3.fromRGB(244, 249, 255),
+            Color3.fromRGB(236, 244, 255),
+            Color3.fromRGB(255, 252, 245),
+            Color3.fromRGB(228, 240, 255),
+        },
+        ParticleStyle = "clouds",
+        TitleGradient = {
+            ColorSequenceKeypoint.new(0,   Color3.fromRGB(0, 48, 176)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(40, 120, 240)),
+            ColorSequenceKeypoint.new(1,   Color3.fromRGB(0, 48, 176)),
+        },
+        LogoGradient = {
+            ColorSequenceKeypoint.new(0,    Color3.fromRGB(244, 84, 36)),
+            ColorSequenceKeypoint.new(0.34, Color3.fromRGB(96, 190, 60)),
+            ColorSequenceKeypoint.new(0.67, Color3.fromRGB(36, 132, 242)),
+            ColorSequenceKeypoint.new(1,    Color3.fromRGB(252, 198, 36)),
+        },
+        GradientStops = {
+            {0,    Color3.fromRGB(150, 196, 255)},
+            {0.3,  Color3.fromRGB(198, 226, 255)},
+            {0.55, Color3.fromRGB(205, 236, 180)},
+            {0.8,  Color3.fromRGB(190, 222, 255)},
+            {1,    Color3.fromRGB(150, 196, 255)},
+        },
+        Accent       = Color3.fromRGB(0, 84, 227),
+        AccentDark   = Color3.fromRGB(0, 52, 168),
+        AccentLight  = Color3.fromRGB(61, 149, 255),
+        AccentGlow   = Color3.fromRGB(49, 106, 197),
+        AccentSub    = Color3.fromRGB(59, 167, 60),
+        Background   = Color3.fromRGB(236, 233, 216),
+        Surface      = Color3.fromRGB(255, 255, 255),
+        SurfaceLight = Color3.fromRGB(245, 244, 234),
+        SurfaceHover = Color3.fromRGB(236, 233, 216),
+        SurfaceActive= Color3.fromRGB(225, 222, 203),
+        Sidebar      = Color3.fromRGB(214, 223, 247),
+        SidebarActive= Color3.fromRGB(186, 203, 240),
+        Text         = Color3.fromRGB(16, 16, 16),
+        TextDim      = Color3.fromRGB(72, 70, 64),
+        TextMuted    = Color3.fromRGB(120, 117, 105),
+        Border       = Color3.fromRGB(196, 192, 176),
+        BorderLight  = Color3.fromRGB(146, 142, 126),
+        ToggleOff    = Color3.fromRGB(206, 203, 188),
+        SliderBg     = Color3.fromRGB(222, 219, 204),
+        InputBg      = Color3.fromRGB(255, 255, 255),
+    },
     ["Vivid Nightfall"] = {
         Logo         = nil,
         Animated     = true,
@@ -1863,6 +1915,47 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
             end
         end)
     end
+    local function spawnCloud(atX)
+        if not isAlive() then return end
+        local W, H = getCanvasSize()
+        local w = math.random(90, 170)
+        local h = math.floor(w * 0.36)
+        local y = math.random(math.floor(H * 0.06), math.floor(H * 0.62))
+        local startX = atX or -w
+        local tr = math.random(18, 40) / 100
+        local col = getParticleColor()
+        local cloud = Instance.new("Frame")
+        cloud.BackgroundTransparency = 1
+        cloud.ClipsDescendants = false
+        cloud.Size = UDim2.fromOffset(w, h)
+        cloud.AnchorPoint = Vector2.new(0, 0.5)
+        cloud.Position = UDim2.fromOffset(startX, y)
+        cloud.ZIndex = 2
+        cloud.Parent = mParent
+        local function puff(px, py, pw, ph)
+            local f = Instance.new("Frame")
+            f.BackgroundColor3 = col
+            f.BackgroundTransparency = tr
+            f.BorderSizePixel = 0
+            f.AnchorPoint = Vector2.new(0.5, 0.5)
+            f.Size = UDim2.new(pw, 0, ph, 0)
+            f.Position = UDim2.new(px, 0, py, 0)
+            f.ZIndex = 2
+            f.Parent = cloud
+            Instance.new("UICorner", f).CornerRadius = UDim.new(0.5, 0)
+        end
+        puff(0.5, 0.72, 1.0, 0.5)
+        puff(0.26, 0.5, 0.34, 0.7)
+        puff(0.5, 0.36, 0.42, 0.9)
+        puff(0.74, 0.55, 0.32, 0.64)
+        table.insert(Hyperion._starFrames, cloud)
+        table.insert(activeParticles, {
+            type = "cloud", frame = cloud, alive = true,
+            x = startX, y = y, speed = math.random(7, 16),
+            bob = math.random(2, 6), bobSpeed = math.random(4, 9) / 10,
+            phase = math.random(0, 628) / 100, time = 0, maxX = W + 20,
+        })
+    end
     -- PETALS: sakura leaves that sway side to side (Sakura)
     local function spawnPetal()
         if not isAlive() then return end
@@ -2392,8 +2485,18 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
         snowflakes = spawnSnowflake,
         halloween = spawnHalloween, strawberry = spawnStrawberry,
         sparks = spawnSpark, easter = spawnEgg, spring = spawnSpring,
+        clouds = spawnCloud,
     }
     local spawnFunc = spawnFn[pStyle] or noSpawn
+
+    if pStyle == "clouds" then
+        task.defer(function()
+            task.wait(0.15)
+            if not isAlive() then return end
+            local W = getCanvasSize()
+            for _ = 1, 5 do spawnCloud(math.random(0, math.max(1, W - 60)) - 40) end
+        end)
+    end
 
     if pStyle == "stars" then
         task.defer(function()
@@ -2418,6 +2521,7 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
         sparks = {2, 5},
         easter = {6, 12},
         spring = {5, 10},
+        clouds = {50, 90},
     }
     local iRange = intervalRange[pStyle] or {14, 28}
 
@@ -2429,7 +2533,14 @@ local function _startStarfield(parent, starColor, meteorParent, particleStyle, s
             local p = activeParticles[i]
             if not p.alive then table.remove(activeParticles, i); continue end
 
-            if p.type == "petal" then
+            if p.type == "cloud" then
+                if not p.frame or not p.frame.Parent then p.alive = false; table.remove(activeParticles, i); continue end
+                p.time = p.time + dt
+                p.x = p.x + p.speed * dt
+                p.frame.Position = UDim2.fromOffset(p.x, p.y + math.sin(p.time * p.bobSpeed + p.phase) * p.bob)
+                if p.x > p.maxX then p.alive = false; if p.frame.Parent then p.frame:Destroy() end end
+
+            elseif p.type == "petal" then
                 if not p.frame or not p.frame.Parent then p.alive = false; table.remove(activeParticles, i); continue end
                 p.time = p.time + dt
                 p.y = p.y + p.speed * dt
@@ -8681,7 +8792,7 @@ function Hyperion:CreateWindow(config)
         {key="GradB",        label="Grad 2", anim=true, default=Color3.fromRGB(30, 42, 96)},
         {key="StarColor",    label="Stars",  anim=true, default=Color3.fromRGB(180, 205, 255)},
     }
-    local THEME_STYLES = { "stars", "petals", "hearts", "snowflakes", "embers", "bubbles", "paws", "wisps", "orbs", "gridlines", "halloween", "strawberry", "sparks", "easter", "spring" }
+    local THEME_STYLES = { "stars", "petals", "hearts", "snowflakes", "embers", "bubbles", "paws", "wisps", "orbs", "gridlines", "halloween", "strawberry", "sparks", "easter", "spring", "clouds" }
     local working = {}
     for _, f in ipairs(THEME_FIELDS) do working[f.key] = Theme[f.key] or f.default end
     working.Animated = Theme.Animated == true
@@ -13102,7 +13213,7 @@ function Hyperion:CreateWindow(config)
         })
 
         local CATEGORIES = {
-            { "Featured",    { "Scarlet", "Rose Gold", "Christmas", "Vivid Nightfall", "Pastel Rainbow Fantasy", "Soft Pink Delight", "Soft Lavender" } },
+            { "Featured",    { "Windows XP", "Scarlet", "Rose Gold", "Christmas", "Vivid Nightfall", "Pastel Rainbow Fantasy", "Soft Pink Delight", "Soft Lavender" } },
             { "Signature",   { "Hyperion", "Purple", "Midnight", "Nebula", "Dracula" } },
             { "Cool",        { "Ocean", "StarryNight", "Aurora", "Nord", "Mint" } },
             { "Warm",        { "Sunset", "Crimson", "Royal Gold", "Coffee", "Halloween" } },
