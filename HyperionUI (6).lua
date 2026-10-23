@@ -1336,12 +1336,17 @@ Hyperion.Themes = {
         },
         CornerRadius = UDim.new(0, 3),
         CornerSmall  = UDim.new(0, 2),
-        CornerLarge  = UDim.new(0, 8),
+        CornerLarge  = UDim.new(0, 4),
         Font         = Font.fromEnum(Enum.Font.Arial),
         FontMedium   = Font.new(Font.fromEnum(Enum.Font.Arial).Family, Enum.FontWeight.Medium, Enum.FontStyle.Normal),
         FontSemiBold = Font.new(Font.fromEnum(Enum.Font.Arial).Family, Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
         FontBold     = Font.fromEnum(Enum.Font.ArialBold),
         Skin = {
+            CornerCap = 2,
+            Bevel = {
+                Raised = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(113, 111, 100) },
+                Sunken = { Color3.fromRGB(113, 111, 100), Color3.fromRGB(255, 255, 255) },
+            },
             TitleBar = {
                 Gradient = {
                     ColorSequenceKeypoint.new(0,    Color3.fromRGB(10, 98, 244)),
@@ -3301,6 +3306,7 @@ function Util.ControlAdd(obj, prop, opts)
     local item = { prop = prop, orig = obj[prop], keep = opts and opts.keep, cap = opts and opts.cap }
     Util._ctl.items[obj] = item
     if Util._ctl.on then obj[prop] = Util.ControlTarget(item) end
+    if opts and opts.bevel then Util.BevelAdd(obj, opts.bevel == "sunken") end
 end
 
 function Util.ControlRefresh(obj)
@@ -3365,6 +3371,7 @@ end
 
 function Util.SkinApply(cfg)
     local s = Util._skin
+    if cfg == nil and s.cfg == nil then return end
     s.cfg = cfg
     for i = #s.handlers, 1, -1 do
         local h = s.handlers[i]
@@ -3375,10 +3382,17 @@ end
 function Util.StyleApply(preset)
     local th = Hyperion.Theme
     local cl = Util._cornerLast
-    if not (cl[1] == th.CornerRadius and cl[2] == th.CornerSmall and cl[3] == th.CornerLarge) then
+    local cap = preset and preset.Skin and preset.Skin.CornerCap or nil
+    if not (cl[1] == th.CornerRadius and cl[2] == th.CornerSmall and cl[3] == th.CornerLarge and Util._cornerCap == cap) then
         Util._cornerLast = { th.CornerRadius, th.CornerSmall, th.CornerLarge }
-        for corner, role in pairs(Util._corners) do
-            if corner.Parent then corner.CornerRadius = th[role] else Util._corners[corner] = nil end
+        Util._cornerCap = cap
+        for corner, rec in pairs(Util._corners) do
+            if corner.Parent then
+                local target = Util.CornerTarget(rec)
+                if corner.CornerRadius ~= target then corner.CornerRadius = target end
+            else
+                Util._corners[corner] = nil
+            end
         end
     end
     local fl = Util._fontLast
@@ -5109,15 +5123,53 @@ function Util.AttachTooltip(obj, text)
     end)
 end
 
+function Util.CornerTarget(rec)
+    local cap = Util._cornerCap
+    if cap and rec.role ~= "CornerLarge" then
+        local b = rec.base
+        if b.Scale ~= 0 then return UDim.new(0, cap) end
+        return UDim.new(0, math.min(b.Offset, cap))
+    end
+    if rec.role then return Hyperion.Theme[rec.role] end
+    return rec.base
+end
+
 function Util.AddCorner(parent, radius)
     local th = Hyperion.Theme
     local r = radius or th.CornerRadius
     local corner = Util.Create("UICorner", {CornerRadius = r, Parent = parent})
+    local role
     if r.Scale == 0 then
-        local role = (r == th.CornerRadius and "CornerRadius") or (r == th.CornerSmall and "CornerSmall") or (r == th.CornerLarge and "CornerLarge") or nil
-        if role then Util._corners[corner] = role end
+        role = (r == th.CornerRadius and "CornerRadius") or (r == th.CornerSmall and "CornerSmall") or (r == th.CornerLarge and "CornerLarge") or nil
     end
+    local rec = { role = role, base = r }
+    Util._corners[corner] = rec
+    if Util._cornerCap then corner.CornerRadius = Util.CornerTarget(rec) end
     return corner
+end
+
+function Util.BevelAdd(obj, sunken)
+    local stroke = Util.Create("UIStroke", {
+        Name = "XpBevel",
+        Thickness = 1,
+        Enabled = false,
+        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+        Parent = obj
+    })
+    local grad = Util.Create("UIGradient", { Rotation = 90, Parent = stroke })
+    Util.SkinAdd(obj, function(sk)
+        local b = sk and sk.Bevel
+        stroke.Enabled = b ~= nil
+        if b then
+            local c = sunken and b.Sunken or b.Raised
+            grad.Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, c[1]),
+                ColorSequenceKeypoint.new(0.499, c[1]),
+                ColorSequenceKeypoint.new(0.5, c[2]),
+                ColorSequenceKeypoint.new(1, c[2]),
+            })
+        end
+    end)
 end
 
 function Util.AddStroke(parent, color, thickness, transparency)
@@ -11265,7 +11317,7 @@ function Hyperion:CreateWindow(config)
                 })
                 Util.AddCorner(Track, isBox and UDim.new(0, 5) or UDim.new(1, 0))
                 Themed(Track, { BackgroundColor3 = function(t) return value and t.Accent or t.ToggleOff end })
-                Util.ControlAdd(Track, "BackgroundTransparency", { keep = function() return value end })
+                Util.ControlAdd(Track, "BackgroundTransparency", { keep = function() return value end, bevel = "sunken" })
 
                 -- Accent gradient across the track while active; disabled when
                 -- off so the flat ToggleOff colour shows through.
@@ -11405,7 +11457,7 @@ function Hyperion:CreateWindow(config)
                     })
                     Util.AddCorner(Chip, UDim.new(0, 4))
                     Themed(Chip, { BackgroundColor3 = function(t) return t.SurfaceActive end })
-                    Util.ControlAdd(Chip, "BackgroundTransparency")
+                    Util.ControlAdd(Chip, "BackgroundTransparency", { bevel = "raised" })
                     local listening = false
                     Chip.MouseButton1Click:Connect(function()
                         listening = true
@@ -11641,7 +11693,7 @@ function Hyperion:CreateWindow(config)
                 })
                 Util.AddCorner(Track, UDim.new(1, 0))
                 Themed(Track, { BackgroundColor3 = function(t) return t.SliderBg end })
-                Util.ControlAdd(Track, "BackgroundTransparency", { cap = 0.8 })
+                Util.ControlAdd(Track, "BackgroundTransparency", { cap = 0.8, bevel = "sunken" })
 
                 local ratio = (value - min) / math.max(max - min, 0.001)
 
@@ -11898,7 +11950,7 @@ function Hyperion:CreateWindow(config)
                 })
                 _regSearch(name, Btn, "Button", cfg)
                 Util.AddCorner(Btn, Theme.CornerSmall)
-                Util.ControlAdd(Btn, "BackgroundTransparency", { cap = primary and 0.55 or nil })
+                Util.ControlAdd(Btn, "BackgroundTransparency", { cap = primary and 0.55 or nil, bevel = "raised" })
                 local _btnStroke = Util.AddStroke(Btn, primary and Theme.AccentLight or Theme.Border, 1, primary and 0.5 or 0.45)
                 Themed(_btnStroke, { Color = function(t) return primary and t.AccentLight or t.Border end })
 
@@ -12048,7 +12100,7 @@ function Hyperion:CreateWindow(config)
                     Parent = Frame
                 })
                 Util.AddCorner(DropBtn, Theme.CornerSmall)
-                Util.ControlAdd(DropBtn, "BackgroundTransparency")
+                Util.ControlAdd(DropBtn, "BackgroundTransparency", { bevel = "sunken" })
                 local dropStroke = Util.AddStroke(DropBtn, Theme.BorderLight, 1, 0.25)
                 Themed(DropBtn, { BackgroundColor3 = function(t) return t.SurfaceLight end })
                 Themed(dropStroke, { Color = function(t) return opened and t.Accent or t.BorderLight end })
@@ -12566,7 +12618,7 @@ function Hyperion:CreateWindow(config)
                     Parent = Frame
                 })
                 Util.AddCorner(Input, Theme.CornerSmall)
-                Util.ControlAdd(Input, "BackgroundTransparency")
+                Util.ControlAdd(Input, "BackgroundTransparency", { bevel = "sunken" })
                 local inputStroke = Util.AddStroke(Input, Theme.BorderLight, 1, 0.25)
                 Util.AddPadding(Input, 0, 8, 0, 8)
                 Themed(Input, {
@@ -12650,7 +12702,7 @@ function Hyperion:CreateWindow(config)
                     Parent = Frame
                 })
                 Util.AddCorner(KbBtn, Theme.CornerSmall)
-                Util.ControlAdd(KbBtn, "BackgroundTransparency")
+                Util.ControlAdd(KbBtn, "BackgroundTransparency", { bevel = "raised" })
                 local kbStroke = Util.AddStroke(KbBtn, Theme.BorderLight, 1, 0.25)
                 Themed(KbBtn, {
                     BackgroundColor3 = function(t) return t.SurfaceLight end,
