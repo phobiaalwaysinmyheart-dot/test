@@ -214,6 +214,9 @@ Hyperion.Theme = {
 }
 Hyperion._currentThemeName = "Hyperion"
 Hyperion.AnimatedEffects = true
+Hyperion._StyleKeys = { "CornerRadius", "CornerSmall", "CornerLarge", "Font", "FontMedium", "FontSemiBold", "FontBold" }
+Hyperion._StyleDefaults = {}
+for _, k in ipairs(Hyperion._StyleKeys) do Hyperion._StyleDefaults[k] = Hyperion.Theme[k] end
 
 Hyperion.Lucide = {
     Save       = "rbxassetid://10734941499",  -- lucide-save
@@ -1321,15 +1324,51 @@ Hyperion.Themes = {
         },
         ParticleStyle = "clouds",
         TitleGradient = {
-            ColorSequenceKeypoint.new(0,   Color3.fromRGB(0, 48, 176)),
-            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(40, 120, 240)),
-            ColorSequenceKeypoint.new(1,   Color3.fromRGB(0, 48, 176)),
+            ColorSequenceKeypoint.new(0,   Color3.fromRGB(255, 255, 255)),
+            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(222, 234, 255)),
+            ColorSequenceKeypoint.new(1,   Color3.fromRGB(255, 255, 255)),
         },
         LogoGradient = {
             ColorSequenceKeypoint.new(0,    Color3.fromRGB(244, 84, 36)),
             ColorSequenceKeypoint.new(0.34, Color3.fromRGB(96, 190, 60)),
-            ColorSequenceKeypoint.new(0.67, Color3.fromRGB(36, 132, 242)),
+            ColorSequenceKeypoint.new(0.67, Color3.fromRGB(96, 168, 255)),
             ColorSequenceKeypoint.new(1,    Color3.fromRGB(252, 198, 36)),
+        },
+        CornerRadius = UDim.new(0, 3),
+        CornerSmall  = UDim.new(0, 2),
+        CornerLarge  = UDim.new(0, 8),
+        Font         = Font.fromEnum(Enum.Font.Arial),
+        FontMedium   = Font.new(Font.fromEnum(Enum.Font.Arial).Family, Enum.FontWeight.Medium, Enum.FontStyle.Normal),
+        FontSemiBold = Font.new(Font.fromEnum(Enum.Font.Arial).Family, Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
+        FontBold     = Font.fromEnum(Enum.Font.ArialBold),
+        Skin = {
+            TitleBar = {
+                Gradient = {
+                    ColorSequenceKeypoint.new(0,    Color3.fromRGB(10, 98, 244)),
+                    ColorSequenceKeypoint.new(0.06, Color3.fromRGB(70, 150, 255)),
+                    ColorSequenceKeypoint.new(0.2,  Color3.fromRGB(8, 110, 248)),
+                    ColorSequenceKeypoint.new(0.75, Color3.fromRGB(0, 86, 230)),
+                    ColorSequenceKeypoint.new(1,    Color3.fromRGB(0, 66, 200)),
+                },
+                Bottom = Color3.fromRGB(0, 66, 200),
+                Edge   = Color3.fromRGB(0, 40, 140),
+            },
+            Frame = { Color = Color3.fromRGB(0, 66, 200), Thickness = 3 },
+            SectionHeader = {
+                Gradient = {
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(198, 211, 247)),
+                },
+                Text = Color3.fromRGB(0, 51, 153),
+            },
+            Caption = {
+                Gradient = {
+                    ColorSequenceKeypoint.new(0, Color3.fromRGB(96, 164, 255)),
+                    ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 76, 229)),
+                },
+                Border = Color3.fromRGB(255, 255, 255),
+                Glyph  = Color3.fromRGB(255, 255, 255),
+            },
         },
         GradientStops = {
             {0,    Color3.fromRGB(150, 196, 255)},
@@ -1547,7 +1586,7 @@ function Hyperion._LiftText(t)
 end
 
 for k, v in pairs(Hyperion.Themes.Hyperion) do
-    if k ~= "Logo" and k ~= "GradientStops" and k ~= "GradientMid" and k ~= "Animated" and k ~= "StarColor" and k ~= "ParticleStyle" and k ~= "StarColors" and k ~= "TitleGradient" and k ~= "LogoGradient" and k ~= "BackgroundImage" and k ~= "BackgroundTint" and k ~= "TitleText" then
+    if k ~= "Logo" and k ~= "GradientStops" and k ~= "GradientMid" and k ~= "Animated" and k ~= "StarColor" and k ~= "ParticleStyle" and k ~= "StarColors" and k ~= "TitleGradient" and k ~= "LogoGradient" and k ~= "BackgroundImage" and k ~= "BackgroundTint" and k ~= "TitleText" and k ~= "Skin" then
         Hyperion.Theme[k] = v
     end
 end
@@ -1581,9 +1620,12 @@ function Hyperion:SetTheme(nameOrTable)
     -- Store the logo override so windows can read it
     Hyperion._themeLogo = preset.Logo or nil
     for k, v in pairs(preset) do
-        if k ~= "Logo" and k ~= "GradientStops" and k ~= "GradientMid" and k ~= "Animated" and k ~= "StarColor" and k ~= "ParticleStyle" and k ~= "StarColors" and k ~= "TitleGradient" and k ~= "LogoGradient" and k ~= "BackgroundImage" and k ~= "BackgroundTint" and k ~= "TitleText" then
+        if k ~= "Logo" and k ~= "GradientStops" and k ~= "GradientMid" and k ~= "Animated" and k ~= "StarColor" and k ~= "ParticleStyle" and k ~= "StarColors" and k ~= "TitleGradient" and k ~= "LogoGradient" and k ~= "BackgroundImage" and k ~= "BackgroundTint" and k ~= "TitleText" and k ~= "Skin" then
             Hyperion.Theme[k] = v
         end
+    end
+    for _, k in ipairs(Hyperion._StyleKeys) do
+        if preset[k] == nil then Hyperion.Theme[k] = Hyperion._StyleDefaults[k] end
     end
     Hyperion._LiftText(Hyperion.Theme)
     for _, fn in ipairs(Hyperion.ThemeListeners) do
@@ -2827,6 +2869,7 @@ function Hyperion:SetTheme(nameOrTable)
     else
         _stopStarfield()
     end
+    if Hyperion._styleApply then Hyperion._styleApply(preset) end
 end
 
 function Hyperion:SetAnimatedEffects(v)
@@ -2847,12 +2890,23 @@ end
 ----------------------------------------------------------------
 local Util = {}
 
+Util._corners = setmetatable({}, { __mode = "k" })
+Util._fonts = setmetatable({}, { __mode = "k" })
+Util._cornerLast = { Hyperion.Theme.CornerRadius, Hyperion.Theme.CornerSmall, Hyperion.Theme.CornerLarge }
+Util._fontLast = { Hyperion.Theme.Font, Hyperion.Theme.FontMedium, Hyperion.Theme.FontSemiBold, Hyperion.Theme.FontBold }
+
 function Util.Create(class, props, children)
     local inst = Instance.new(class)
     for k, v in pairs(props or {}) do
         if k ~= "Parent" then
             inst[k] = v
         end
+    end
+    local face = props and props.FontFace
+    if face then
+        local th = Hyperion.Theme
+        local role = (face == th.Font and "Font") or (face == th.FontMedium and "FontMedium") or (face == th.FontSemiBold and "FontSemiBold") or (face == th.FontBold and "FontBold") or nil
+        if role then Util._fonts[inst] = role end
     end
     for _, child in ipairs(children or {}) do
         child.Parent = inst
@@ -3293,6 +3347,50 @@ function Util.ChromeApply(hidden)
         end
     end
 end
+
+function Util.ChromeSetOrig(obj, value)
+    local item = Util._chrome.items[obj]
+    if not item then return end
+    item.orig = value
+    if not Util._chrome.hidden and obj.Parent then obj[item.prop] = value end
+end
+
+Util._skin = { cfg = nil, handlers = {} }
+
+function Util.SkinAdd(owner, fn)
+    local s = Util._skin
+    s.handlers[#s.handlers + 1] = { owner = owner, fn = fn }
+    fn(s.cfg)
+end
+
+function Util.SkinApply(cfg)
+    local s = Util._skin
+    s.cfg = cfg
+    for i = #s.handlers, 1, -1 do
+        local h = s.handlers[i]
+        if h.owner.Parent then h.fn(cfg) else table.remove(s.handlers, i) end
+    end
+end
+
+function Util.StyleApply(preset)
+    local th = Hyperion.Theme
+    local cl = Util._cornerLast
+    if not (cl[1] == th.CornerRadius and cl[2] == th.CornerSmall and cl[3] == th.CornerLarge) then
+        Util._cornerLast = { th.CornerRadius, th.CornerSmall, th.CornerLarge }
+        for corner, role in pairs(Util._corners) do
+            if corner.Parent then corner.CornerRadius = th[role] else Util._corners[corner] = nil end
+        end
+    end
+    local fl = Util._fontLast
+    if not (fl[1] == th.Font and fl[2] == th.FontMedium and fl[3] == th.FontSemiBold and fl[4] == th.FontBold) then
+        Util._fontLast = { th.Font, th.FontMedium, th.FontSemiBold, th.FontBold }
+        for inst, role in pairs(Util._fonts) do
+            if inst.Parent then inst.FontFace = th[role] else Util._fonts[inst] = nil end
+        end
+    end
+    Util.SkinApply(preset and preset.Skin or nil)
+end
+Hyperion._styleApply = Util.StyleApply
 
 Util._bgi = {
     on = false, full = false, src = "", tint = 0.45, glass = 0.25, asset = nil,
@@ -5012,7 +5110,14 @@ function Util.AttachTooltip(obj, text)
 end
 
 function Util.AddCorner(parent, radius)
-    return Util.Create("UICorner", {CornerRadius = radius or Hyperion.Theme.CornerRadius, Parent = parent})
+    local th = Hyperion.Theme
+    local r = radius or th.CornerRadius
+    local corner = Util.Create("UICorner", {CornerRadius = r, Parent = parent})
+    if r.Scale == 0 then
+        local role = (r == th.CornerRadius and "CornerRadius") or (r == th.CornerSmall and "CornerSmall") or (r == th.CornerLarge and "CornerLarge") or nil
+        if role then Util._corners[corner] = role end
+    end
+    return corner
 end
 
 function Util.AddStroke(parent, color, thickness, transparency)
@@ -6658,6 +6763,106 @@ function Hyperion:CreateWindow(config)
     LogoContainer.ZIndex = 5
     Util.ChromeAdd(Sidebar, "BackgroundTransparency", 1)
     Util.ChromeAdd(Sidebar:FindFirstChild("RightFix"), "BackgroundTransparency", 1)
+
+    ;(function()
+        local TitleBar = Util.Create("Frame", {
+            Name = "XpTitleBar",
+            BackgroundColor3 = Color3.new(1, 1, 1),
+            BorderSizePixel = 0,
+            Size = UDim2.new(1, 0, 0, HeaderHeight),
+            Position = UDim2.new(0, 0, 0, 0),
+            ZIndex = 4,
+            Visible = false,
+            Parent = MainFrame
+        })
+        Util.AddCorner(TitleBar, Theme.CornerLarge)
+        local barGrad = Util.Create("UIGradient", { Rotation = 90, Parent = TitleBar })
+        local barFix = Util.Create("Frame", {
+            Name = "BottomFix",
+            BackgroundColor3 = Color3.new(0, 0, 0),
+            BorderSizePixel = 0,
+            Size = UDim2.new(1, 0, 0, 10),
+            Position = UDim2.new(0, 0, 1, -10),
+            ZIndex = 4,
+            Parent = TitleBar
+        })
+        local barEdge = Util.Create("Frame", {
+            Name = "Edge",
+            BackgroundColor3 = Color3.new(0, 0, 0),
+            BorderSizePixel = 0,
+            Size = UDim2.new(1, 0, 0, 1),
+            Position = UDim2.new(0, 0, 1, -1),
+            ZIndex = 5,
+            Parent = TitleBar
+        })
+        local leftFix = Header:FindFirstChild("LeftFix")
+        Util.SkinAdd(TitleBar, function(sk)
+            local tb = sk and sk.TitleBar
+            TitleBar.Visible = tb ~= nil
+            if tb then
+                barGrad.Color = ColorSequence.new(tb.Gradient)
+                barFix.BackgroundColor3 = tb.Bottom
+                barEdge.BackgroundColor3 = tb.Edge
+                if LogoContainer.Parent ~= TitleBar then LogoContainer.Parent = TitleBar end
+                LogoContainer.Size = UDim2.new(0, SidebarWidth - 8, 0, HeaderHeight)
+            else
+                if LogoContainer.Parent ~= Sidebar then LogoContainer.Parent = Sidebar end
+                LogoContainer.Size = UDim2.new(1, -8, 0, HeaderHeight)
+            end
+            local clear = tb and 1 or 0
+            Util.ChromeSetOrig(Header, clear)
+            Util.ChromeSetOrig(_headerBottomFix, clear)
+            Util.ChromeSetOrig(leftFix, clear)
+            local fr = sk and sk.Frame
+            if fr then
+                _mfStroke.Color, _mfStroke.Thickness, _mfStroke.Transparency = fr.Color, fr.Thickness, 0
+            else
+                _mfStroke.Color, _mfStroke.Thickness, _mfStroke.Transparency = Hyperion.Theme.Border, 1, 0.2
+            end
+        end)
+
+        local function captionSkin(btn, kind)
+            local ov = Util.Create("Frame", {
+                Name = "XpCaption",
+                BackgroundColor3 = Color3.new(1, 1, 1),
+                BorderSizePixel = 0,
+                Size = UDim2.new(1, 0, 1, 0),
+                ZIndex = 9,
+                Visible = false,
+                Parent = btn
+            })
+            Util.AddCorner(ov, Theme.CornerSmall)
+            local grad = Util.Create("UIGradient", { Rotation = 90, Parent = ov })
+            local edge = Util.AddStroke(ov, Color3.new(1, 1, 1), 1.5, 0)
+            local glyph
+            if kind == "min" then
+                glyph = Util.Create("Frame", {
+                    BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0,
+                    Size = UDim2.new(0, 8, 0, 3), AnchorPoint = Vector2.new(0.5, 0.5),
+                    Position = UDim2.new(0.5, 0, 0.5, 4), ZIndex = 10, Parent = ov
+                })
+            else
+                glyph = Util.Create("Frame", {
+                    BackgroundTransparency = 1, BorderSizePixel = 0,
+                    Size = UDim2.new(0, 9, 0, 8), AnchorPoint = Vector2.new(0.5, 0.5),
+                    Position = UDim2.new(0.5, 0, 0.5, 0), ZIndex = 10, Parent = ov
+                })
+            end
+            local glyphStroke = kind ~= "min" and Util.AddStroke(glyph, Color3.new(1, 1, 1), 1.5, 0) or nil
+            Util.SkinAdd(ov, function(sk)
+                local c = sk and sk.Caption
+                ov.Visible = c ~= nil
+                if c then
+                    grad.Color = ColorSequence.new(c.Gradient)
+                    edge.Color = c.Border
+                    if glyphStroke then glyphStroke.Color = c.Glyph else glyph.BackgroundColor3 = c.Glyph end
+                end
+            end)
+        end
+        local minBtn, fsBtn = Header:FindFirstChild("MinBtn"), Header:FindFirstChild("FullscreenBtn")
+        if minBtn then captionSkin(minBtn, "min") end
+        if fsBtn then captionSkin(fsBtn, "max") end
+    end)()
 
 
 
@@ -10944,6 +11149,28 @@ function Hyperion:CreateWindow(config)
                 Parent = SecHeader
             })
             Themed(_secTitle, { TextColor3 = function(t) return t.Text end })
+
+            local _xpHdr = Util.Create("Frame", {
+                Name = "XpHeader",
+                BackgroundColor3 = Color3.new(1, 1, 1),
+                BorderSizePixel = 0,
+                Size = UDim2.new(1, 0, 1, 0),
+                ZIndex = 2,
+                Visible = false,
+                Parent = SecHeader
+            })
+            local _xpHdrGrad = Util.Create("UIGradient", { Parent = _xpHdr })
+            Util.ControlAdd(_xpHdr, "BackgroundTransparency")
+            Util.SkinAdd(SecHeader, function(sk)
+                local h = sk and sk.SectionHeader
+                _xpHdr.Visible = h ~= nil
+                if h then
+                    _xpHdrGrad.Color = ColorSequence.new(h.Gradient)
+                    _secTitle.TextColor3 = h.Text
+                else
+                    _secTitle.TextColor3 = Hyperion.Theme.Text
+                end
+            end)
 
             local _secDivider = Util.Create("Frame", {
                 Name = "Divider",
