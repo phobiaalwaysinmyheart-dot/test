@@ -154,6 +154,10 @@ Hyperion.Connections  = {}
 Hyperion.ThemeListeners = {}  -- functions called whenever SetTheme fires
 Hyperion.Keybinds       = {}  -- registry of every AddKeybind entry (for the keybind HUD)
 Hyperion.KeybindListeners = {} -- functions called whenever a keybind is added or changed
+Hyperion.StreamerMode   = false
+Hyperion.KeysSuspended  = false
+Hyperion._keySlots      = {}
+Hyperion._keyStash      = nil
 Hyperion._SearchIndex   = {}  -- registry of every UI element (for feature search)
 Hyperion.FlagAPIs       = {}  -- registry of element APIs by flag (for AI actions / scripting)
 Hyperion.Version      = "3.0.0"
@@ -1664,6 +1668,52 @@ function Hyperion:OnKeybindEvent(fn)
             if v == fn then table.remove(Hyperion.KeybindListeners, i); break end
         end
     end
+end
+
+function Hyperion:_RegisterKeySlot(slot)
+    Hyperion._keySlots[#Hyperion._keySlots + 1] = slot
+    return slot
+end
+
+function Hyperion:SetStreamerMode(on)
+    on = on and true or false
+    Hyperion.StreamerMode = on
+    Hyperion.KeysSuspended = on
+    for i = 1, #Hyperion._keySlots do
+        pcall(Hyperion._keySlots[i].Refresh)
+    end
+end
+
+function Hyperion:UnbindAllKeys()
+    local stash = Hyperion._keyStash or {}
+    local n = 0
+    for i = 1, #Hyperion._keySlots do
+        local s = Hyperion._keySlots[i]
+        local k = s.Get()
+        if not s.Keep and typeof(k) == "EnumItem" and k ~= Enum.KeyCode.Unknown then
+            stash[s] = k
+            s.Set(Enum.KeyCode.Unknown)
+            n = n + 1
+        end
+    end
+    if n > 0 then Hyperion._keyStash = stash end
+    return n
+end
+
+function Hyperion:RestoreKeys()
+    local stash = Hyperion._keyStash
+    Hyperion._keyStash = nil
+    local n = 0
+    if stash then
+        for s, k in pairs(stash) do
+            local cur = s.Get()
+            if typeof(cur) ~= "EnumItem" or cur == Enum.KeyCode.Unknown then
+                s.Set(k)
+                n = n + 1
+            end
+        end
+    end
+    return n
 end
 
 ----------------------------------------------------------------
@@ -4884,7 +4934,7 @@ function Util.BuildPreview(parent, cfg)
             nextText = now + 0.1
             local text = ""
             if nd.Enabled then
-                text = string.format('(<font color="rgb(255,0,0)">E</font>) %s', LocalPlayer.Name)
+                text = string.format('(<font color="rgb(255,0,0)">E</font>) %s', Hyperion.StreamerMode and "Hidden" or LocalPlayer.Name)
             end
             if dd.Enabled and dd.Position == "Text" then
                 local dc = rbDist or dd.RGB
@@ -8957,6 +9007,9 @@ function Hyperion:CreateWindow(config)
             Util.TweenFast(bStroke, {Color = Hyperion.Theme.Accent, Transparency = 0})
             if entry.StartRebind then entry.StartRebind() end
         end)
+        Btn.MouseButton2Click:Connect(function()
+            if entry.Clear then entry.Clear() end
+        end)
         kbRows[entry] = { Btn = Btn, Stroke = bStroke }
     end
 
@@ -11446,6 +11499,12 @@ function Hyperion:CreateWindow(config)
                     local syncState = kcfg.SyncToggleState
                     if syncState == nil then syncState = true end
                     local held = false
+                    local keep = kcfg.Keep == true
+                    local function Active() return keep or not Hyperion.KeysSuspended end
+                    local function keyText()
+                        if Active() and typeof(key) == "EnumItem" and key ~= Enum.KeyCode.Unknown then return key.Name end
+                        return "None"
+                    end
                     if kcfg.Flag then Hyperion.Flags[kcfg.Flag] = key end
                     local Chip = Util.Create("TextButton", {
                         Name = "KeyChip", BackgroundColor3 = Theme.SurfaceActive,
@@ -11453,7 +11512,7 @@ function Hyperion:CreateWindow(config)
                         Size = UDim2.fromOffset(42, 20),
                         Position = UDim2.new(1, accOffset, 0.5, 0),
                         AnchorPoint = Vector2.new(1, 0.5),
-                        Text = (typeof(key) == "EnumItem") and key.Name or "None",
+                        Text = keyText(),
                         TextColor3 = Theme.TextDim, FontFace = Theme.FontMedium,
                         TextSize = 10, AutoButtonColor = false, ZIndex = 6, Parent = Frame,
                     })
@@ -11461,24 +11520,38 @@ function Hyperion:CreateWindow(config)
                     Themed(Chip, { BackgroundColor3 = function(t) return t.SurfaceActive end })
                     Util.ControlAdd(Chip, "BackgroundTransparency", { bevel = "raised" })
                     local listening = false
+                    local function setKey(k)
+                        key = k
+                        Chip.Text = keyText()
+                        if kcfg.Flag then Hyperion.Flags[kcfg.Flag] = key end
+                        if kcfg.Callback then task.spawn(kcfg.Callback, key) end
+                    end
+                    pcall(Util.AttachTooltip, Chip, "Click to rebind. Right-click or press Esc to unbind.")
                     Chip.MouseButton1Click:Connect(function()
+                        if not Active() then
+                            Hyperion:Notify({ Title = "Streamer Mode", Content = "Keybinds are hidden. Turn Streamer Mode off to change them.", Type = "Info", Duration = 3 })
+                            return
+                        end
                         listening = true
                         Chip.Text = "..."
                         Chip.TextColor3 = Hyperion.Theme.Accent
+                    end)
+                    Chip.MouseButton2Click:Connect(function()
+                        if listening or not Active() then return end
+                        setKey(Enum.KeyCode.Unknown)
                     end)
                     UserInputService.InputBegan:Connect(function(input, gp)
                         if listening then
                             if gp then return end
                             if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
                             listening = false
-                            key = input.KeyCode
-                            Chip.Text = key.Name
+                            local k = input.KeyCode
+                            local clear = k == Enum.KeyCode.Escape or k == Enum.KeyCode.Backspace or k == Enum.KeyCode.Delete
+                            setKey(clear and Enum.KeyCode.Unknown or k)
                             Chip.TextColor3 = Hyperion.Theme.TextDim
-                            if kcfg.Flag then Hyperion.Flags[kcfg.Flag] = key end
-                            if kcfg.Callback then task.spawn(kcfg.Callback, key) end
                             return
                         end
-                        if gp or typeof(key) ~= "EnumItem" or input.KeyCode ~= key then return end
+                        if gp or not Active() or typeof(key) ~= "EnumItem" or key == Enum.KeyCode.Unknown or input.KeyCode ~= key then return end
                         if holdMode then
                             held = true
                             if syncState and _setToggle then _setToggle(true) end
@@ -11494,6 +11567,12 @@ function Hyperion:CreateWindow(config)
                         if syncState and _setToggle then _setToggle(false) end
                         if kcfg.Pressed then task.spawn(kcfg.Pressed, false) end
                     end)
+                    Hyperion:_RegisterKeySlot({
+                        Name = name .. " key", Flag = kcfg.Flag, Keep = keep,
+                        Get = function() return key end,
+                        Set = setKey,
+                        Refresh = function() Chip.Text = keyText() end,
+                    })
                     accOffset = accOffset - 48
                 end
                 if hasDesc then
@@ -12658,6 +12737,10 @@ function Hyperion:CreateWindow(config)
                 local flag     = cfg.Flag
                 local value    = default
                 local listening = false
+                local keep     = cfg.Keep == true
+
+                local function Active() return keep or not Hyperion.KeysSuspended end
+                local function Shown() return Active() and value or Enum.KeyCode.Unknown end
 
                 if flag then Hyperion.Flags[flag] = value end
 
@@ -12695,7 +12778,7 @@ function Hyperion:CreateWindow(config)
                     Size = UDim2.new(0, 72, 0, 24),
                     Position = UDim2.new(1, 0, 0.5, 0),
                     AnchorPoint = Vector2.new(1, 0.5),
-                    Text = KeyName(value),
+                    Text = KeyName(Shown()),
                     TextColor3 = Theme.TextDim,
                     FontFace = Theme.FontMedium,
                     TextSize = 11,
@@ -12714,7 +12797,23 @@ function Hyperion:CreateWindow(config)
 
                 local entry = { Name = name, Flag = flag }
 
+                if not cfg.Tooltip then
+                    pcall(Util.AttachTooltip, KbBtn, "Click to rebind. Right-click or press Esc to unbind.")
+                end
+
+                local function SetKey(v)
+                    value = v
+                    if flag then Hyperion.Flags[flag] = v end
+                    KbBtn.Text = KeyName(Shown())
+                    Hyperion:_FireKeybindChanged(entry)
+                end
+
                 local function BeginListen()
+                    if not Active() then
+                        Hyperion:Notify({ Title = "Streamer Mode", Content = "Keybinds are hidden. Turn Streamer Mode off to change them.", Type = "Info", Duration = 3 })
+                        Hyperion:_FireKeybindChanged(entry)
+                        return
+                    end
                     listening = true
                     KbBtn.Text = "..."
                     Util.TweenFast(kbStroke, {Color = Hyperion.Theme.Accent, Transparency = 0})
@@ -12722,19 +12821,22 @@ function Hyperion:CreateWindow(config)
                 end
 
                 KbBtn.MouseButton1Click:Connect(BeginListen)
+                KbBtn.MouseButton2Click:Connect(function()
+                    if listening or not Active() then return end
+                    SetKey(Enum.KeyCode.Unknown)
+                end)
 
                 Util.Connect(UserInputService.InputBegan, function(input, processed)
                     if listening then
                         if input.UserInputType == Enum.UserInputType.Keyboard then
                             listening = false
-                            value = (input.KeyCode == Enum.KeyCode.Escape) and Enum.KeyCode.Unknown or input.KeyCode
-                            if flag then Hyperion.Flags[flag] = value end
-                            KbBtn.Text = KeyName(value)
+                            local k = input.KeyCode
+                            local clear = k == Enum.KeyCode.Escape or k == Enum.KeyCode.Backspace or k == Enum.KeyCode.Delete
+                            SetKey(clear and Enum.KeyCode.Unknown or k)
                             Util.TweenFast(kbStroke, {Color = Theme.Border, Transparency = 0.4})
-                            Hyperion:_FireKeybindChanged(entry)
                         end
                     else
-                        if not processed and input.KeyCode == value and value ~= Enum.KeyCode.Unknown then
+                        if not processed and Active() and input.KeyCode == value and value ~= Enum.KeyCode.Unknown then
                             task.spawn(callback, value)
                         end
                     end
@@ -12742,21 +12844,28 @@ function Hyperion:CreateWindow(config)
 
                 if flag then
                     Hyperion.FlagCallbacks[flag] = function(v)
-                        value = v
-                        Hyperion.Flags[flag] = v
-                        KbBtn.Text = KeyName(v)
-                        Hyperion:_FireKeybindChanged(entry)
+                        SetKey(v)
                     end
                 end
 
                 local API = {}
-                function API:Set(v) value = v; if flag then Hyperion.Flags[flag] = v end; KbBtn.Text = KeyName(v); Hyperion:_FireKeybindChanged(entry) end
-                function API:Get() return value end
+                function API:Set(v) SetKey(v) end
+                function API:Get() return Shown() end
 
-                entry.GetKey     = function() return value end
-                entry.KeyName    = function() return KeyName(value) end
+                entry.GetKey     = function() return Shown() end
+                entry.KeyName    = function() return KeyName(Shown()) end
                 entry.StartRebind = BeginListen
+                entry.Clear      = function() if Active() then SetKey(Enum.KeyCode.Unknown) end end
                 Hyperion:_RegisterKeybind(entry)
+                Hyperion:_RegisterKeySlot({
+                    Name = name, Flag = flag, Keep = keep,
+                    Get = function() return value end,
+                    Set = SetKey,
+                    Refresh = function()
+                        KbBtn.Text = KeyName(Shown())
+                        Hyperion:_FireKeybindChanged(entry)
+                    end,
+                })
 
                 Util.AddDesc(Elements, cfg)
                 return API
