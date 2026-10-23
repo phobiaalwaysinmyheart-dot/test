@@ -6101,6 +6101,13 @@ function Hyperion:CreateWindow(config)
     Hyperion._startGradRot = _startGradientRotation
     Hyperion._stopGradRot  = _stopGradientRotation
 
+    do
+        local fxPreset = Hyperion._currentThemeName and Hyperion.Themes[Hyperion._currentThemeName]
+        if fxPreset and fxPreset.Animated and Hyperion.AnimatedEffects ~= false then
+            _startStarfield(StarCanvas, fxPreset.StarColor, MeteorCanvas, fxPreset.ParticleStyle, fxPreset.StarColors)
+        end
+    end
+
     Hyperion:OnThemeChanged(function()
         -- gradient driven by SetTheme override
     end)
