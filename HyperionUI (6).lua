@@ -4608,9 +4608,10 @@ function Util.BuildPreview(parent, cfg)
         local w, h = size.X, size.Y
         if w < 8 or h < 8 then return end
 
-        local rbBox, rbFill, rbName, rbHP, rbSkel, rbTrac, rbCF, rbCO, rbSeq
+        local rbBox, rbFill, rbName, rbHP, rbSkel, rbTrac, rbCF, rbCO, rbSeq, rbDist
         if src.Rainbow then
             rbBox, rbFill, rbName, rbHP = rbOf(src, "Box", now), rbOf(src, "Fill", now), rbOf(src, "Name", now), rbOf(src, "Health", now)
+            rbDist = rbOf(src, "Distance", now)
             rbSkel, rbTrac = rbOf(src, "Skeleton", now), rbOf(src, "Tracer", now)
             rbCF, rbCO = rbOf(src, "ChamsFill", now), rbOf(src, "ChamsOutline", now)
             if src.RainbowSequence then rbSeq = src.RainbowSequence() end
@@ -4708,7 +4709,9 @@ function Util.BuildPreview(parent, cfg)
                 text = string.format('(<font color="rgb(255,0,0)">E</font>) %s', LocalPlayer.Name)
             end
             if dd.Enabled and dd.Position == "Text" then
-                text = text ~= "" and (text .. " [42]") or "[42]"
+                local dc = rbDist or dd.RGB
+                local dtag = string.format('<font color="rgb(%d,%d,%d)">[42]</font>', dc.R * 255, dc.G * 255, dc.B * 255)
+                text = text ~= "" and (text .. " " .. dtag) or dtag
             end
             if hbd.HealthText and hbd.Enabled then
                 local hc = rbHP or hbd.HealthTextRGB
@@ -4726,7 +4729,7 @@ function Util.BuildPreview(parent, cfg)
         if bottom then
             put(ui.distLbl, "TextSize", fs)
             put(ui.distLbl, "Text", "42 meters")
-            put(ui.distLbl, "TextColor3", dd.RGB)
+            put(ui.distLbl, "TextColor3", rbDist or dd.RGB)
             ui.distLbl.Position = UDim2.fromOffset(bx + bw / 2, by + bh + 7)
         end
 
@@ -10305,6 +10308,7 @@ function Hyperion:CreateWindow(config)
         Themed(ScrollThumb, { BackgroundColor3 = function(t) return t.Accent end })
 
         local lastThumbH, lastThumbY = -1, -1
+        local nudging = false
         local function UpdateScrollThumb()
             if not TabPage.Visible then return end
             local canvasY = TabPage.AbsoluteCanvasSize.Y
@@ -10352,6 +10356,7 @@ function Hyperion:CreateWindow(config)
         end
 
         TabPage:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+            if nudging then return end
             UpdateScrollThumb()
             WakeThumb()
         end)
@@ -10364,6 +10369,32 @@ function Hyperion:CreateWindow(config)
             else
                 ScrollThumb.Visible = false
             end
+        end)
+
+        local nudgeQueued = false
+        local function NudgePage()
+            if nudgeQueued then return end
+            nudgeQueued = true
+            task.defer(function()
+                task.wait(0.05)
+                nudgeQueued = false
+                if not (TabPage.Parent and TabPage.Visible) then return end
+                local maxY = TabPage.AbsoluteCanvasSize.Y - TabPage.AbsoluteSize.Y
+                if maxY <= 2 then return end
+                local start = TabPage.CanvasPosition
+                local step = start.Y + 2 <= maxY and 2 or -2
+                nudging = true
+                TabPage.CanvasPosition = Vector2.new(start.X, start.Y + step)
+                task.wait()
+                if TabPage.Parent then
+                    local now = TabPage.CanvasPosition
+                    TabPage.CanvasPosition = Vector2.new(now.X, now.Y - step)
+                end
+                task.defer(function() nudging = false end)
+            end)
+        end
+        Util.Connect(MainFrame:GetPropertyChangedSignal("Visible"), function()
+            if MainFrame.Visible then NudgePage() end
         end)
 
         local GroupBar = Util.Create("ScrollingFrame", {
@@ -10670,6 +10701,7 @@ function Hyperion:CreateWindow(config)
             end
 
             groupData.Page.Visible = true
+            NudgePage()
             if groupData.Button then task.delay(0.06, RevealPill, groupData.Button) end
         end
 
@@ -10707,6 +10739,7 @@ function Hyperion:CreateWindow(config)
             for _, tab in ipairs(WindowObj.Tabs) do
                 if tab.Object._SyncBar then tab.Object._SyncBar() end
             end
+            NudgePage()
         end
         TabObj.Activate = ActivateTab
 
@@ -10737,6 +10770,7 @@ function Hyperion:CreateWindow(config)
         -- Activate first
         if #WindowObj.Tabs == 1 then
             ActivateTab()
+            task.delay(1.2, NudgePage)
         end
 
         -- ============================================================
