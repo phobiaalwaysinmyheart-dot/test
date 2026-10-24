@@ -2963,6 +2963,12 @@ function Util.PointerOver(obj)
     return m.X >= ap.X and m.X <= ap.X + as.X and m.Y >= ap.Y and m.Y <= ap.Y + as.Y
 end
 
+function Util.DividerColor(t)
+    local s = t.Surface
+    if (0.299 * s.R + 0.587 * s.G + 0.114 * s.B) > 0.6 then return Color3.new(0, 0, 0) end
+    return Color3.new(1, 1, 1)
+end
+
 function Util.IsClickOut(input)
     local kind = input.UserInputType
     return kind == Enum.UserInputType.MouseButton1 or kind == Enum.UserInputType.MouseButton2
@@ -7249,7 +7255,8 @@ function Hyperion:CreateWindow(config)
         Parent           = Sidebar,
     })
     Util.AddCorner(InfoOverlay, Theme.CornerSmall)
-    Util.AddStroke(InfoOverlay, Theme.BorderLight, 1, 0.2)
+    local _infoStroke = Util.AddStroke(InfoOverlay, Theme.BorderLight, 1, 0.2)
+    Themed(_infoStroke, { Color = function(t) return t.BorderLight end })
     Themed(InfoOverlay, { BackgroundColor3 = function(t) return t.Surface end })
 
     local InfoContent = Util.Create("Frame", {
@@ -7261,35 +7268,48 @@ function Hyperion:CreateWindow(config)
     Util.AddList(InfoContent, Enum.FillDirection.Vertical, 3)
     Util.AddPadding(InfoContent, 8, 10, 8, 10)
 
-    local function InfoLine(text, color, font)
-        return Util.Create("TextLabel", {
+    local function InfoLine(text, colorKey, fontKey)
+        local lbl = Util.Create("TextLabel", {
             BackgroundTransparency = 1,
             Size = UDim2.new(1, 0, 0, 13),
             Text = text,
-            TextColor3 = color or Theme.TextDim,
-            FontFace = font or Theme.Font,
+            TextColor3 = Theme[colorKey],
+            FontFace = Theme[fontKey],
             TextSize = 11,
             TextXAlignment = Enum.TextXAlignment.Left,
             ZIndex = 10,
             Parent = InfoContent,
         })
+        Themed(lbl, {
+            TextColor3 = function(t) return t[colorKey] end,
+            FontFace   = function(t) return t[fontKey] end,
+        })
+        return lbl
     end
 
-    InfoLine("Hyperion UI v" .. Hyperion.Version, Theme.Accent, Theme.FontSemiBold)
-    InfoLine("by Phobia", Theme.TextDim, Theme.Font)
-    InfoLine("", Theme.TextMuted, Theme.Font) -- spacer
-    InfoLine("RightCtrl — Toggle UI", Theme.TextMuted, Theme.Font)
-    InfoLine("Folder icon — Configs", Theme.TextMuted, Theme.Font)
+    InfoLine("Hyperion UI v" .. Hyperion.Version, "Accent", "FontSemiBold")
+    InfoLine("by Phobia", "TextDim", "Font")
+    InfoLine("", "TextMuted", "Font")
+    InfoLine("RightShift — Toggle UI", "TextMuted", "Font")
+    InfoLine("Folder icon — Configs", "TextMuted", "Font")
+
+    local function InfoBtnPaint()
+        Util.TweenFast(InfoBtn, {
+            ImageColor3 = infoOpen and Hyperion.Theme.Accent or Hyperion.Theme.TextMuted,
+            BackgroundTransparency = infoOpen and 0 or 0.5,
+        })
+    end
+    Themed(InfoBtn, { ImageColor3 = function(t) return infoOpen and t.Accent or t.TextMuted end })
 
     InfoBtn.MouseButton1Click:Connect(function()
         infoOpen = not infoOpen
         if infoOpen then
             InfoOverlay.Visible = true
             Util.TweenSmooth(InfoOverlay, {Size = UDim2.new(0, SidebarWidth - 16, 0, 86)})
-            Util.TweenFast(InfoBtn, {ImageColor3 = Hyperion.Theme.Accent, BackgroundTransparency = 0})
+            InfoBtnPaint()
         else
             Util.TweenSmooth(InfoOverlay, {Size = UDim2.new(0, SidebarWidth - 16, 0, 0)})
-            Util.TweenFast(InfoBtn, {ImageColor3 = Hyperion.Theme.TextDim, BackgroundTransparency = 0.35})
+            InfoBtnPaint()
             task.delay(0.28, function()
                 if not infoOpen then InfoOverlay.Visible = false end
             end)
@@ -7355,7 +7375,7 @@ function Hyperion:CreateWindow(config)
         ZIndex           = 31,
         Parent           = ConfigOverlay,
     })
-    Util.AddList(CfgScroll, Enum.FillDirection.Vertical, 0)
+    Util.AddList(CfgScroll, Enum.FillDirection.Vertical, 6)
     Util.AddPadding(CfgScroll, 0, 8, 6, 8)
 
     -- ── Header strip ─────────────────────────────────────────────────────
@@ -7451,16 +7471,33 @@ function Hyperion:CreateWindow(config)
         Util.TweenFast(CfgCloseBtn, {BackgroundTransparency = 0.4, ImageColor3 = Hyperion.Theme.TextDim})
     end)
 
+    local function CfgCaption(text)
+        local l = Util.Create("TextLabel", {
+            BackgroundTransparency = 1,
+            Size     = UDim2.new(1, 0, 0, 12),
+            Text     = text,
+            TextColor3 = Theme.TextMuted,
+            FontFace = Theme.FontBold,
+            TextSize = 10,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex   = 32,
+            Parent   = CfgScroll,
+        })
+        Util.AddPadding(l, 0, 0, 0, 2)
+        Themed(l, { TextColor3 = function(t) return t.TextMuted end })
+        return l
+    end
+
     -- ── Name textbox ──────────────────────────────────────────────────────
     local CfgNameWrap = Util.Create("Frame", {
         BackgroundTransparency = 1,
-        Size     = UDim2.new(1, 0, 0, 42),
+        Size     = UDim2.new(1, 0, 0, 28),
         ZIndex   = 32,
         Parent   = CfgScroll,
     })
     local CfgNameBox = Util.Create("TextBox", {
         BackgroundColor3 = Theme.InputBg,
-        Size     = UDim2.new(1, 0, 0, 28),
+        Size     = UDim2.new(1, 0, 1, 0),
         Position = UDim2.new(0.5, 0, 0.5, 0),
         AnchorPoint = Vector2.new(0.5, 0.5),
         Text     = "",
@@ -7484,10 +7521,14 @@ function Hyperion:CreateWindow(config)
     Themed(_nameStroke, { Color = function(t) return t.Border end })
     CfgNameBox.Focused:Connect(function()
         Util.TweenFast(CfgNameBox, {BackgroundColor3 = Hyperion.Theme.SurfaceLight})
+        Util.TweenFast(_nameStroke, {Color = Hyperion.Theme.Accent, Transparency = 0})
     end)
     CfgNameBox.FocusLost:Connect(function()
         Util.TweenFast(CfgNameBox, {BackgroundColor3 = Hyperion.Theme.InputBg})
+        Util.TweenFast(_nameStroke, {Color = Hyperion.Theme.Border, Transparency = 0.3})
     end)
+
+    CfgCaption("SAVED CONFIGS")
 
     -- ── Config list ───────────────────────────────────────────────────────
     local CfgListOuter = Util.Create("Frame", {
@@ -7534,18 +7575,18 @@ function Hyperion:CreateWindow(config)
     }
 
     local CfgActionDivider = Util.Create("Frame", {
-        BackgroundColor3 = Theme.Border,
-        BackgroundTransparency = 0.3,
+        BackgroundColor3 = Util.DividerColor(Theme),
+        BackgroundTransparency = 0.86,
         Size     = UDim2.new(1, 0, 0, 1),
         BorderSizePixel = 0,
         ZIndex   = 32,
         Parent   = CfgScroll,
     })
-    Themed(CfgActionDivider, { BackgroundColor3 = function(t) return t.Border end })
+    Themed(CfgActionDivider, { BackgroundColor3 = function(t) return Util.DividerColor(t) end })
 
     local CfgRail = Util.Create("Frame", {
         BackgroundTransparency = 1,
-        Size     = UDim2.new(1, 0, 0, 34),
+        Size     = UDim2.new(1, 0, 0, 30),
         ZIndex   = 32,
         Parent   = CfgScroll,
     })
@@ -7555,14 +7596,14 @@ function Hyperion:CreateWindow(config)
     local function MakeIconBtn(icon, tooltip, danger)
         local wrap = Util.Create("Frame", {
             BackgroundTransparency = 1,
-            Size     = UDim2.new(0, 26, 0, 30),
+            Size     = UDim2.new(0, 36, 0, 30),
             ZIndex   = 33,
             Parent   = CfgRail,
         })
         local btn = Util.Create("ImageButton", {
             BackgroundColor3 = danger and Color3.fromRGB(55,18,22) or Theme.SurfaceLight,
             BackgroundTransparency = danger and 0 or 0.4,
-            Size     = UDim2.new(0, 18, 0, 18),
+            Size     = UDim2.new(0, 22, 0, 22),
             Position = UDim2.new(0.5, 0, 0.5, 0),
             AnchorPoint = Vector2.new(0.5, 0.5),
             Image    = icon,
@@ -7738,11 +7779,13 @@ function Hyperion:CreateWindow(config)
     local AL_ICON_STAR  = "rbxassetid://10734966248" -- lucide-star
     local AL_ICON_CHECK = "rbxassetid://10709790644" -- lucide-check
 
+    CfgCaption("OPTIONS")
+
     local AutoLoadBtn = Util.Create("Frame", {
         Name                   = "AutoLoadBtn",
         BackgroundColor3       = Theme.Surface,
         BackgroundTransparency = 0.3,
-        Size                   = UDim2.new(1, -24, 0, 30),
+        Size                   = UDim2.new(1, 0, 0, 30),
         ZIndex                 = 32,
         Parent                 = CfgScroll,
     })
@@ -7866,7 +7909,7 @@ function Hyperion:CreateWindow(config)
         Name                   = "CfgKbRow",
         BackgroundColor3       = Theme.Surface,
         BackgroundTransparency = 0.3,
-        Size                   = UDim2.new(1, -24, 0, 30),
+        Size                   = UDim2.new(1, 0, 0, 30),
         ZIndex                 = 32,
         Parent                 = CfgScroll,
     })
@@ -7898,8 +7941,8 @@ function Hyperion:CreateWindow(config)
     do
         local ok, raw = pcall(_rawReadfile, "Hyperion/kb_cfgpanel.dat")
         if ok and raw and raw ~= "" then
-            local kc = Enum.KeyCode[raw]
-            if kc then _cfgKbValue = kc end
+            local okKc, kc = pcall(function() return Enum.KeyCode[raw] end)
+            if okKc and kc then _cfgKbValue = kc end
         end
     end
 
@@ -7931,6 +7974,7 @@ function Hyperion:CreateWindow(config)
     })
     Themed(_kbBtnStroke, { Color = function(t) return _cfgKbListen and t.Accent or t.BorderLight end })
 
+    pcall(Util.AttachTooltip, KbBtn, "Click, then press a key. Click away to unbind.")
     KbBtn.MouseButton1Click:Connect(function()
         _cfgKbListen = true
         KbBtn.Text = "..."
@@ -7941,17 +7985,22 @@ function Hyperion:CreateWindow(config)
     -- Forward ref: assigned after OpenConfigPanel/CloseConfigPanel are defined below.
     local _cfgPanelToggle = nil
 
+    local function _cfgKbSet(kc)
+        _cfgKbListen = false
+        _cfgKbValue  = kc
+        KbBtn.Text   = _cfgKbName(kc)
+        Util.TweenFast(_kbBtnStroke, { Color = Hyperion.Theme.Border, Transparency = 0.4 })
+        Util.TweenFast(KbBtn, { TextColor3 = Hyperion.Theme.TextDim })
+        Config.EnsureFolder()
+        pcall(_rawWritefile, "Hyperion/kb_cfgpanel.dat", kc == Enum.KeyCode.Unknown and "" or _cfgKbName(kc))
+    end
+
     Util.Connect(UserInputService.InputBegan, function(input, processed)
         if _cfgKbListen then
             if input.UserInputType == Enum.UserInputType.Keyboard then
-                _cfgKbListen = false
-                _cfgKbValue  = (input.KeyCode == Enum.KeyCode.Escape)
-                               and Enum.KeyCode.Unknown or input.KeyCode
-                KbBtn.Text   = _cfgKbName(_cfgKbValue)
-                Util.TweenFast(_kbBtnStroke, { Color = Hyperion.Theme.Border, Transparency = 0.4 })
-                Util.TweenFast(KbBtn, { TextColor3 = Hyperion.Theme.TextDim })
-                Config.EnsureFolder()
-                pcall(_rawWritefile, "Hyperion/kb_cfgpanel.dat", _cfgKbName(_cfgKbValue))
+                _cfgKbSet(input.KeyCode == Enum.KeyCode.Escape and Enum.KeyCode.Unknown or input.KeyCode)
+            elseif Util.IsClickOut(input) and not Util.PointerOver(KbBtn) then
+                _cfgKbSet(Enum.KeyCode.Unknown)
             end
         elseif not processed
             and _cfgKbValue ~= Enum.KeyCode.Unknown
@@ -7975,10 +8024,8 @@ function Hyperion:CreateWindow(config)
     --  are direct children of CfgScroll which uses a UIListLayout)
     -- Apply horizontal offset via Position since UIListLayout doesn't support
     -- per-item padding on the cross-axis.
-    CfgListOuter.Position         = UDim2.new(0, 12, 0, 0)
-    CfgListOuter.Size             = UDim2.new(1, -24, 0, 150)
-    CfgActionDivider.Position     = UDim2.new(0, 12, 0, 0)
-    CfgActionDivider.Size         = UDim2.new(1, -24, 0, 1)
+    CfgListOuter.Size             = UDim2.new(1, 0, 0, 150)
+    CfgActionDivider.Size         = UDim2.new(1, 0, 0, 1)
 
     -- ── Helpers ───────────────────────────────────────────────────────────
     local function SetStatus(text, color)
@@ -7989,10 +8036,10 @@ function Hyperion:CreateWindow(config)
     local function ShowDeleteConfirm(name)
         DeleteConfirmSub.Text    = '"' .. name .. '" cannot be recovered.'
         DeleteConfirmBar.Visible = true
-        Util.Tween(DeleteConfirmBar, 0.18, {Size = UDim2.new(1, -24, 0, 64 + 8)}, Enum.EasingStyle.Quint)
+        Util.Tween(DeleteConfirmBar, 0.18, {Size = UDim2.new(1, 0, 0, 64 + 8)}, Enum.EasingStyle.Quint)
     end
     local function HideDeleteConfirm()
-        Util.Tween(DeleteConfirmBar, 0.14, {Size = UDim2.new(1, -24, 0, 0)}, Enum.EasingStyle.Quint)
+        Util.Tween(DeleteConfirmBar, 0.14, {Size = UDim2.new(1, 0, 0, 0)}, Enum.EasingStyle.Quint)
         task.delay(0.15, function()
             if DeleteConfirmBar and DeleteConfirmBar.Parent then
                 DeleteConfirmBar.Visible = false
@@ -8207,7 +8254,7 @@ function Hyperion:CreateWindow(config)
         if not insideInfo and not insideBtn then
             infoOpen = false
             Util.TweenSmooth(InfoOverlay, {Size = UDim2.new(0, SidebarWidth - 16, 0, 0)})
-            Util.TweenFast(InfoBtn, {ImageColor3 = Hyperion.Theme.TextDim, BackgroundTransparency = 0.35})
+            InfoBtnPaint()
             task.delay(0.28, function()
                 if not infoOpen then InfoOverlay.Visible = false end
             end)
@@ -11257,15 +11304,15 @@ function Hyperion:CreateWindow(config)
 
             local _secDivider = Util.Create("Frame", {
                 Name = "Divider",
-                BackgroundColor3 = Theme.Border,
-                BackgroundTransparency = 0.1,
-                Size = UDim2.new(1, -20, 0, 1),
-                Position = UDim2.new(0, 10, 1, -1),
+                BackgroundColor3 = Util.DividerColor(Theme),
+                BackgroundTransparency = 0.86,
+                Size = UDim2.new(1, -24, 0, 1),
+                Position = UDim2.new(0, 12, 1, -1),
                 BorderSizePixel = 0,
                 ZIndex = 2,
                 Parent = SecHeader
             })
-            Themed(_secDivider, { BackgroundColor3 = function(t) return t.Border end })
+            Themed(_secDivider, { BackgroundColor3 = function(t) return Util.DividerColor(t) end })
             Util.ChromeAdd(_secDivider, "BackgroundTransparency", 1)
 
             -- Element container
@@ -13037,8 +13084,8 @@ function Hyperion:CreateWindow(config)
                 })
                 local Line = Util.Create("Frame", {
                     Name = "Line",
-                    BackgroundColor3 = Theme.Border,
-                    BackgroundTransparency = 0.1,
+                    BackgroundColor3 = Util.DividerColor(Theme),
+                    BackgroundTransparency = 0.86,
                     Size = UDim2.new(1, 0, 0, 1),
                     Position = UDim2.new(0, 0, 0.5, 0),
                     AnchorPoint = Vector2.new(0, 0.5),
@@ -13046,7 +13093,7 @@ function Hyperion:CreateWindow(config)
                     ZIndex = 2,
                     Parent = DivFrame
                 })
-                Themed(Line, { BackgroundColor3 = function(t) return t.Border end })
+                Themed(Line, { BackgroundColor3 = function(t) return Util.DividerColor(t) end })
                 Util.ChromeAdd(Line, "BackgroundTransparency", 1)
                 if title then
                     local Cap = Util.Create("TextLabel", {
@@ -13569,31 +13616,19 @@ function Hyperion:CreateWindow(config)
             Padding = UDim.new(0, 8), Parent = cv,
         })
 
-        local CATEGORIES = {
-            { "Featured",    { "Windows XP", "Scarlet", "Rose Gold", "Christmas", "Vivid Nightfall", "Pastel Rainbow Fantasy", "Soft Pink Delight", "Soft Lavender" } },
-            { "Signature",   { "Hyperion", "Purple", "Midnight", "Nebula", "Dracula" } },
-            { "Cool",        { "Ocean", "StarryNight", "Aurora", "Nord", "Mint" } },
-            { "Warm",        { "Sunset", "Crimson", "Royal Gold", "Coffee", "Halloween" } },
-            { "Pink & Soft", { "Rose", "Sakura", "Bunny", "Lavender", "Strawberry Milk", "Love" } },
-            { "Neon",        { "Vaporwave", "Matcha" } },
+        local ORDER = {
+            "Windows XP", "Scarlet", "Rose Gold", "Christmas", "Vivid Nightfall", "Pastel Rainbow Fantasy", "Soft Pink Delight", "Soft Lavender",
+            "Hyperion", "Purple", "Midnight", "Nebula", "Dracula",
+            "Ocean", "StarryNight", "Aurora", "Nord", "Mint",
+            "Sunset", "Crimson", "Royal Gold", "Coffee", "Halloween",
+            "Rose", "Sakura", "Bunny", "Lavender", "Strawberry Milk", "Love",
+            "Vaporwave", "Matcha",
         }
-        local LIGHT, CUSTOM = "Light", "Custom"
-        local firstCategory, orderOf, catsOf, names = {}, {}, {}, {}
-        for _, cat in ipairs(CATEGORIES) do
-            for _, n in ipairs(cat[2]) do
-                catsOf[n] = catsOf[n] or {}
-                catsOf[n][cat[1]] = true
-                if not firstCategory[n] then
-                    firstCategory[n] = cat[1]
-                    names[#names + 1] = n
-                    orderOf[n] = #names
-                end
-            end
-        end
+        local orderOf = {}
+        for i = 1, #ORDER do orderOf[ORDER[i]] = i end
 
-        local cards, cardList, pills = {}, {}, {}
-        local customNames = {}
-        local activeCat, query = nil, ""
+        local cards, cardList = {}, {}
+        local query = ""
 
         local function paint(active)
             for n, c in pairs(cards) do
@@ -13603,16 +13638,6 @@ function Hyperion:CreateWindow(config)
                 c.stroke.Transparency = sel and 0 or 0.5
                 c.check.TextTransparency = sel and 0 or 1
             end
-        end
-
-        local function isLight(preset)
-            local bg = preset and preset.Background
-            return bg ~= nil and (0.299 * bg.R + 0.587 * bg.G + 0.114 * bg.B) > 0.6
-        end
-
-        local function onAccent()
-            local c = Hyperion.Theme.Accent
-            return (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) > 0.6 and Color3.fromRGB(20, 20, 28) or Color3.new(1, 1, 1)
         end
 
         local searchRow = Util.Create("Frame", {
@@ -13647,106 +13672,9 @@ function Hyperion:CreateWindow(config)
         search.Focused:Connect(function() Util.TweenFast(searchStroke, { Color = Hyperion.Theme.Accent, Transparency = 0 }) end)
         search.FocusLost:Connect(function() Util.TweenFast(searchStroke, { Color = Hyperion.Theme.Border, Transparency = 0.3 }) end)
 
-        local stripWrap = Util.Create("Frame", {
-            BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 26), ClipsDescendants = true,
-            LayoutOrder = 1, Parent = cv,
-        })
-        local strip = Util.Create("ScrollingFrame", {
-            BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), BorderSizePixel = 0,
-            ScrollBarThickness = 0, ScrollingDirection = Enum.ScrollingDirection.X,
-            AutomaticCanvasSize = Enum.AutomaticSize.X, CanvasSize = UDim2.new(0, 0, 0, 0), Parent = stripWrap,
-        })
-        Util.AddList(strip, Enum.FillDirection.Horizontal, 6, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Center)
-
-        local function edgeFade(rightSide)
-            local f = Util.Create("Frame", {
-                BackgroundColor3 = Theme.Surface, BorderSizePixel = 0,
-                AnchorPoint = Vector2.new(rightSide and 1 or 0, 0),
-                Position = UDim2.new(rightSide and 1 or 0, 0, 0, 0), Size = UDim2.new(0, 30, 1, 0),
-                Visible = false, ZIndex = 6, Parent = stripWrap,
-            })
-            Util.Create("UIGradient", {
-                Transparency = NumberSequence.new(rightSide
-                    and { NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0) }
-                    or { NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) }),
-                Parent = f,
-            })
-            Themed(f, { BackgroundColor3 = function(t) return t.Surface end })
-            return f
-        end
-        local fadeL, fadeR = edgeFade(false), edgeFade(true)
-        local function updateEdges()
-            local maxX = math.max(0, strip.AbsoluteCanvasSize.X - strip.AbsoluteSize.X)
-            local x = strip.CanvasPosition.X
-            fadeL.Visible = x > 1
-            fadeR.Visible = x < maxX - 1
-        end
-        for _, prop in ipairs({ "CanvasPosition", "AbsoluteCanvasSize", "AbsoluteSize" }) do
-            strip:GetPropertyChangedSignal(prop):Connect(updateEdges)
-        end
-
-        local lockedPage
-        local function lockPage(on)
-            if on then
-                if lockedPage then return end
-                local pg = stripWrap:FindFirstAncestorWhichIsA("ScrollingFrame")
-                if pg and pg.ScrollingEnabled ~= false then
-                    pg.ScrollingEnabled = false
-                    lockedPage = pg
-                end
-            elseif lockedPage then
-                lockedPage.ScrollingEnabled = true
-                lockedPage = nil
-            end
-        end
-        local function overStrip()
-            local m = UserInputService:GetMouseLocation()
-            local ap, as = strip.AbsolutePosition, strip.AbsoluteSize
-            return m.X >= ap.X and m.X <= ap.X + as.X and m.Y >= ap.Y and m.Y <= ap.Y + as.Y
-        end
-        stripWrap.MouseEnter:Connect(function()
-            if strip.AbsoluteCanvasSize.X > strip.AbsoluteSize.X + 1 then lockPage(true) end
-        end)
-        stripWrap.MouseLeave:Connect(function() lockPage(false) end)
-
-        Util.Connect(UserInputService.InputChanged, function(input)
-            local kind = input.UserInputType
-            if kind == Enum.UserInputType.MouseMovement then
-                if lockedPage and not overStrip() then lockPage(false) end
-                return
-            end
-            if kind ~= Enum.UserInputType.MouseWheel then return end
-            if not stripWrap.Parent then
-                lockPage(false)
-                return
-            end
-            if not overStrip() then return end
-            local maxX = math.max(0, strip.AbsoluteCanvasSize.X - strip.AbsoluteSize.X)
-            if maxX > 0 then lockPage(true) end
-            strip.CanvasPosition = Vector2.new(math.clamp(strip.CanvasPosition.X - input.Position.Z * 60, 0, maxX), 0)
-        end)
-
-        local function revealPill(pill)
-            if not (pill and pill.Parent) then return end
-            local view = strip.AbsoluteSize.X
-            local cur = strip.CanvasPosition.X
-            local left = pill.AbsolutePosition.X - strip.AbsolutePosition.X + cur
-            local right = left + pill.AbsoluteSize.X
-            local target = cur
-            if left < cur + 30 then
-                target = left - 30
-            elseif right > cur + view - 30 then
-                target = right - view + 30
-            end
-            target = math.clamp(target, 0, math.max(0, strip.AbsoluteCanvasSize.X - view))
-            if math.abs(target - cur) > 1 then
-                Util.Tween(strip, 0.25, { CanvasPosition = Vector2.new(target, 0) }, Enum.EasingStyle.Quint)
-            end
-        end
-
         local grid = Util.Create("Frame", {
             BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0),
-            AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 2, Parent = cv,
+            AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 1, Parent = cv,
         })
         Util.Create("UIGridLayout", {
             CellSize = UDim2.new(0, 94, 0, 50), CellPadding = UDim2.new(0, 6, 0, 6),
@@ -13754,97 +13682,31 @@ function Hyperion:CreateWindow(config)
             Parent = grid,
         })
         local emptyLbl = Util.Create("TextLabel", {
-            BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 34), LayoutOrder = 3, Text = "",
+            BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 34), LayoutOrder = 2, Text = "No themes match your search",
             TextColor3 = Theme.TextMuted, FontFace = Theme.Font, TextSize = 12, TextWrapped = true,
             Visible = false, Parent = cv,
         })
         Themed(emptyLbl, { TextColor3 = function(t) return t.TextMuted end })
 
-        local function paintPills()
-            local t = Hyperion.Theme
-            for name, p in pairs(pills) do
-                local on = name == activeCat and query == ""
-                p.BackgroundColor3 = on and t.Accent or t.SurfaceLight
-                p.TextColor3 = on and onAccent() or t.TextDim
-                Util.ControlRefresh(p)
-            end
-        end
-
         local function refilter()
             local q = string.lower(query)
             local shown = 0
             for _, c in ipairs(cardList) do
-                local vis
-                if q ~= "" then
-                    vis = string.find(string.lower(c.name), q, 1, true) ~= nil
-                else
-                    vis = c.cats[activeCat] == true
-                end
+                local vis = q == "" or string.find(string.lower(c.name), q, 1, true) ~= nil
                 c.btn.Visible = vis
                 if vis then shown = shown + 1 end
             end
-            if shown > 0 then
-                emptyLbl.Visible = false
-            else
-                emptyLbl.Visible = true
-                if q ~= "" then
-                    emptyLbl.Text = "No themes match your search"
-                elseif activeCat == CUSTOM then
-                    emptyLbl.Text = "Themes you save in the Theme Creator show up here"
-                else
-                    emptyLbl.Text = "No themes in this group"
-                end
-            end
+            emptyLbl.Visible = shown == 0
         end
 
-        local function showCategory(name)
-            if not pills[name] then return end
-            activeCat = name
-            Hyperion._galleryCat = name
-            paintPills()
-            refilter()
-            task.delay(0.05, revealPill, pills[name])
-        end
-
-        local function categoryOf(name)
-            if not name then return nil end
-            if firstCategory[name] then return firstCategory[name] end
-            if Hyperion.Themes[name] then return CUSTOM end
-            return nil
-        end
-
-        local function addPill(name, order)
-            local pill = Util.Create("TextButton", {
-                BackgroundColor3 = Theme.SurfaceLight, BackgroundTransparency = 0.2,
-                Size = UDim2.new(0, 0, 0, 24), AutomaticSize = Enum.AutomaticSize.X,
-                Text = name, TextColor3 = Theme.TextDim, FontFace = Theme.FontMedium, TextSize = 11,
-                AutoButtonColor = false, BorderSizePixel = 0, LayoutOrder = order, Parent = strip,
-            })
-            Util.AddCorner(pill, UDim.new(1, 0))
-            Util.AddPadding(pill, 0, 12, 0, 12)
-            Util.ControlAdd(pill, "BackgroundTransparency", { keep = function() return activeCat == name and query == "" end })
-            pills[name] = pill
-            pill.MouseEnter:Connect(function()
-                if not (activeCat == name and query == "") then Util.TweenFast(pill, { BackgroundColor3 = Hyperion.Theme.SurfaceHover }) end
-            end)
-            pill.MouseLeave:Connect(function()
-                if not (activeCat == name and query == "") then Util.TweenFast(pill, { BackgroundColor3 = Hyperion.Theme.SurfaceLight }) end
-            end)
-            pill.MouseButton1Click:Connect(function()
-                if query ~= "" then search.Text = "" end
-                showCategory(name)
-            end)
-            return pill
-        end
-
-        local function addCard(name, cats, order, isCustom)
+        local function addCard(name, order, isCustom)
             local preset = Hyperion.Themes[name]
             if not preset then return end
             local ac  = preset.Accent or Color3.fromRGB(150, 110, 255)
             local acL = preset.AccentLight or ac
             local card = Util.Create("TextButton", {
                 BackgroundColor3 = preset.Background or Theme.Background, Text = "",
-                AutoButtonColor = false, BorderSizePixel = 0, LayoutOrder = order, Visible = false, Parent = grid,
+                AutoButtonColor = false, BorderSizePixel = 0, LayoutOrder = order, Parent = grid,
             })
             Util.AddCorner(card, UDim.new(0, 6))
             local st = Util.AddStroke(card, Theme.BorderLight, 1, 0.5)
@@ -13872,7 +13734,7 @@ function Hyperion:CreateWindow(config)
                 FontFace = Theme.FontBold, TextSize = 12, TextTransparency = 1, Parent = card,
             })
             cards[name] = { stroke = st, check = check, accent = ac }
-            cardList[#cardList + 1] = { name = name, btn = card, cats = cats, custom = isCustom }
+            cardList[#cardList + 1] = { name = name, btn = card, custom = isCustom }
             card.MouseEnter:Connect(function()
                 if Hyperion._currentThemeName ~= name then Util.TweenFast(st, { Transparency = 0.05, Color = ac }) end
             end)
@@ -13886,20 +13748,8 @@ function Hyperion:CreateWindow(config)
             end)
         end
 
-        local pillOrder = 0
-        for _, cat in ipairs(CATEGORIES) do
-            pillOrder = pillOrder + 1
-            addPill(cat[1], pillOrder)
-        end
-        addPill(LIGHT, 90)
-        local customPill = addPill(CUSTOM, 91)
-
-        for _, n in ipairs(names) do
-            if Hyperion.Themes[n] then
-                local cats = catsOf[n]
-                if isLight(Hyperion.Themes[n]) then cats[LIGHT] = true end
-                addCard(n, cats, orderOf[n], false)
-            end
+        for i = 1, #ORDER do
+            if Hyperion.Themes[ORDER[i]] then addCard(ORDER[i], i, false) end
         end
 
         local function refreshCustom()
@@ -13911,22 +13761,13 @@ function Hyperion:CreateWindow(config)
                     table.remove(cardList, i)
                 end
             end
-            customNames = {}
+            local names = {}
             for n in pairs(Hyperion.Themes) do
-                if not firstCategory[n] then customNames[#customNames + 1] = n end
+                if not orderOf[n] then names[#names + 1] = n end
             end
-            table.sort(customNames, function(a, b) return string.lower(a) < string.lower(b) end)
-            for i, n in ipairs(customNames) do
-                local cats = { [CUSTOM] = true }
-                if isLight(Hyperion.Themes[n]) then cats[LIGHT] = true end
-                addCard(n, cats, 1000 + i, true)
-            end
-            customPill.Visible = #customNames > 0
-            if activeCat == CUSTOM and #customNames == 0 then
-                showCategory(CATEGORIES[1][1])
-            else
-                refilter()
-            end
+            table.sort(names, function(a, b) return string.lower(a) < string.lower(b) end)
+            for i = 1, #names do addCard(names[i], 1000 + i, true) end
+            refilter()
             paint(Hyperion._currentThemeName)
         end
         Hyperion._galleryRefresh = refreshCustom
@@ -13935,14 +13776,10 @@ function Hyperion:CreateWindow(config)
         search:GetPropertyChangedSignal("Text"):Connect(function()
             query = string.match(search.Text, "^%s*(.-)%s*$") or ""
             searchClear.Visible = search.Text ~= ""
-            paintPills()
             refilter()
         end)
         searchClear.MouseButton1Click:Connect(function() search.Text = "" end)
 
-        local start = categoryOf(Hyperion._currentThemeName) or Hyperion._galleryCat
-        if not (start and pills[start]) then start = CATEGORIES[1][1] end
-        showCategory(start)
         paint(Hyperion._currentThemeName or "Hyperion")
 
         local repaintQueued = false
@@ -13953,13 +13790,11 @@ function Hyperion:CreateWindow(config)
                 task.defer(function()
                     repaintQueued = false
                     paint(Hyperion._currentThemeName)
-                    paintPills()
                 end)
             end)
         end)
         return sec
     end
-
     function WindowObj:AddBackgroundImage(sec)
         Util.BgRestore()
         local v = Util._bgi
