@@ -7596,14 +7596,14 @@ function Hyperion:CreateWindow(config)
     local function MakeIconBtn(icon, tooltip, danger)
         local wrap = Util.Create("Frame", {
             BackgroundTransparency = 1,
-            Size     = UDim2.new(0, 36, 0, 30),
+            Size     = UDim2.new(0, 21, 0, 30),
             ZIndex   = 33,
             Parent   = CfgRail,
         })
         local btn = Util.Create("ImageButton", {
             BackgroundColor3 = danger and Color3.fromRGB(55,18,22) or Theme.SurfaceLight,
             BackgroundTransparency = danger and 0 or 0.4,
-            Size     = UDim2.new(0, 22, 0, 22),
+            Size     = UDim2.new(0, 16, 0, 16),
             Position = UDim2.new(0.5, 0, 0.5, 0),
             AnchorPoint = Vector2.new(0.5, 0.5),
             Image    = icon,
@@ -13628,7 +13628,6 @@ function Hyperion:CreateWindow(config)
         for i = 1, #ORDER do orderOf[ORDER[i]] = i end
 
         local cards, cardList = {}, {}
-        local query = ""
 
         local function paint(active)
             for n, c in pairs(cards) do
@@ -13640,38 +13639,6 @@ function Hyperion:CreateWindow(config)
             end
         end
 
-        local searchRow = Util.Create("Frame", {
-            BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 28), LayoutOrder = 0, Parent = cv,
-        })
-        local search = Util.Create("TextBox", {
-            BackgroundColor3 = Theme.InputBg, Size = UDim2.new(1, 0, 1, 0),
-            Text = "", PlaceholderText = "Search themes...",
-            TextColor3 = Theme.Text, PlaceholderColor3 = Theme.TextMuted,
-            FontFace = Theme.FontMedium, TextSize = 12, TextXAlignment = Enum.TextXAlignment.Left,
-            ClearTextOnFocus = false, BorderSizePixel = 0, ZIndex = 3, Parent = searchRow,
-        })
-        Util.AddCorner(search, Theme.CornerSmall)
-        Util.AddPadding(search, 0, 26, 0, 28)
-        local searchStroke = Util.AddStroke(search, Theme.Border, 1, 0.3)
-        Util.ControlAdd(search, "BackgroundTransparency", { bevel = "sunken" })
-        Themed(search, { BackgroundColor3 = function(t) return t.InputBg end, TextColor3 = function(t) return t.Text end, PlaceholderColor3 = function(t) return t.TextMuted end })
-        Themed(searchStroke, { Color = function(t) return t.Border end })
-        local searchIcon = Util.Create("ImageLabel", {
-            BackgroundTransparency = 1, Position = UDim2.new(0, 9, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5),
-            Size = UDim2.new(0, 12, 0, 12), Image = Hyperion.Lucide.Search, ImageColor3 = Theme.TextMuted,
-            ScaleType = Enum.ScaleType.Fit, ZIndex = 4, Parent = searchRow,
-        })
-        Themed(searchIcon, { ImageColor3 = function(t) return t.TextMuted end })
-        local searchClear = Util.Create("TextButton", {
-            BackgroundTransparency = 1, Position = UDim2.new(1, -24, 0, 0), Size = UDim2.new(0, 24, 1, 0),
-            Text = "✕", TextColor3 = Theme.TextMuted, FontFace = Theme.FontBold, TextSize = 11,
-            AutoButtonColor = false, Visible = false, ZIndex = 4, Parent = searchRow,
-        })
-        searchClear.MouseEnter:Connect(function() searchClear.TextColor3 = Hyperion.Theme.Error end)
-        searchClear.MouseLeave:Connect(function() searchClear.TextColor3 = Hyperion.Theme.TextMuted end)
-        search.Focused:Connect(function() Util.TweenFast(searchStroke, { Color = Hyperion.Theme.Accent, Transparency = 0 }) end)
-        search.FocusLost:Connect(function() Util.TweenFast(searchStroke, { Color = Hyperion.Theme.Border, Transparency = 0.3 }) end)
-
         local grid = Util.Create("Frame", {
             BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0),
             AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 1, Parent = cv,
@@ -13681,24 +13648,6 @@ function Hyperion:CreateWindow(config)
             SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Left,
             Parent = grid,
         })
-        local emptyLbl = Util.Create("TextLabel", {
-            BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 34), LayoutOrder = 2, Text = "No themes match your search",
-            TextColor3 = Theme.TextMuted, FontFace = Theme.Font, TextSize = 12, TextWrapped = true,
-            Visible = false, Parent = cv,
-        })
-        Themed(emptyLbl, { TextColor3 = function(t) return t.TextMuted end })
-
-        local function refilter()
-            local q = string.lower(query)
-            local shown = 0
-            for _, c in ipairs(cardList) do
-                local vis = q == "" or string.find(string.lower(c.name), q, 1, true) ~= nil
-                c.btn.Visible = vis
-                if vis then shown = shown + 1 end
-            end
-            emptyLbl.Visible = shown == 0
-        end
-
         local function addCard(name, order, isCustom)
             local preset = Hyperion.Themes[name]
             if not preset then return end
@@ -13767,18 +13716,11 @@ function Hyperion:CreateWindow(config)
             end
             table.sort(names, function(a, b) return string.lower(a) < string.lower(b) end)
             for i = 1, #names do addCard(names[i], 1000 + i, true) end
-            refilter()
             paint(Hyperion._currentThemeName)
         end
         Hyperion._galleryRefresh = refreshCustom
         refreshCustom()
 
-        search:GetPropertyChangedSignal("Text"):Connect(function()
-            query = string.match(search.Text, "^%s*(.-)%s*$") or ""
-            searchClear.Visible = search.Text ~= ""
-            refilter()
-        end)
-        searchClear.MouseButton1Click:Connect(function() search.Text = "" end)
 
         paint(Hyperion._currentThemeName or "Hyperion")
 
