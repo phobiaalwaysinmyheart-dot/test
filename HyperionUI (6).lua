@@ -13753,6 +13753,16 @@ function Hyperion:CreateWindow(config)
                 Util.BgSave()
             end,
         })
+        sec:AddToggle({
+            Name = "Full Background",
+            Desc = "Hides the info card, bars, tab and sub-tab boxes, window buttons, bottom icons and divider lines.",
+            Default = v.full,
+            Callback = function(on)
+                v.full = on
+                Util.BgSync()
+                Util.BgSave()
+            end,
+        })
         local pickCfg = {
             Name = "Image",
             Desc = "PNG or JPG files from workspace/Hyperion/Backgrounds.",
@@ -13772,13 +13782,6 @@ function Hyperion:CreateWindow(config)
             pick:Refresh(names)
         end
         fillList()
-        sec:AddButton({
-            Name = "Refresh", Icon = Hyperion.Lucide.RefreshCw,
-            Callback = function()
-                fillList()
-                Util.BgApply()
-            end,
-        })
         sec:AddSlider({
             Name = "Darkness", Min = 0, Max = 90, Default = math.floor(v.tint * 100 + 0.5), Suffix = "%",
             Callback = function(n)
@@ -13795,14 +13798,11 @@ function Hyperion:CreateWindow(config)
                 Util.BgSave()
             end,
         })
-        sec:AddToggle({
-            Name = "Full Background",
-            Desc = "Hides the info card, bars, tab and sub-tab boxes, window buttons, bottom icons and divider lines.",
-            Default = v.full,
-            Callback = function(on)
-                v.full = on
-                Util.BgSync()
-                Util.BgSave()
+        sec:AddButton({
+            Name = "Refresh", Icon = Hyperion.Lucide.RefreshCw,
+            Callback = function()
+                fillList()
+                Util.BgApply()
             end,
         })
         if v.on and v.src ~= "" then
